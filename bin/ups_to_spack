@@ -94,7 +94,7 @@ guess_compiler() {
 make_spec() {
    # make a spec file 
    # args:
-   # $1-prod $2-ver $3-theirflav $4-compiler $5-compiler_version
+   # $1-prod $2-ver $3-flav $4-qual $4-theirflav $5-compiler $6-compiler_version
    #
    # at the moment this makes a minimal spec file so that
    # spack will know the package exists, and then renames the
@@ -104,17 +104,23 @@ make_spec() {
    #
    prod=$1
    ver=$2
-   theirflav=$3
-   compiler=$4
-   cver=$5
+   flav=$3
+   qual=$4
+   theirflav=$5
+   compiler=$6
+   cver=$7
    basedir=${SPACK_ROOT}/opt/spack/$theirflav/$compiler-$cver/$prod-$ver
    mkdir -p ${basedir}/.spack
    set : `echo $theirflav| sed -e 's/-/ /g'`
    export specfile=${basedir}/.spack/spec.yaml 
-   cat > $specfile <<EOF
-spec:
-- $prod:
-    version: $ver
+   echo "spec:" > $specfile
+   ups depend $prod $ver -f $flav |
+       sed -e 's/^[|_]*//' |
+       while read dashes dprod dver drest
+       do
+           cat >> $specfile <<EOF
+- $dprod:
+    version: $dver
     arch:
       platform:$2
       platform_os=$3
@@ -131,6 +137,8 @@ spec:
       ldflags: []
       ldlibs: []
 EOF
+       done
+
     # kluge alert, get hash from error message from reindex..
     hash=`spack reindex 2>&1 | 
        grep 'No such file or directory' | 
