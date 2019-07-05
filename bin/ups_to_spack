@@ -150,14 +150,21 @@ make_spec() {
       fflags: []
       ldflags: []
       ldlibs: []
-    dependencies:
 EOF
+   if [ `ups depend $prod $ver -f $flav -q "$qual" | wc -l` != 1 ]
+   then
+       echo "     dependencies:" >> $specfile
+   fi
    # list immediate dependencies
-   ups depend $prod $ver -f $flav |
+   ups depend $prod $ver -f $flav -q "$qual" |
        grep '^|__[a-z]' |
        sed -e 's/^[|_]*//' |
-       while read dprod dver dflav dquals drest
+       while read dprod dver fflag dflav qflag dquals drest
        do
+           if [ "x$qflag" != "x-q" ]
+           then
+               dquals=""
+           fi
            dhash=`get_hash "$dprod" "$dver" "$dflav" "$dquals" $compver`
            printf "  %s:\n    hash: %s\n    type:\n      -build\n      -link\n" $dprod $dhash >> $specfile
        done
@@ -166,12 +173,16 @@ EOF
    ups depend $prod $ver -f $flav |
        sed -e 's/^[|_]*//' |
        first=true
-       while read dprod dver drest
+       while read dprod dver fflaog dflav qflag dquals drest
        do
            if $first
            then
                first=false
                continue
+           fi
+           if [ "x$qflag" != "x-q" ]
+           then
+               dquals=""
            fi
            hash=`get_hash "$dprod" "$dver" "$dflav" "$dquals" $compver`
            cat >> $specfile <<EOF
