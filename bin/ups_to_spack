@@ -1,5 +1,17 @@
 #!/bin/sh
 
+#
+# This script is a bit unorthodox in its control flow
+# Basically, we make $SPACK_ROOT/opt/.../.spack/spec.yaml
+# files as a side-effect of generating the hash value
+# for a given product,version,flavor, and qualifiers
+# which actually makes an entry without the hash value
+# in the directory, then ask spack about it, and use
+# the error message to get the hash value
+# Also, we need to generate hashes for dependencies, which
+# will make the database directories as we go
+#
+
 unpack(){
    set : `echo $1 | sed -e 's/[(),]/ /g'`
    var="$3"
@@ -49,6 +61,12 @@ theirflavor() {
     f_osrel="$3"
     f_libc="$4"
     f_dist="$5"
+    if [ "$f_os" = "NULL" ]
+    then
+        # if its null flavored, we override it below because
+        # spack doesn't belive in null flavors...
+        f_os=''
+    fi
     set : `ups flavor | sed -e 's/[-+]/ /g'`
     f_os="${f_os:-$2}"
     f_osrel="${f_osrel:-$3}"
@@ -114,47 +132,6 @@ make_spec() {
    set : `echo $theirflav| sed -e 's/-/ /g'`
    export specfile=${basedir}/.spack/spec.yaml 
    echo "spec:" > $specfile
-   ups depend $prod $ver -f $flav |
-       sed -e 's/^[|_]*//' |
-       while read dashes dprod dver drest
-       do
-           cat >> $specfile <<EOF
-- $dprod:
-    version: $dver
-    arch:
-      platform:$2
-      platform_os=$3
-      target=$4
-    compiler:
-      name: $compiler
-      version: $cver
-    namespace: builtin
-    parameters:
-      cflags: []
-      cppflags: []
-      cxxflags: []
-      fflags: []
-      ldflags: []
-      ldlibs: []
-EOF
-       done
-
-    # kluge alert, get hash from error message from reindex..
-    hash=`spack reindex 2>&1 | 
-       grep 'No such file or directory' | 
-       sed -e "s/'//g" -e 's/.*-//' `
- 
-    mv ${basedir} ${basedir}-${hash}
-    if [ `spack reindex 2>&1 | wc -l` -eq 0 ]
-    then
-        echo $hash
-    fi
-}
-
-add_dep_to_spec() {
-   prod=$1
-   ver=$2
-   set : `echo $theirflav| sed -e 's/-/ /g'`
    cat >> $specfile <<EOF
 - $prod:
     version: $ver
@@ -173,9 +150,75 @@ add_dep_to_spec() {
       fflags: []
       ldflags: []
       ldlibs: []
+    dependencies:
 EOF
+   # list immediate dependencies
+   ups depend $prod $ver -f $flav |
+       grep '^|__[a-z]' |
+       sed -e 's/^[|_]*//' |
+       while read dprod dver dflav dquals drest
+       do
+           dhash=`get_hash "$dprod" "$dver" "$dflav" "$dquals" $compver`
+           printf "  %s:\n    hash: %s\n    type:\n      -build\n      -link\n" $dprod $dhash >> $specfile
+       done
+
+   # add entry for all dependencies(?)
+   ups depend $prod $ver -f $flav |
+       sed -e 's/^[|_]*//' |
+       first=true
+       while read dprod dver drest
+       do
+           if $first
+           then
+               first=false
+               continue
+           fi
+           hash=`get_hash "$dprod" "$dver" "$dflav" "$dquals" $compver`
+           cat >> $specfile <<EOF
+- $dprod:
+    version: $dver
+    arch:
+      platform:$2
+      platform_os=$3
+      target=$4
+    compiler:
+      name: $compiler
+      version: $cver
+    namespace: builtin
+    parameters:
+      cflags: []
+      cppflags: []
+      cxxflags: []
+      fflags: []
+      ldflags: []
+      ldlibs: []
+    hash: $hash
+EOF
+       done
+
+    # kluge alert, get hash from error message from reindex..
+    hash=`spack reindex 2>&1 | 
+       grep 'No such file or directory' | 
+       sed -e "s/'//g" -e 's/.*-//' `
+ 
+    mv ${basedir} ${basedir}-${hash}
+    if [ `spack reindex 2>&1 | wc -l` -eq 0 ]
+    then
+        echo $hash
+    fi
 }
 
+get_hash() {
+    hash=`grep "^$1:$2:$3:$4:" $cache_file | sed -e 's/.*://'`
+    if [ "x$hash" = "x" ]
+    then 
+        theirflav=`theirflavor "$flavor"`
+        hash=`make_spec "$1" "$2" "$3" "$4" "$theirflav" $5 $6`
+        echo "$1:$2:$3:$4:$hash" >> $cache_file
+    fi
+}
+
+export cache_file=${SPACK_ROOT}/var/ups_to_spack.cache
 export generating=false
 
 export base=${SPACK_ROOT}/share/spack/modules 
@@ -195,8 +238,9 @@ export table_file="$6"
 theirflav=`theirflavor "$flavor"`
 compver=`guess_compiler "${flavor}-${quals}"`
 ver=`echo $version| sed -e 's/^[vb]//' -e 's/_/./g'`
+export compver
 
-hash=`make_spec $product $ver $theirflav $compver`
+hash=`get_hash $product $version $flavor "$quals" $compver`
 hash=`echo $hash | sed -e 's/\(.......\).*/\1/'`
 
 modulefile=${base}/${theirflav}/${product}_${version}_${quals}_${hash}.module
