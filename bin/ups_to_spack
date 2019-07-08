@@ -85,6 +85,12 @@ theirflavor() {
         -e 's/.*-2.12/scientific6/' \
         -e's/.*-2.5/scientific5/' \
         `
+
+    if [ "x$override_os" != "x" ]
+    then
+        tf_2=$override_os
+    fi
+
     case "x$f_os" in
     x*64bit) tf_3=x86_64;;
     x*) t_f3=i386;;
@@ -214,7 +220,7 @@ EOF
  
     if [ "x$hash" != "x" ]
     then
-        echo "$1:$2:$3:$4:$hash" >> $cache_file
+        echo "$1:$2:$3:$4:$theirflavor:$hash" >> $cache_file
     fi
 
     mv ${basedir} ${basedir}-${hash}
@@ -225,13 +231,21 @@ EOF
 }
 
 get_hash() {
-    hash=`grep "^$1:$2:$3:$4:" $cache_file | sed -e 's/.*://'`
+    theirflav=`theirflavor "$flavor"`
+    hash=`grep "^$1:$2:$3:$4:$theirflav" $cache_file | sed -e 's/.*://'`
     if [ "x$hash" = "x" ]
     then 
-        theirflav=`theirflavor "$flavor"`
         hash=`make_spec "$1" "$2" "$3" "$4" "$theirflav" $5 $6`
     fi
 }
+ 
+#
+# main script
+#
+while :; do case "x$1" in
+x-o) override_os="$2" ; shift; shift;;
+x*)  break;;
+esac; done
 
 export cache_file=${SPACK_ROOT}/var/ups_to_spack.cache
 export generating=false
@@ -265,7 +279,6 @@ export PRODNAME_UC=`echo $product | tr '[a-z]' '[A-Z]'`
 # XXX needs to get qualifers from command line and  ignore wrong qualifier sections...
 
 echo "converting $table_file:" 
-
 
 in_action=false
 cat $table_file |
