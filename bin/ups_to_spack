@@ -258,7 +258,7 @@ export compver
 hash=`get_hash $product $version $flavor "$quals" $compver`
 shorthash=`echo $hash | sed -e 's/\(.......\).*/\1/'`
 
-modulefile=${base}/${theirflav}/${product}_${version}_${quals}_${shorthash}.module
+modulefile=${base}/${theirflav}/${product}_${version}_${quals}_${shorthash}
 
 export PRODNAME_UC=`echo $product | tr '[a-z]' '[A-Z]'`
 
