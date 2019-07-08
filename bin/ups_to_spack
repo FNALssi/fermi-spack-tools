@@ -136,9 +136,9 @@ make_spec() {
 - $prod:
     version: $ver
     arch:
-      platform:$2
-      platform_os=$3
-      target=$4
+      platform: $2
+      platform_os: $3
+      target: $4
     compiler:
       name: $compiler
       version: $cver
@@ -189,9 +189,9 @@ EOF
 - $dprod:
     version: $dver
     arch:
-      platform:$2
-      platform_os=$3
-      target=$4
+      platform: $2
+      platform_os: $3
+      target: $4
     compiler:
       name: $compiler
       version: $cver
@@ -212,6 +212,11 @@ EOF
        grep 'No such file or directory' | 
        sed -e "s/'//g" -e 's/.*-//' `
  
+    if [ "x$hash" != "x" ]
+    then
+        echo "$1:$2:$3:$4:$hash" >> $cache_file
+    fi
+
     mv ${basedir} ${basedir}-${hash}
     if [ `spack reindex 2>&1 | wc -l` -eq 0 ]
     then
@@ -225,7 +230,6 @@ get_hash() {
     then 
         theirflav=`theirflavor "$flavor"`
         hash=`make_spec "$1" "$2" "$3" "$4" "$theirflav" $5 $6`
-        echo "$1:$2:$3:$4:$hash" >> $cache_file
     fi
 }
 
@@ -252,9 +256,9 @@ ver=`echo $version| sed -e 's/^[vb]//' -e 's/_/./g'`
 export compver
 
 hash=`get_hash $product $version $flavor "$quals" $compver`
-hash=`echo $hash | sed -e 's/\(.......\).*/\1/'`
+shorthash=`echo $hash | sed -e 's/\(.......\).*/\1/'`
 
-modulefile=${base}/${theirflav}/${product}_${version}_${quals}_${hash}.module
+modulefile=${base}/${theirflav}/${product}_${version}_${quals}_${shorthash}.module
 
 export PRODNAME_UC=`echo $product | tr '[a-z]' '[A-Z]'`
 
