@@ -220,14 +220,11 @@ EOF
  
     if [ "x$hash" != "x" ]
     then
-        echo "$1:$2:$3:$4:$theirflavor:$hash" >> $cache_file
+        echo "$prod:$ver:$flav:$qual:$theirflavor:$hash" >> $cache_file
+        mv ${basedir} ${basedir}-${hash}
     fi
 
-    mv ${basedir} ${basedir}-${hash}
-    if [ `spack reindex 2>&1 | wc -l` -eq 0 ]
-    then
-        echo $hash
-    fi
+    echo $hash
 }
 
 get_hash() {
@@ -271,8 +268,9 @@ export compver
 
 hash=`get_hash $product $version $flavor "$quals" $compver`
 shorthash=`echo $hash | sed -e 's/\(.......\).*/\1/'`
+compdashver=`echo $compver | sed -e 's/ /-/'`
 
-modulefile=${base}/${theirflav}/${product}_${version}_${quals}_${shorthash}
+modulefile=${base}/${theirflav}/${product}-${version}-${compdashver}${shorthash}
 
 export PRODNAME_UC=`echo $product | tr '[a-z]' '[A-Z]'`
 
