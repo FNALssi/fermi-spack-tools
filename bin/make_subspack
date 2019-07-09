@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# make a sub-spack repository
+
+src=$1
+dst=$2
+
+dstb=`basename $dst`
+dstb=`dirname $dst`
+
+test -d $dstb || mkdir -p $dstb
+
+cd $dstb
+git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-spack $dst
+
+cd $dst
+git checkout develop
+
+cat >> etc/spack/defaults/upstream.yaml <<EOF
+
+ upstreams:
+    spack-instance-1:
+      install_tree: $src/opt/spack
+      modules:
+        tcl: $src/share/spack/modules
+EOF
+

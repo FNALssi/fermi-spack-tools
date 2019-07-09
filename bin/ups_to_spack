@@ -93,8 +93,9 @@ theirflavor() {
 
     case "x$f_os" in
     x*64bit) tf_3=x86_64;;
-    x*) t_f3=i386;;
+    *) tf_3=i386;;
     esac
+
     echo "${tf_1}-${tf_2}-${tf_3}"
 }
 
@@ -133,7 +134,14 @@ make_spec() {
    theirflav=$5
    compiler=$6
    cver=$7
+   recipedir=${SPACK_ROOT}/var/spack/repos/builtin/packages/${prod}
    basedir=${SPACK_ROOT}/opt/spack/$theirflav/$compiler-$cver/$prod-$ver
+
+   # need a recipe
+   test -d ${recipedir} || mkdir -p ${recipedir}
+   test -r ${recipedir}/package.py || printf "print('ups_to_spack stub, do not use')" > ${recipedir}/package.py 
+
+   # need a directory-db spec.yaml file
    mkdir -p ${basedir}/.spack
    set : `echo $theirflav| sed -e 's/-/ /g'`
    export specfile=${basedir}/.spack/spec.yaml 
@@ -175,7 +183,7 @@ EOF
            printf "  %s:\n    hash: %s\n    type:\n      -build\n      -link\n" $dprod $dhash >> $specfile
        done
 
-   # add entry for all dependencies(?)
+   # add entry for all dependencies
    ups depend $prod $ver -f $flav |
        sed -e 's/^[|_]*//' |
        first=true
@@ -214,21 +222,26 @@ EOF
        done
 
     # kluge alert, get hash from error message from reindex..
+    # note: real spec files have the hash in the file, but we don't
+    #       seem to need it to set it up so...
+
     hash=`spack reindex 2>&1 | 
        grep 'No such file or directory' | 
        sed -e "s/'//g" -e 's/.*-//' `
  
     if [ "x$hash" != "x" ]
     then
-        echo "$prod:$ver:$flav:$qual:$theirflavor:$hash" >> $cache_file
+        echo "$prod:$ver:$flav:$qual:$theirflav:$hash" >> $cache_file
         mv ${basedir} ${basedir}-${hash}
     fi
+    
+    spack reindex
 
     echo $hash
 }
 
 get_hash() {
-    theirflav=`theirflavor "$flavor"`
+    theirflav=`theirflavor "$3"`
     hash=`grep "^$1:$2:$3:$4:$theirflav" $cache_file | sed -e 's/.*://'`
     if [ "x$hash" = "x" ]
     then 
@@ -344,7 +357,7 @@ do
        unpack "$tline"
        $in_action && generate_line "setenv $var {$value}" 
        ;;
-  *[pP]ath[Pp]repend*)
+  *[pP]ath[Pp]repend*|*[Ee]nv[Pp]repend*)
        generate_line "#saw prepend: $tline " 
        unpack "$tline"
        $in_action && generate_line "prepend-path $var {$value}" 
