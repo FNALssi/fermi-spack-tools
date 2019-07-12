@@ -144,7 +144,7 @@ make_spec() {
    # need a directory-db spec.yaml file
    mkdir -p ${basedir}/.spack
    set : `echo $theirflav| sed -e 's/-/ /g'`
-   export specfile=${basedir}/.spack/spec.yaml 
+   export specfile=${basedir}/.spack/spec.yaml.new
    echo "spec:" > $specfile
    cat >> $specfile <<EOF
 - $prod:
@@ -167,26 +167,33 @@ make_spec() {
 EOF
    if [ `ups depend $prod $ver -f $flav -q "$qual" | wc -l` != 1 ]
    then
-       echo "     dependencies:" >> $specfile
+       echo "    dependencies:" >> $specfile
    fi
    # list immediate dependencies
+   export first=true
    ups depend $prod $ver -f $flav -q "$qual" |
-       grep '^|__[a-z]' |
-       sed -e 's/^[|_]*//' |
+       grep '^\|__[a-z]' |
+       sed -e 's/^[|_ ]*//' |
        while read dprod dver fflag dflav qflag dquals drest
        do
+           if $first
+           then
+               first=false
+               continue
+           fi
+           echo direct dependency $dprod $dver $dflav $dquals
            if [ "x$qflag" != "x-q" ]
            then
                dquals=""
            fi
            dhash=`get_hash "$dprod" "$dver" "$dflav" "$dquals" $compver`
-           printf "  %s:\n    hash: %s\n    type:\n      -build\n      -link\n" $dprod $dhash >> $specfile
+           printf "         %s:\n           hash: %s\n           type:\n             -build\n             -link\n" $dprod $dhash >> $specfile
        done
 
+   export first=true
    # add entry for all dependencies
    ups depend $prod $ver -f $flav |
-       sed -e 's/^[|_]*//' |
-       first=true
+       sed -e 's/^[|_ ]*//' | 
        while read dprod dver fflaog dflav qflag dquals drest
        do
            if $first
@@ -194,6 +201,7 @@ EOF
                first=false
                continue
            fi
+           echo indirect dependency $dprod $dver $dflav $dquals
            if [ "x$qflag" != "x-q" ]
            then
                dquals=""
@@ -220,6 +228,8 @@ EOF
     hash: $hash
 EOF
        done
+
+   mv $specfile ${basedir}/.spack/spec.yaml
 
     # kluge alert, get hash from error message from reindex..
     # note: real spec files have the hash in the file, but we don't
