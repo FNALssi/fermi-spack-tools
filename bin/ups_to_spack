@@ -188,7 +188,7 @@ EOF
                dquals=""
            fi
            dhash=`get_hash "$dprod" "$dver" "$dflav" "$dquals" $compver`
-           printf "         %s:\n           hash: %s\n           type:\n             -build\n             -link\n" $dprod $dhash >> $specfile
+           printf "      %s:\n        hash: %s\n        type:\n          -build\n          -link\n" $dprod $dhash >> $specfile
            
            # also add to recipe...
            printf "    depends_on('%s', type=('build','run'))\n" >> ${recipedir}/package.py 
