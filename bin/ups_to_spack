@@ -182,7 +182,6 @@ EOF
                first=false
                continue
            fi
-           echo direct dependency $dprod $dver $dflav $dquals
            if [ "x$qflag" != "x-q" ]
            then
                dquals=""
@@ -205,7 +204,6 @@ EOF
                first=false
                continue
            fi
-           echo indirect dependency $dprod $dver $dflav $dquals
            if [ "x$qflag" != "x-q" ]
            then
                dquals=""
