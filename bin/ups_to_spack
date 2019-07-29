@@ -136,10 +136,11 @@ make_spec() {
    cver=$7
    recipedir=${SPACK_ROOT}/var/spack/repos/builtin/packages/${prod}
    basedir=${SPACK_ROOT}/opt/spack/$theirflav/$compiler-$cver/$prod-$ver
+   Prod=`echo ${prod} | sed -r -e 's/(.)/\U\1/'`
 
    # need a recipe
    test -d ${recipedir} || mkdir -p ${recipedir}
-   test -r ${recipedir}/package.py || printf "print('ups_to_spack stub, do not use')" > ${recipedir}/package.py 
+   test -r ${recipedir}/package.py || printf "from spack import *\n\nclass ${Prod}(AutotoolsPackage):\n   pass\n" > ${recipedir}/package.py 
 
    # need a directory-db spec.yaml file
    mkdir -p ${basedir}/.spack
@@ -188,6 +189,9 @@ EOF
            fi
            dhash=`get_hash "$dprod" "$dver" "$dflav" "$dquals" $compver`
            printf "         %s:\n           hash: %s\n           type:\n             -build\n             -link\n" $dprod $dhash >> $specfile
+           
+           # also add to recipe...
+           printf "    depends_on('%s', type=('build','run'))\n" >> ${recipedir}/package.py 
        done
 
    export first=true
@@ -257,6 +261,7 @@ get_hash() {
     then 
         hash=`make_spec "$1" "$2" "$3" "$4" "$theirflav" $5 $6`
     fi
+    echo "$hash"
 }
  
 #
@@ -293,7 +298,7 @@ hash=`get_hash $product $version $flavor "$quals" $compver`
 shorthash=`echo $hash | sed -e 's/\(.......\).*/\1/'`
 compdashver=`echo $compver | sed -e 's/ /-/'`
 
-modulefile=${base}/${theirflav}/${product}-${version}-${compdashver}${shorthash}
+modulefile=${base}/${theirflav}/${product}-${version}-${compdashver}-${shorthash}
 
 export PRODNAME_UC=`echo $product | tr '[a-z]' '[A-Z]'`
 
@@ -324,16 +329,16 @@ do
   #generate_line "#convert-line: $tline" 
   fix_ups_vars
   case "$tline" in
-  *Flavor*=*ANY)
+  *Flavor*=*ANY|*FLAVOR*=*ANY)
      flavorok=true
      ;;
-  *Flavor*=*$flavor)
+  *Flavor*=*$flavor|*FLAVOR*=$flavor)
      flavorok=true
      ;;
-  *Flavor*=*)
+  *Flavor*=*|*FLAVOR*=*)
      flavorok=false
      ;;
-  *Qualifiers*=*$quals)
+  *Qualifiers*=*$quals|*QUALIFIERS*=*$quals)
      if $flavorok
      then
          generating=true
@@ -341,13 +346,13 @@ do
          generating=false
      fi
      ;;
-  *Qualifiers*=*)
+  *Qualifiers*=*|*QUALIFIERS*=*)
      generating=false
      ;;
-  *common:*)
+  *common:*|*COMMON:*)
      generating=true
      ;;
-  *[Aa]ction=*)
+  *[Aa]ction=*|*ACTION=*)
        if $in_action
        then
           generate_line "}" 
@@ -356,7 +361,7 @@ do
        name=`echo $tline| sed -e 's/.*=//'`
        generate_line "proc $name {} {" 
        ;;
-  *ExeAction*)
+  *[Ee]xe[Aa]ction*)
        unpack "$tline"
        $in_action && generate_line "$var" 
        ;;
@@ -376,11 +381,11 @@ do
        unpack "$tline"
        $in_action && generate_line "module load $args" 
        ;;
-  *addAlias*)
+  *add[Aa]lias*)
        unpack "$tline"
        $in_action && generate_line "set-alias $var {$value}" 
        ;;
-  *Execute*)
+  *[Ee]xecute*)
        unpack_execute "$tline"
        if [ "$flag" = "UPS_ENV" ]
        then
@@ -406,11 +411,11 @@ do
        unpack "$tline"
        $in_action && generate_line "if {![catch {exec $args} results options]} {" 
        ;;
-  *SetupRequired*|*SetupOptional*)
+  *[Ss]etup[Rr]equired*|*[Ss]etup[Oo]ptional*)
        unpack "$tline"
        add_dep_to_spec $args
        ;;
-  *[Ee]nd*)
+  *[Ee]nd*|*END*)
        if $in_action
        then
           generate_line "}" 
