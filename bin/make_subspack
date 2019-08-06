@@ -16,7 +16,7 @@ git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-spack $dst
 cd $dst
 git checkout develop
 
-cat >> etc/spack/defaults/upstream.yaml <<EOF
+cat >> etc/spack/upstreams.yaml <<EOF
 
  upstreams:
     spack-instance-1:
