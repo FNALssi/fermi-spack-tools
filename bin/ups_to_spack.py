@@ -41,15 +41,19 @@ class outfile:
             os.makedirs(os.path.dirname(fname))
         self.outf = open(fname, "w")
         logging.debug("outfile.__init__: opened: %s" % fname)
+        self.fname = fname
 
     def enable(self):
-        self.genarating = True
+        logging.debug("enabling: %s" %self.fname)
+        self.generating = True
 
     def disable(self):
-        self.genarating = False
+        logging.debug("disabling: %s" %self.fname)
+        self.generating = False
 
     def write(self, text):
         if self.generating:
+            logging.debug("writing on %s text: %s" %(self.fname, text))
             self.outf.write(text)
 
     def close(self):
@@ -334,12 +338,14 @@ def make_spec(prod, ver, flav, qual, theirflav, compiler, compver):
         raise Exception("ack! spack reindex is failing when we don't expect it to")
 
     if not thash:
-        raise Exception("no hash value found")
+        # spack thinks this is the same as another one, just clean it out
+        os.system("rm -rf %s " % basedir)
+        thash = get_hash(prod, ver, flav, qual, complier, compver, recurse=False, short=True)
 
     return thash
 
 
-def get_hash(dprod, dver, dflav, dquals, compiler, compver):
+def get_hash(dprod, dver, dflav, dquals, compiler, compver, short=True, recurse = True):
 
     logging.debug("get_hash(%s, %s, %s, %s, %s, %s)" % (dprod, dver, dflav, dquals, compiler, compver))
 
@@ -350,7 +356,11 @@ def get_hash(dprod, dver, dflav, dquals, compiler, compver):
 
     if os.access(cache_file, os.R_OK):
         cf = open(cache_file, "r")
-        pattern = ":".join([dprod, dver, dflav, dquals, theirflav])
+        if short:
+            pattern = ":".join([dprod, dver, dflav[:4]])
+        else:
+            pattern = ":".join([dprod, dver, dflav, dquals, theirflav])
+
         thash = None
         for line in cf:
             if line.find(pattern)==0:
@@ -361,7 +371,7 @@ def get_hash(dprod, dver, dflav, dquals, compiler, compver):
 
     # if not, call make_spec to make the spec and get the hash
 
-    if not thash:
+    if not thash and recurse:
         thash = make_spec(dprod, dver, dflav, dquals, theirflav, compiler, compver)
 
     return thash
@@ -369,8 +379,12 @@ def get_hash(dprod, dver, dflav, dquals, compiler, compver):
 
 def unpack(s):
     """ unpack/parse a line from a ups table file """
-    l1 = re.split("[^(), ]*", s)
-    return {"var": l1[1], "value": " ".join(l1[2:]), "args": " ".join(l1[1:])}
+    l1 = re.split("[(), ]+", s)
+    logging.debug("unpack: list: %s" % repr(l1))
+    if len(l1) > 2:
+        return {"var": l1[1], "value": " ".join(l1[2:]), "args": " ".join(l1[1:])}
+    else:
+        return {"var": "", "value": "", "args": ""}
 
 
 def unpack_execute(cmdstr):
