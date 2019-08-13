@@ -317,7 +317,7 @@ def make_spec(prod, ver, flav, qual, theirflav, compiler, compver):
 
     if thash:
         cf = open(cache_file, "a")
-        cf.write([prod, ver, flav, qual, theirflav, thash].join(":") + "\n")
+        cf.write(":".join([prod, ver, flav, qual, theirflav, thash]) + "\n")
         os.rename(basedir, "%s-%s" % (basedir, hash))
 
     if spack_reindex() != "":
@@ -351,7 +351,7 @@ def get_hash(dprod, dver, dflav, dquals, compiler, compver):
 def unpack(s):
     """ unpack/parse a line from a ups table file """
     l1 = re.split("[^(), ]*", s)
-    return {"var": l[1], "value": l[2:].join(" "), "args": l[1:].join(" ")}
+    return {"var": l[1], "value": " ".join(l[2:]), "args": " ".join(l[1:])}
 
 
 def unpack_execute(cmdstr):
@@ -582,7 +582,7 @@ def ups_to_spack(argv):
 
     ulf = os.popen(
         "ups list -Kproduct:version:flavor:qualifiers:@prod_dir:@table_file "
-        + argv.join(" "),
+        + " ".join(argv)
         "r",
     )
     for line in ulf:
