@@ -3,6 +3,7 @@ import os
 import sys
 import re
 import os.path
+import logging
 
 # we want to use the ruamel.yaml package from spack
 sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
@@ -35,10 +36,11 @@ class outfile:
     """
 
     def __init__(self, fname):
-        self.generating = false
+        self.generating = False
         if not os.access(os.path.dirname(fname), os.R_OK):
             os.makedirs(os.path.dirname(fname))
         self.outf = open(fname, "w")
+        logging.debug("outfile.__init__: opened: %s" % fname)
 
     def enable(self):
         self.genarating = True
@@ -69,43 +71,46 @@ def theirflavor(upsflav):
         and needs updating when we add new build qualifiers for art/larsoft
         and new supported os-es (i.e. scientific linux 8....)
     """
-    global override_os
-    l1 = re.split("[^ -+]*", upsflav)
-    f_os = l1[1]
-    f_osrel = l1[2]
-    f_libc = l[3]
-    f_dist = l[4]
+    logging.debug("theirflavor(%s)"%upsflav)
+    l1 = re.split("[- +]*", upsflav)
+    logging.debug("l1: %s" % repr(l1))
+    f_os = l1[0]
+    f_osrel = l1[1] if len(l1)>1 else ""
+    f_libc = l1[2] if len(l1)>2 else ""
+    f_dist = l1[3] if len(l1)>3 else ""
 
     if f_os == "NULL":
         f_os = ""
 
-    l2 = re.split("[^ -+]*", ups_flavor())
-    f_os = f_os if f_os else l[1]
-    f_osrel = f_osrel if f_osrel else l[2]
-    f_libc = f_libc if f_libc else l[3]
-    f_dist = f_dist if f_dist else l[4]
+    l2 = re.split("[- +]*", ups_flavor())
+    logging.debug("l2: %s" % repr(l1))
+    f_os = f_os if f_os else l2[0]
+    f_osrel = f_osrel if f_osrel else l2[1] if len(l2) > 1 else ""
+    f_libc = f_libc if f_libc else l2[2] if len(l2) > 2 else ""
+    f_dist = f_dist if f_dist else l2[3] if len(l2) > 3 else ""
 
-    tf_1 = f.os.lower().replace("64bit", "")
+    tf_1 = f_os.lower().replace("64bit", "")
     tf_2 = "%s-%s" % (f_osrel, f_libc)
-    tf_2 = re.sub("13-.*", "marericks", t_f2)
-    tf_2 = re.sub("14-.*", "yosemite", t_f2)
-    tf_2 = re.sub("15-.*", "elcapitan", t_f2)
-    tf_2 = re.sub("16-.*", "sierra", t_f2)
-    tf_2 = re.sub("17-.*", "highsierra", t_f2)
-    tf_2 = re.sub("18-.*", "mojave", t_f2)
-    tf_2 = re.sub("*-2.17", "scientific7", t_f2)
-    tf_2 = re.sub("*-2.12", "scientific6", t_f2)
-    tf_2 = re.sub("*-2.5", "scientific5", t_f2)
+    tf_2 = re.sub("13-.*", "marericks", tf_2)
+    tf_2 = re.sub("14-.*", "yosemite", tf_2)
+    tf_2 = re.sub("15-.*", "elcapitan", tf_2)
+    tf_2 = re.sub("16-.*", "sierra", tf_2)
+    tf_2 = re.sub("17-.*", "highsierra", tf_2)
+    tf_2 = re.sub("18-.*", "mojave", tf_2)
+    tf_2 = re.sub(".*-2.17", "scientific7", tf_2)
+    tf_2 = re.sub(".*-2.12", "scientific6", tf_2)
+    tf_2 = re.sub(".*-2.5", "scientific5", tf_2)
 
     if override_os:
-        t_f2 = override_os
+        tf_2 = override_os
 
     # excessive intel-centrism...
     if f_os.find("64bit") > 0:
-        t_f3 = "x86_64"
+        tf_3 = "x86_64"
     else:
-        t_f3 = "i386"
+        tf_3 = "i386"
 
+    logging.debug("theirflavor(%s) -> %s-%s-%s"%(upsflav,tf_1,tf_2,tf_3))
     return "%s-%s-%s" % (tf_1, tf_2, tf_3)
 
 
@@ -141,7 +146,7 @@ def guess_compiler(flavor, quals):
         return "gcc-4.8.5"
     if flavor.find("2.12") > 0:
         return "gcc-4.4.7"
-    return "gcc 4.1.1"  # sl5 compiler by default
+    return "gcc-4.1.1"  # sl5 compiler by default
 
 
 def spack_reindex():
@@ -151,12 +156,16 @@ def spack_reindex():
         and return it -- this is Really Important, because this is how
         this script discovers hash values for packages.
     """
+    logging.debug("spack_reindex")
     f = os.popen("spack reindex 2>&1", "r")
     res = ""
     for line in f:
         if line.find("No such file or directory") > 0:
-            res = line.replace("'", "")
+            logging.debug("saw error line: %s" % line)
+            res = line.replace("'", "").strip()
+            logging.debug("res now(1): %s" % res)
             res = re.sub(".*-", "", res)
+            logging.debug("res now(2): %s" % res)
     f.close()
     return res
 
@@ -185,15 +194,15 @@ def make_spec(prod, ver, flav, qual, theirflav, compiler, compver):
         ver,
     )
 
-    specfile = "%s/.spack/spec.yaml.new" % basedir
+    specfile = "%s/.spack/spec.yaml" % basedir
 
-    if not access(os.dirname(specfile), os.R_OK):
-        os.makedirs(os.dirname(specfile))
+    if not os.access(os.path.dirname(specfile), os.R_OK):
+        os.makedirs(os.path.dirname(specfile))
 
-    if not access(recipedir, R_OK):
+    if not os.access(recipedir, os.R_OK):
         os.makedirs(recipedir)
 
-    if not access(recipedir + "/package.py", R_OK):
+    if not os.access(recipedir + "/package.py", os.R_OK):
         # there has to be a recipe for the package for spack to
         # look at it, so make one that's (just) good enough to pass
         recipe_f = open(recipedir + "/package.py", "w")
@@ -214,10 +223,10 @@ def make_spec(prod, ver, flav, qual, theirflav, compiler, compver):
                     "version": ver,
                     "arch": {
                         "platform": tfl[0],
-                        "target": tfl[1],
-                        "platform_os": tfl[2],
+                        "platform_os": tfl[1],
+                        "target": tfl[2],
                     },
-                    "compiler": {"version": compiler, "name": compver},
+                    "compiler": {"version": compver, "name": compiler},
                     "namespace": "builtin",
                     "parameters": {
                         "cppflags": [],
@@ -236,12 +245,13 @@ def make_spec(prod, ver, flav, qual, theirflav, compiler, compver):
 
     if len(dependlines) > 1:
         # only add a dependencies section if there are any dependencies
-        spec["spec"][0]["dependencies"] = {}
+        spec["spec"][0][prod]["dependencies"] = {}
 
         for line in dependlines[1:]:
             if re.match("^\|__[a-z]", line):
                 # it is an immediate dependency
                 line = line.lstrip("|_ ")
+                logging.debug("immediate dependency: %s " % line)
                 dprod, dver, fflag, dflav, qflag, dquals, drest = line.split(" ", 6)
                 if qflag != "-q":
                     dquals = ""
@@ -251,7 +261,7 @@ def make_spec(prod, ver, flav, qual, theirflav, compiler, compver):
 
                 dhash = get_hash(dprod, dver, dflav, dquals, compiler, compver)
 
-                spec["spec"][0]["dependencies"][dprod] = {
+                spec["spec"][0][prod]["dependencies"][dprod] = {
                     "hash": dhash,
                     "type": ["build", "link"],
                 }
@@ -300,8 +310,8 @@ def make_spec(prod, ver, flav, qual, theirflav, compiler, compver):
                         },
                         "arch": {
                             "platform": tfl[0],
-                            "target": tfl[1],
-                            "platform_os": tfl[2],
+                            "platform_os": tfl[1],
+                            "target": tfl[2],
                         },
                         "namespace": "builtin",
                         "compiler": {"name": compiler, "version": compver},
@@ -318,32 +328,41 @@ def make_spec(prod, ver, flav, qual, theirflav, compiler, compver):
     if thash:
         cf = open(cache_file, "a")
         cf.write(":".join([prod, ver, flav, qual, theirflav, thash]) + "\n")
-        os.rename(basedir, "%s-%s" % (basedir, hash))
+        os.rename(basedir, "%s-%s" % (basedir, thash))
 
     if spack_reindex() != "":
         raise Exception("ack! spack reindex is failing when we don't expect it to")
+
+    if not thash:
+        raise Exception("no hash value found")
 
     return thash
 
 
 def get_hash(dprod, dver, dflav, dquals, compiler, compver):
+
+    logging.debug("get_hash(%s, %s, %s, %s, %s, %s)" % (dprod, dver, dflav, dquals, compiler, compver))
+
     theirflav = theirflavor(dflav)
+    thash = None
 
     # check the cache file to see if we have it already
 
-    cf = open(cachefile, "r")
-    pattern = [dprod, dver, dflav, dquals, theirflav].join(":")
-    thash = None
-    for line in cf:
-        if line.find(patern):
-            thash = line[line.rfind(":") : -1]
-            break
-    cf.close()
+    if os.access(cache_file, os.R_OK):
+        cf = open(cache_file, "r")
+        pattern = ":".join([dprod, dver, dflav, dquals, theirflav])
+        thash = None
+        for line in cf:
+            if line.find(pattern)==0:
+                thash = line[(line.rfind(":")+1)]
+                thash = thash.strip()
+                break
+        cf.close()
 
     # if not, call make_spec to make the spec and get the hash
 
     if not thash:
-        thash = make_spec(prod, dver, dflav, dquals, theirflav, compiler, compver)
+        thash = make_spec(dprod, dver, dflav, dquals, theirflav, compiler, compver)
 
     return thash
 
@@ -351,20 +370,23 @@ def get_hash(dprod, dver, dflav, dquals, compiler, compver):
 def unpack(s):
     """ unpack/parse a line from a ups table file """
     l1 = re.split("[^(), ]*", s)
-    return {"var": l[1], "value": " ".join(l[2:]), "args": " ".join(l[1:])}
+    return {"var": l1[1], "value": " ".join(l1[2:]), "args": " ".join(l1[1:])}
 
 
 def unpack_execute(cmdstr):
     """ unpack/parse an execute statement from a ups table file """
-    m = re.match("(.*)\(([^,]*),([^,]*),?(.*))", cmdstr)
-    return {"cmd": m.group(1), "flags": m.group[3], "envvar": m.group(2)}
+    m = re.match("(.*)\(([^,]*),([^,]*),?(.*)\)", cmdstr)
+    if m:
+        return {"cmd": m.group(1), "flags": m.group(3), "envvar": m.group(2)}
+    else:
+        return {"cmd": "", "flags": "", "envvar": ""}
 
 
-def fix_ups_vars(tline, d1):
+def fix_ups_vars(tline, prod_dir):
     """ replace common ups table file variables """
     return (
-        tline.replace("${UPS_PROD_DIR}", d1["prod_dir"])
-        .replace("${UPS_UPS_DIR}", d1["prod_dir"] + "/ups")
+        tline.replace("${UPS_PROD_DIR}", prod_dir)
+        .replace("${UPS_UPS_DIR}", prod_dir + "/ups")
         .replace("${UPS_SOURCE}", "source")
     )
 
@@ -375,9 +397,7 @@ def convert_tablefile(line):
     tclbase = os.environ["SPACK_ROOT"] + "/share/spack/modules"
     lmodbase = os.environ["SPACK_ROOT"] + "/share/spack/lmod"
 
-    product, version, flavor, quals, prod_dir, table_file = line.replace('"', "").split(
-        " "
-    )
+    product, version, flavor, quals, prod_dir, table_file,extra = line.replace('"', "").split(" ")
     theirflav = theirflavor(flavor)
     compdashver = guess_compiler(flavor, quals)
     compiler, compver = compdashver.split("-")
@@ -409,10 +429,10 @@ def convert_tablefile(line):
         shorthash,
     )
 
-    tcl_out = outputfile(tclmodulefile)
+    tcl_out = outfile(tclmodulefile)
     tcl_out.enable()
     tcl_out.write(
-        """#%Module1.0
+        """#%%Module1.0
 
 # $product modulefile
 # generated by %s 
@@ -424,7 +444,7 @@ set prefix  %s
     )
     tcl_out.disable()
 
-    lmod_out = outputfile(lmodmodulefile)
+    lmod_out = outfile(lmodmodulefile)
     lmod_out.enable()
     lmod_out.write(
         """-- -*- lua -*-
@@ -446,14 +466,16 @@ whatis([[Version : %s]])
     tff = open(table_file, "r")
     for line in tff:
 
-        line = fix_ups_vars(line)
+        logging.debug("processing table file line: %s" % line)
+        line = line.strip()
+        line = fix_ups_vars(line, prod_dir)
         if re.search("flavor\s*=\s*ANY", line, re.IGNORECASE):
-            flavorok = true
+            flavorok = True
             continue
         if re.search(
             "flavor\s*=\s*%s" % flavor.replace("+", "\\+"), line, re.IGNORECASE
         ):
-            flavorok = true
+            flavorok = True
             continue
         if re.search("flavor\s*=", line, re.IGNORECASE):
             flavorok = false
@@ -466,11 +488,11 @@ whatis([[Version : %s]])
                 lmod_out.disable()
                 tcl_out.disable()
             continue
-        if re.search("common:" % quals, line, re.IGNORECASE):
+        if re.search("common:", line, re.IGNORECASE):
             lmod_out.enable()
             tcl_out.enable()
             continue
-        if re.search("action\s*=" % quals, line, re.IGNORECASE):
+        if re.search("action\s*=", line, re.IGNORECASE):
             if in_action:
                 lmod_out.write("end")
                 tcl_out.write("}")
@@ -479,46 +501,46 @@ whatis([[Version : %s]])
             tcl_out.write("proc %s {} {\n" % name)
             lmod_out.write("function %s ()\n" % name)
             continue
-        if re.search("exeaction(" % quals, line, re.IGNORECASE):
+        if re.search("exeaction\(", line, re.IGNORECASE):
             d = unpack(line)
             if in_action:
                 tcl_out.write(d["var"] + "\n")
                 lmod_out.write(d["var"] + "();\n")
             continue
-        if re.search("proddir\(|dodefaults" % quals, line, re.IGNORECASE):
+        if re.search("proddir\(|dodefaults", line, re.IGNORECASE):
             if in_action:
                 tcl_out.write("setenv %s_DIR %s\n" % (product.upper(), prod_dir))
                 lmod_out.write('setenv("%s_DIR","%s");\n' % (product.upper(), prod_dir))
             continue
-        if re.search("envSet\(" % quals, line, re.IGNORECASE):
+        if re.search("envSet\(", line, re.IGNORECASE):
             d = unpack(line)
             if in_action:
                 tcl_out.write("setenv %s %s\n" % (d["var"], d["value"]))
                 lmod_out.write('setenv("%s","%s");\n' % (d["var"], d["value"]))
             continue
-        if re.search("(env|path)prepend" % quals, line, re.IGNORECASE):
+        if re.search("(env|path)prepend", line, re.IGNORECASE):
             d = unpack(line)
             if in_action:
                 tcl_out.write("prepend-path %s %s\n" % (d["var"], d["value"]))
                 lmod_out.write('prepend_path("%s","%s");\n' % (d["var"], d["value"]))
             continue
-        if re.search("setup(required|optional)" % quals, line, re.IGNORECASE):
+        if re.search("setup(required|optional)", line, re.IGNORECASE):
             d = unpack(line)
             if in_action:
                 tcl_out.write("module load %s \n" % (d["args"]))
                 lmod_out.write('load("%s");\n' % (d["args"]))
             continue
-        if re.search("addalias" % quals, line, re.IGNORECASE):
+        if re.search("addalias", line, re.IGNORECASE):
             d = unpack(line)
             if in_action:
                 tcl_out.write("set-alias %s %s\n" % (d["var"], d["value"]))
                 lmod_out.write('set_alias("%s","%s");\n' % (d["var"], d["value"]))
             continue
 
-        if re.search("execute" % quals, line, re.IGNORECASE):
+        if re.search("execute", line, re.IGNORECASE):
             d = unpack_execute(line)
             if in_action:
-                if d["flag"] == "UPS_ENV":
+                if d["flags"] == "UPS_ENV":
                     tcl_out.write("setenv UPS_PROD_NAME %s\n" % product)
                     tcl_out.write("setenv UPS_PROD_DIR %s\n" % prod_dir)
                     tcl_out.write("setenv UPS_UPS_DIR %s/ups\n" % prod_dir)
@@ -539,23 +561,23 @@ whatis([[Version : %s]])
                     lmod_out.write('os.execute("%s");\n' % d["cmd"])
                 continue
 
-        if re.search("endif" % quals, line, re.IGNORECASE):
+        if re.search("endif", line, re.IGNORECASE):
             if in_action:
                 tcl_out.write("}\n")
                 lmod_out.write("end\n")
             continue
-        if re.search("else" % quals, line, re.IGNORECASE):
+        if re.search("else", line, re.IGNORECASE):
             if in_action:
                 tcl_out.write("} else {\n")
                 lmod_out.write("else\n")
             continue
-        if re.search("if" % quals, line, re.IGNORECASE):
+        if re.search("if", line, re.IGNORECASE):
             d = unpack(line)
             if in_action:
                 tcl_out.write("if {![catch {exec %s} results options]} {\n" % d["args"])
                 lmod_out.write('if (!os.execute("%s")) then\n' % d["args"])
             continue
-        if re.search("end" % quals, line, re.IGNORECASE):
+        if re.search("end", line, re.IGNORECASE):
             if in_action:
                 tcl_out.write("}\n")
                 lmod_out.write("end\n")
@@ -573,6 +595,7 @@ whatis([[Version : %s]])
 
 
 def ups_to_spack(argv):
+    global override_os
     override_os = None
     if argv[0] == "-o":
         override_os = argv[1]
@@ -580,15 +603,14 @@ def ups_to_spack(argv):
     if len(argv) == 0:
         print("usage: %s [ups list args]" % sys.argv[0])
 
-    ulf = os.popen(
-        "ups list -Kproduct:version:flavor:qualifiers:@prod_dir:@table_file "
-        + " ".join(argv)
-        "r",
-    )
+    ucmd = "ups list -Kproduct:version:flavor:qualifiers:@prod_dir:@table_file " + " ".join(argv)
+    logging.debug("running: %s" % ucmd)
+    ulf = os.popen(ucmd, "r")
     for line in ulf:
         convert_tablefile(line)
 
     ulf.close()
 
 
-ups_to_spack(sys.argv)
+logging.basicConfig(level=logging.DEBUG)
+ups_to_spack(sys.argv[1:])
