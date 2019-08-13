@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os
 import sys
 import re
@@ -197,7 +198,7 @@ def make_spec(prod, ver, flav, qual, theirflav, compiler, compver):
         # look at it, so make one that's (just) good enough to pass
         recipe_f = open(recipedir + "/package.py", "w")
         recipe_f.write(
-            "from spack import *\n\nclass %s(AutotoolsPackage):\n   pass\n"
+            "from spack import *\n\nclass %s(AutotoolsPackage):\n    pass\n"
             % prod.capitalize()
         )
         # recipe_f.close() -- no! do this later after adding dependencies
@@ -244,6 +245,9 @@ def make_spec(prod, ver, flav, qual, theirflav, compiler, compver):
                 dprod, dver, fflag, dflav, qflag, dquals, drest = line.split(" ", 6)
                 if qflag != "-q":
                     dquals = ""
+
+                if not dprod:
+                    continue
 
                 dhash = get_hash(dprod, dver, dflav, dquals, compiler, compver)
 
@@ -385,6 +389,7 @@ def convert_tablefile(line):
 
     shorthash = thash[:7]
 
+    print("Handling: %s %s -f %s -q %s\n" %(product, version, flavor, quals))
     print("Converting %s:" % table_file)
 
     tclmodulefile = "%s/%s/%s-%s-%s-%s" % (
