@@ -273,6 +273,7 @@ esac; done
 export cache_file=${SPACK_ROOT}/var/ups_to_spack.cache
 export generating=false
 
+# -- python conversion to here
 export base=${SPACK_ROOT}/share/spack/modules 
 
 ups list -Kproduct:version:flavor:qualifiers:@prod_dir:@table_file "$@" |
