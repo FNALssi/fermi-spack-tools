@@ -44,16 +44,16 @@ class outfile:
         self.fname = fname
 
     def enable(self):
-        logging.debug("enabling: %s" %self.fname)
+        logging.debug("enabling: %s" % self.fname)
         self.generating = True
 
     def disable(self):
-        logging.debug("disabling: %s" %self.fname)
+        logging.debug("disabling: %s" % self.fname)
         self.generating = False
 
     def write(self, text):
         if self.generating:
-            logging.debug("writing on %s text: %s" %(self.fname, text))
+            logging.debug("writing on %s text: %s" % (self.fname, text))
             self.outf.write(text)
 
     def close(self):
@@ -75,13 +75,13 @@ def theirflavor(upsflav):
         and needs updating when we add new build qualifiers for art/larsoft
         and new supported os-es (i.e. scientific linux 8....)
     """
-    logging.debug("theirflavor(%s)"%upsflav)
+    logging.debug("theirflavor(%s)" % upsflav)
     l1 = re.split("[- +]*", upsflav)
     logging.debug("l1: %s" % repr(l1))
     f_os = l1[0]
-    f_osrel = l1[1] if len(l1)>1 else ""
-    f_libc = l1[2] if len(l1)>2 else ""
-    f_dist = l1[3] if len(l1)>3 else ""
+    f_osrel = l1[1] if len(l1) > 1 else ""
+    f_libc = l1[2] if len(l1) > 2 else ""
+    f_dist = l1[3] if len(l1) > 3 else ""
 
     if f_os == "NULL":
         f_os = ""
@@ -114,7 +114,7 @@ def theirflavor(upsflav):
     else:
         tf_3 = "i386"
 
-    logging.debug("theirflavor(%s) -> %s-%s-%s"%(upsflav,tf_1,tf_2,tf_3))
+    logging.debug("theirflavor(%s) -> %s-%s-%s" % (upsflav, tf_1, tf_2, tf_3))
     return "%s-%s-%s" % (tf_1, tf_2, tf_3)
 
 
@@ -174,7 +174,7 @@ def spack_reindex():
     return res
 
 
-def make_spec(prod, ver, flav, qual, theirflav, compiler, compver):
+def make_spec(prod, ver, flav, qual, theirflav):
     """ 
        make the .spack/spec.yaml file and possibly a minimal recipe for 
        a given ups product.  This involves going through the ups dependencies
@@ -295,6 +295,9 @@ def make_spec(prod, ver, flav, qual, theirflav, compiler, compver):
             # actually triggers generating spec files for any dependencies
             # we don't have...
             #
+            # again, but we ignore the actual flavor
+            # and qualifiers here, in favor of the parent product's
+            # flavor and qualifiers so we get a matching declaration
             dhash = get_hash(dprod, dver, dflav, dquals, compiler, compver)
 
             tfl = theirflav.split("-")
@@ -340,14 +343,19 @@ def make_spec(prod, ver, flav, qual, theirflav, compiler, compver):
     if not thash:
         # spack thinks this is the same as another one, just clean it out
         os.system("rm -rf %s " % basedir)
-        thash = get_hash(prod, ver, flav, qual, complier, compver, recurse=False, short=True)
+        thash = get_hash(
+            prod, ver, flav, qual, compiler, compver, recurse=False, short=True
+        )
 
     return thash
 
 
-def get_hash(dprod, dver, dflav, dquals, compiler, compver, short=True, recurse = True):
+def get_hash(dprod, dver, dflav, dquals, compiler, compver, short=True, recurse=True):
 
-    logging.debug("get_hash(%s, %s, %s, %s, %s, %s)" % (dprod, dver, dflav, dquals, compiler, compver))
+    logging.debug(
+        "get_hash(%s, %s, %s, %s, %s, %s)"
+        % (dprod, dver, dflav, dquals, compiler, compver)
+    )
 
     theirflav = theirflavor(dflav)
     thash = None
@@ -363,9 +371,9 @@ def get_hash(dprod, dver, dflav, dquals, compiler, compver, short=True, recurse 
 
         thash = None
         for line in cf:
-            if line.find(pattern)==0:
-                thash = line[(line.rfind(":")+1):]
-                 
+            if line.find(pattern) == 0:
+                thash = line[(line.rfind(":") + 1) :]
+
                 thash = thash.strip()
                 break
         cf.close()
@@ -374,8 +382,12 @@ def get_hash(dprod, dver, dflav, dquals, compiler, compver, short=True, recurse 
     # the table file
 
     if not thash and recurse:
-        thash = make_spec(dprod, dver, dflav, dquals, theirflav, compiler, compver)
-        f = os.popen("ups list -Kproduct:version:flavor:qualifiers:@prod_dir:@table_file %s %s -f %s -q '%s'" % (dprod, dver, dflav, dquals), "r")
+        thash = make_spec(dprod, dver, dflav, dquals, theirflav)
+        f = os.popen(
+            "ups list -Kproduct:version:flavor:qualifiers:@prod_dir:@table_file %s %s -f %s -q '%s'"
+            % (dprod, dver, dflav, dquals),
+            "r",
+        )
         ulline = f.read()
         f.close
         convert_tablefile(ulline)
@@ -409,12 +421,23 @@ def fix_ups_vars(tline, prod_dir, version):
         .replace("${UPS_UPS_DIR}", prod_dir + "/ups")
         .replace("${UPS_PROD_VERSION}", version)
         .replace("${UPS_SOURCE}", "source")
-        .replace("$","\\$")
+        .replace("$", "\\$")
     )
+
+
+def convert_dependency(setupargs):
+    # XXX fix me -- need to make the module file name not the plain package name
+    return setupargs
+
+
+compiler = None
+compver = None
+compdashver = None
 
 
 def convert_tablefile(line):
     global override_os, cache_file  # hint this should all be a class...
+    global compdashver, compiler, compver
     cache_file = os.environ["SPACK_ROOT"] + "/var/ups_to_spack.cache"
     tclbase = os.environ["SPACK_ROOT"] + "/share/spack/modules"
     lmodbase = os.environ["SPACK_ROOT"] + "/share/spack/lmod"
@@ -425,8 +448,10 @@ def convert_tablefile(line):
     l1 = line.replace('"', "").split(" ")
     product, version, flavor, quals, prod_dir, table_file = l1[:6]
     theirflav = theirflavor(flavor)
-    compdashver = guess_compiler(flavor, quals)
-    compiler, compver = compdashver.split("-")
+    if not compdashver:
+        compdashver = guess_compiler(flavor, quals)
+        compiler, compver = compdashver.split("-")
+
     # convert ups v2_3 to 2.3 etc.
     ver = version.replace("v", "").replace("b", "").replace("_", ".")
 
@@ -435,11 +460,10 @@ def convert_tablefile(line):
 
     shorthash = thash[:7]
 
-
-    logging.debug("Handling: %s %s -f %s -q %s\n" %(product, version, flavor, quals))
+    logging.debug("Handling: %s %s -f %s -q %s\n" % (product, version, flavor, quals))
     logging.info("Converting %s:" % table_file)
 
-    logging.debug("thash: %s, shorthash %s" % (thash,shorthash))
+    logging.debug("thash: %s, shorthash %s" % (thash, shorthash))
 
     tclmodulefile = "%s/%s/%s-%s-%s-%s" % (
         tclbase,
@@ -500,7 +524,7 @@ whatis([[Version : %s]])
         line = fix_ups_vars(line, prod_dir, version)
 
         # remove comments..
-        line = re.sub("\#.*","",line)
+        line = re.sub("\#.*", "", line)
 
         if re.search("flavor\\s*=\\s*ANY", line, flags=re.IGNORECASE):
             flavorok = True
@@ -545,7 +569,9 @@ whatis([[Version : %s]])
                 tcl_out.write("setenv %s_DIR %s\n" % (product.upper(), prod_dir))
                 tcl_out.write("setenv %s_FQ_DIR %s\n" % (product.upper(), prod_dir))
                 lmod_out.write('setenv("%s_DIR","%s");\n' % (product.upper(), prod_dir))
-                lmod_out.write('setenv("%s_FQ_DIR","%s");\n' % (product.upper(), prod_dir))
+                lmod_out.write(
+                    'setenv("%s_FQ_DIR","%s");\n' % (product.upper(), prod_dir)
+                )
             continue
         if re.search("envSet\(", line, flags=re.IGNORECASE):
             d = unpack(line)
@@ -562,8 +588,8 @@ whatis([[Version : %s]])
         if re.search("setup(required|optional)", line, flags=re.IGNORECASE):
             d = unpack(line)
             if in_action:
-                tcl_out.write("module load %s \n" % (d["args"]))
-                lmod_out.write('load("%s");\n' % (d["args"]))
+                tcl_out.write("module load %s \n" % (convert_dependency(d["args"])))
+                lmod_out.write('load("%s");\n' % (convert_dependency(d["args"])))
             continue
         if re.search("addalias", line, flags=re.IGNORECASE):
             d = unpack(line)
@@ -641,7 +667,10 @@ def ups_to_spack(argv):
     if len(argv) == 0:
         print("usage: %s [ups list args]" % sys.argv[0])
 
-    ucmd = "ups list -Kproduct:version:flavor:qualifiers:@prod_dir:@table_file " + " ".join(argv)
+    ucmd = (
+        "ups list -Kproduct:version:flavor:qualifiers:@prod_dir:@table_file "
+        + " ".join(argv)
+    )
     logging.debug("running: %s" % ucmd)
     ulf = os.popen(ucmd, "r")
     for line in ulf:
