@@ -364,15 +364,21 @@ def get_hash(dprod, dver, dflav, dquals, compiler, compver, short=True, recurse 
         thash = None
         for line in cf:
             if line.find(pattern)==0:
-                thash = line[(line.rfind(":")+1)]
+                thash = line[(line.rfind(":")+1):]
+                 
                 thash = thash.strip()
                 break
         cf.close()
 
-    # if not, call make_spec to make the spec and get the hash
+    # if not, call make_spec to make the spec and get the hash, and convert
+    # the table file
 
     if not thash and recurse:
         thash = make_spec(dprod, dver, dflav, dquals, theirflav, compiler, compver)
+        f = os.popen("ups list -Kproduct:version:flavor:qualifiers:@prod_dir:@table_file %s %s -f %s -q '%s'" % (dprod, dver, dflav, dquals), "r")
+        ulline = f.read()
+        f.close
+        convert_tablefile(ulline)
 
     return thash
 
@@ -396,12 +402,14 @@ def unpack_execute(cmdstr):
         return {"cmd": "", "flags": "", "envvar": ""}
 
 
-def fix_ups_vars(tline, prod_dir):
+def fix_ups_vars(tline, prod_dir, version):
     """ replace common ups table file variables """
     return (
         tline.replace("${UPS_PROD_DIR}", prod_dir)
         .replace("${UPS_UPS_DIR}", prod_dir + "/ups")
+        .replace("${UPS_PROD_VERSION}", version)
         .replace("${UPS_SOURCE}", "source")
+        .replace("$","\\$")
     )
 
 
@@ -411,7 +419,11 @@ def convert_tablefile(line):
     tclbase = os.environ["SPACK_ROOT"] + "/share/spack/modules"
     lmodbase = os.environ["SPACK_ROOT"] + "/share/spack/lmod"
 
-    product, version, flavor, quals, prod_dir, table_file,extra = line.replace('"', "").split(" ")
+    logging.debug("convert_tablefile: line: %s" % line)
+
+    line.strip()
+    l1 = line.replace('"', "").split(" ")
+    product, version, flavor, quals, prod_dir, table_file = l1[:6]
     theirflav = theirflavor(flavor)
     compdashver = guess_compiler(flavor, quals)
     compiler, compver = compdashver.split("-")
@@ -423,8 +435,11 @@ def convert_tablefile(line):
 
     shorthash = thash[:7]
 
-    print("Handling: %s %s -f %s -q %s\n" %(product, version, flavor, quals))
-    print("Converting %s:" % table_file)
+
+    logging.debug("Handling: %s %s -f %s -q %s\n" %(product, version, flavor, quals))
+    logging.info("Converting %s:" % table_file)
+
+    logging.debug("thash: %s, shorthash %s" % (thash,shorthash))
 
     tclmodulefile = "%s/%s/%s-%s-%s-%s" % (
         tclbase,
@@ -482,19 +497,23 @@ whatis([[Version : %s]])
 
         logging.debug("processing table file line: %s" % line)
         line = line.strip()
-        line = fix_ups_vars(line, prod_dir)
-        if re.search("flavor\s*=\s*ANY", line, re.IGNORECASE):
+        line = fix_ups_vars(line, prod_dir, version)
+
+        # remove comments..
+        line = re.sub("\#.*","",line)
+
+        if re.search("flavor\\s*=\\s*ANY", line, flags=re.IGNORECASE):
             flavorok = True
             continue
         if re.search(
-            "flavor\s*=\s*%s" % flavor.replace("+", "\\+"), line, re.IGNORECASE
+            "flavor\\s*=\\s*%s" % flavor.replace("+", "\\+"), line, flags=re.IGNORECASE
         ):
             flavorok = True
             continue
-        if re.search("flavor\s*=", line, re.IGNORECASE):
+        if re.search("flavor\\s*=", line, flags=re.IGNORECASE):
             flavorok = false
             continue
-        if re.search("qualifiers\s*=%s" % quals, line, re.IGNORECASE):
+        if re.search("qualifiers\\s*=%s" % quals, line, flags=re.IGNORECASE):
             if flavorok:
                 lmod_out.enable()
                 tcl_out.enable()
@@ -502,63 +521,65 @@ whatis([[Version : %s]])
                 lmod_out.disable()
                 tcl_out.disable()
             continue
-        if re.search("common:", line, re.IGNORECASE):
+        if re.search("common:", line, flags=re.IGNORECASE):
             lmod_out.enable()
             tcl_out.enable()
             continue
-        if re.search("action\s*=", line, re.IGNORECASE):
+        if re.search("action\\s*=", line, flags=re.IGNORECASE):
             if in_action:
-                lmod_out.write("end")
-                tcl_out.write("}")
+                lmod_out.write("end\n\n")
+                tcl_out.write("}\n\n")
             in_action = True
-            name = re.sub(".*action\s*=\s*", "", line)
+            name = re.sub(".*action\\s*=\\s*", "", line, flags=re.IGNORECASE)
             tcl_out.write("proc %s {} {\n" % name)
             lmod_out.write("function %s ()\n" % name)
             continue
-        if re.search("exeaction\(", line, re.IGNORECASE):
+        if re.search("exeaction\(", line, flags=re.IGNORECASE):
             d = unpack(line)
             if in_action:
                 tcl_out.write(d["var"] + "\n")
                 lmod_out.write(d["var"] + "();\n")
             continue
-        if re.search("proddir\(|dodefaults", line, re.IGNORECASE):
+        if re.search("proddir\(|dodefaults", line, flags=re.IGNORECASE):
             if in_action:
                 tcl_out.write("setenv %s_DIR %s\n" % (product.upper(), prod_dir))
+                tcl_out.write("setenv %s_FQ_DIR %s\n" % (product.upper(), prod_dir))
                 lmod_out.write('setenv("%s_DIR","%s");\n' % (product.upper(), prod_dir))
+                lmod_out.write('setenv("%s_FQ_DIR","%s");\n' % (product.upper(), prod_dir))
             continue
-        if re.search("envSet\(", line, re.IGNORECASE):
+        if re.search("envSet\(", line, flags=re.IGNORECASE):
             d = unpack(line)
             if in_action:
                 tcl_out.write("setenv %s %s\n" % (d["var"], d["value"]))
                 lmod_out.write('setenv("%s","%s");\n' % (d["var"], d["value"]))
             continue
-        if re.search("(env|path)prepend", line, re.IGNORECASE):
+        if re.search("(env|path)prepend", line, flags=re.IGNORECASE):
             d = unpack(line)
             if in_action:
                 tcl_out.write("prepend-path %s %s\n" % (d["var"], d["value"]))
                 lmod_out.write('prepend_path("%s","%s");\n' % (d["var"], d["value"]))
             continue
-        if re.search("setup(required|optional)", line, re.IGNORECASE):
+        if re.search("setup(required|optional)", line, flags=re.IGNORECASE):
             d = unpack(line)
             if in_action:
                 tcl_out.write("module load %s \n" % (d["args"]))
                 lmod_out.write('load("%s");\n' % (d["args"]))
             continue
-        if re.search("addalias", line, re.IGNORECASE):
+        if re.search("addalias", line, flags=re.IGNORECASE):
             d = unpack(line)
             if in_action:
                 tcl_out.write("set-alias %s %s\n" % (d["var"], d["value"]))
                 lmod_out.write('set_alias("%s","%s");\n' % (d["var"], d["value"]))
             continue
 
-        if re.search("execute", line, re.IGNORECASE):
+        if re.search("execute", line, flags=re.IGNORECASE):
             d = unpack_execute(line)
             if in_action:
                 if d["flags"] == "UPS_ENV":
                     tcl_out.write("setenv UPS_PROD_NAME %s\n" % product)
                     tcl_out.write("setenv UPS_PROD_DIR %s\n" % prod_dir)
                     tcl_out.write("setenv UPS_UPS_DIR %s/ups\n" % prod_dir)
-                    tcl_out.write("setenv VERSION %s" % version)
+                    tcl_out.write("setenv VERSION %s\n" % version)
                     lmod_out.write('setenv("UPS_PROD_NAME","%s");\n' % product)
                     lmod_out.write('setenv("UPS_PROD_DIR","%s");\n' % prod_dir)
                     lmod_out.write('setenv("UPS_UPS_DIR","%s/ups");\n' % prod_dir)
@@ -575,28 +596,31 @@ whatis([[Version : %s]])
                     lmod_out.write('os.execute("%s");\n' % d["cmd"])
                 continue
 
-        if re.search("endif", line, re.IGNORECASE):
+        if re.search("endif", line, flags=re.IGNORECASE):
             if in_action:
-                tcl_out.write("}\n")
-                lmod_out.write("end\n")
+                tcl_out.write("}\n\n")
+                lmod_out.write("end\n\n")
             continue
-        if re.search("else", line, re.IGNORECASE):
+        if re.search("else", line, flags=re.IGNORECASE):
             if in_action:
                 tcl_out.write("} else {\n")
                 lmod_out.write("else\n")
             continue
-        if re.search("if", line, re.IGNORECASE):
+        if re.search("if", line, flags=re.IGNORECASE):
             d = unpack(line)
             if in_action:
                 tcl_out.write("if {![catch {exec %s} results options]} {\n" % d["args"])
                 lmod_out.write('if (!os.execute("%s")) then\n' % d["args"])
             continue
-        if re.search("end", line, re.IGNORECASE):
+        if re.search("end", line, flags=re.IGNORECASE):
             if in_action:
                 tcl_out.write("}\n")
                 lmod_out.write("end\n")
                 in_action = False
             continue
+
+    tcl_out.enable()
+    lmod_out.enable()
 
     if in_action:
         tcl_out.write("}\n")
