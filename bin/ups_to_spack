@@ -60,12 +60,6 @@ class outfile:
         self.outf.close()
 
 
-def ups_flavor():
-    """ run ups flavor and return string output """
-    f = os.popen("ups flavor", "r")
-    res = f.read()
-    f.close()
-    return res
 
 
 def theirflavor(upsflav):
@@ -117,10 +111,21 @@ def theirflavor(upsflav):
     logging.debug("theirflavor(%s) -> %s-%s-%s" % (upsflav, tf_1, tf_2, tf_3))
     return "%s-%s-%s" % (tf_1, tf_2, tf_3)
 
+def ups_flavor():
+    """ run ups flavor and return string output """
+    return ups_x('flavor','','','','') [0]
 
 def ups_depend(prod, ver, flav, qual):
     """ run ups depend, return list of output lines """
-    f = os.popen("ups depend %s %s -f %s -q '%s'" % (prod, ver, flav, qual))
+    return ups_x('depend',prod, ver, flav, qual)
+
+def ups_parent_a():
+    """ run ups depend, return list of output lines """
+    return ups_x('parent','-a','','','')
+
+def ups_x(what, prod, ver, flav, qual):
+    """ run ups what, return list of output lines """
+    f = os.popen("ups %s %s %s %s %s %s '%s'" % (what, prod, ver, '-f' if flav else '', flav, '-q' if qual else '', qual))
     res = f.readlines()
     f.close()
     return res
@@ -434,6 +439,31 @@ compiler = None
 compver = None
 compdashver = None
 
+ups_parent_cache = None
+
+def load_ups_parent_cache()
+    if ups_parent_cache:
+        return
+    curkey = None
+    ups_parent_cache = {}
+    for line in ups_parent_a():
+        if not line[0] in ' |_':
+            curkey = line 
+            if not curkey in line:
+                ups_parent_cache[curkey] = []
+        else:
+            ups_parent_cache[curkey].append(line)
+
+def needed_flavor_quals(product, version, flavor, quals):
+    res = set()
+    
+    load_ups_parent_cache()
+
+    for line in ups_parent_cache("%s %s -f %s -q %s" % product, version, flavor, quals))
+        line = line.lstrip("|_ ")
+        ll = line.split(' ') 
+            res.add(ll[3],ll[5]))
+    return res
 
 def convert_tablefile_from_line(line):
     global override_os, cache_file  # hint this should all be a class...
@@ -447,7 +477,11 @@ def convert_tablefile_from_line(line):
     line.strip()
     l1 = line.replace('"', "").split(" ")
     product, version, flavor, quals, prod_dir, table_file = l1[:6]
-    convert_tablefile(product, version, flavor, quals, prod_dir, table_file)
+
+    l_needed = needed_flavor_quals(product, version, flavor, quals)
+    for flavor, quals in l_needed:
+        convert_tablefile(product, version, flavor, quals, prod_dir, table_file)
+
 
 def convert_tablefile(product, version, flavor, quals, prod_dir, table_file):
     theirflav = theirflavor(flavor)
