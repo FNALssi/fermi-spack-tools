@@ -435,7 +435,7 @@ compver = None
 compdashver = None
 
 
-def convert_tablefile(line):
+def convert_tablefile_from_line(line):
     global override_os, cache_file  # hint this should all be a class...
     global compdashver, compiler, compver
     cache_file = os.environ["SPACK_ROOT"] + "/var/ups_to_spack.cache"
@@ -447,6 +447,9 @@ def convert_tablefile(line):
     line.strip()
     l1 = line.replace('"', "").split(" ")
     product, version, flavor, quals, prod_dir, table_file = l1[:6]
+    convert_tablefile(product, version, flavor, quals, prod_dir, table_file)
+
+def convert_tablefile(product, version, flavor, quals, prod_dir, table_file):
     theirflav = theirflavor(flavor)
     if not compdashver:
         compdashver = guess_compiler(flavor, quals)
@@ -674,7 +677,7 @@ def ups_to_spack(argv):
     logging.debug("running: %s" % ucmd)
     ulf = os.popen(ucmd, "r")
     for line in ulf:
-        convert_tablefile(line)
+        convert_tablefile_from_line(line)
 
     ulf.close()
 
