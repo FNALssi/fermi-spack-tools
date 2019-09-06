@@ -497,7 +497,7 @@ def needed_flavor_quals(product, version, flavor, quals):
 
     if flavor == "NULL" and not res:
        for f,q in all_flavors:
-           res.add(f, q)
+           res.add((f, q))
 
     if not res:
        res.add((flavor, quals))
