@@ -178,6 +178,9 @@ def spack_reindex():
     f.close()
     return res
 
+def ups_prod_dir(prod, ver, flav, qual):
+     res = ups_x('list -K@prod_dir', prod, ver, flav, qual)
+     return res.strip()
 
 def make_spec(prod, ver, flav, qual, theirflav):
     """ 
@@ -211,6 +214,12 @@ def make_spec(prod, ver, flav, qual, theirflav):
     if not os.access(recipedir, os.R_OK):
         os.makedirs(recipedir)
 
+    # link in bin/ lib/ etc. dirs from ups directory so links paths might work
+    ups_dir = ups_prod_dir(prod, ver, flav, qual)
+    for d in glob('%s/*' , ups_dir):
+        if (os.path.isdir(d)) {
+            symlink(d, "%s/%s" % (basedir,os.path.basename(d))
+
     if not os.access(recipedir + "/package.py", os.R_OK):
         # there has to be a recipe for the package for spack to
         # look at it, so make one that's (just) good enough to pass
@@ -225,6 +234,7 @@ def make_spec(prod, ver, flav, qual, theirflav):
 
     tfl = theirflav.split("-")
 
+    # create base spec file structure for the .yaml file writer
     spec = {
         "spec": [
             {
@@ -440,9 +450,11 @@ compver = None
 compdashver = None
 
 ups_parent_cache = None
+all_flavors = set()
 
 def load_ups_parent_cache():
     global ups_parent_cache
+    global all_flavors
     if ups_parent_cache:
         return
     curkey = None
@@ -451,10 +463,15 @@ def load_ups_parent_cache():
         line = line.rstrip()
         line = re.sub(" -z [^ ]+","",line)
         line = re.sub("\[via.*\]+","",line)
+         
         if not line:
             continue
         if not line.find('-q') > 0:
             line = line + " -q "
+
+        ll = line.split(' ')
+        allflavors.add((lflav[3],lflav[5]))
+
         if not line[0] in ' |_':
             curkey = line 
             if not curkey in ups_parent_cache:
@@ -476,8 +493,12 @@ def needed_flavor_quals(product, version, flavor, quals):
         line = line.lstrip("|_ ")
         ll = line.split(' ') 
         res.add((ll[3],ll[5]))
+
+    if flavor == "NULL" and not res:
+       for f,q in allflavors:
+           res.add(f, q)
     if not res:
-       res.add((ups_flavor(), ''))
+       res.add(flavor, quals))
     return res
 
 def convert_tablefile_from_line(line):
