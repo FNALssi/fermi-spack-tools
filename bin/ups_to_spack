@@ -4,6 +4,7 @@ import sys
 import re
 import os.path
 import logging
+import glob
 
 # we want to use the ruamel.yaml package from spack
 sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
@@ -125,7 +126,9 @@ def ups_parent_a():
 
 def ups_x(what, prod, ver, flav, qual):
     """ run ups what, return list of output lines """
-    f = os.popen("ups %s %s %s %s %s %s '%s'" % (what, prod, ver, '-f' if flav else '', flav, '-q' if qual else '', qual))
+    cmd = "ups %s %s %s %s %s %s %s" % (what, prod, ver, '-f' if flav else '', flav, '-q' if qual else '', qual)
+    logging.debug("ups_x: cmd: %s" % cmd)
+    f = os.popen(cmd, 'r')
     res = f.readlines()
     f.close()
     return res
@@ -179,8 +182,12 @@ def spack_reindex():
     return res
 
 def ups_prod_dir(prod, ver, flav, qual):
-     res = ups_x('list -K@prod_dir', prod, ver, flav, qual)[0]
-     return res.strip()
+     res = ups_x('list -K@prod_dir', prod, ver, flav, qual)
+     print ("ups_prod_dir: got: %s" % repr(res))
+     if res:
+         return res[0].strip().strip('"')
+     else:
+         return ""
 
 def make_spec(prod, ver, flav, qual, theirflav):
     """ 
@@ -216,7 +223,7 @@ def make_spec(prod, ver, flav, qual, theirflav):
 
     # link in bin/ lib/ etc. dirs from ups directory so links paths might work
     ups_dir = ups_prod_dir(prod, ver, flav, qual)
-    for d in glob('%s/*' , ups_dir):
+    for d in glob.glob('%s/*' % ups_dir):
         if (os.path.isdir(d)):
             os.symlink(d, "%s/%s" % (basedir,os.path.basename(d)))
 
@@ -270,8 +277,8 @@ def make_spec(prod, ver, flav, qual, theirflav):
             if re.match("^\|__[a-z]", line):
                 # it is an immediate dependency
                 line = line.lstrip("|_ ")
-                logging.debug("immediate dependency: %s " % line)
-                dprod, dver, fflag, dflav, qflag, dquals, drest = line.split(" ", 6)
+                logging.debug("immediate dependency: |%s| " % line)
+                dprod, dver, fflag, dflav, qflag, dquals = line.split(" ", 6)
                 if qflag != "-q":
                     dquals = ""
 
