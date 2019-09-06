@@ -217,8 +217,8 @@ def make_spec(prod, ver, flav, qual, theirflav):
     # link in bin/ lib/ etc. dirs from ups directory so links paths might work
     ups_dir = ups_prod_dir(prod, ver, flav, qual)
     for d in glob('%s/*' , ups_dir):
-        if (os.path.isdir(d)) {
-            symlink(d, "%s/%s" % (basedir,os.path.basename(d))
+        if (os.path.isdir(d)):
+            os.symlink(d, "%s/%s" % (basedir,os.path.basename(d)))
 
     if not os.access(recipedir + "/package.py", os.R_OK):
         # there has to be a recipe for the package for spack to
@@ -470,7 +470,7 @@ def load_ups_parent_cache():
             line = line + " -q "
 
         ll = line.split(' ')
-        allflavors.add((lflav[3],lflav[5]))
+        all_flavors.add((ll[3],ll[5]))
 
         if not line[0] in ' |_':
             curkey = line 
@@ -484,6 +484,7 @@ def load_ups_parent_cache():
     #print("\n".join(l))
 
 def needed_flavor_quals(product, version, flavor, quals):
+    global all_flavors
     res = set()
     
     load_ups_parent_cache()
@@ -495,10 +496,12 @@ def needed_flavor_quals(product, version, flavor, quals):
         res.add((ll[3],ll[5]))
 
     if flavor == "NULL" and not res:
-       for f,q in allflavors:
+       for f,q in all_flavors:
            res.add(f, q)
+
     if not res:
-       res.add(flavor, quals))
+       res.add((flavor, quals))
+
     return res
 
 def convert_tablefile_from_line(line):
