@@ -179,7 +179,7 @@ def spack_reindex():
     return res
 
 def ups_prod_dir(prod, ver, flav, qual):
-     res = ups_x('list -K@prod_dir', prod, ver, flav, qual)
+     res = ups_x('list -K@prod_dir', prod, ver, flav, qual)[0]
      return res.strip()
 
 def make_spec(prod, ver, flav, qual, theirflav):
