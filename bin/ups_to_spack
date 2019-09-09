@@ -221,6 +221,7 @@ def make_spec(prod, ver, flav, qual, theirflav):
     if not os.access(recipedir, os.R_OK):
         os.makedirs(recipedir)
 
+    logging.debug("making symlinks in basedir %s" % basedir)
     # link in bin/ lib/ etc. dirs from ups directory so links paths might work
     ups_dir = ups_prod_dir(prod, ver, flav, qual)
     for d in glob.glob('%s/*' % ups_dir):
@@ -307,7 +308,7 @@ def make_spec(prod, ver, flav, qual, theirflav):
             # ups depend puts ascii art tree stuff on the front..
             line = line.lstrip("|_ ")
 
-            dprod, dver, fflag, dflav, qflag, dquals, drest = line.split(" ", 6)
+            dprod, dver, fflag, dflav, qflag, dquals = line.split(" ", 6)
 
             if qflag != "-q":
                 dquals = ""
@@ -348,6 +349,7 @@ def make_spec(prod, ver, flav, qual, theirflav):
                 }
             )
 
+    logging.debug("writing specfile %s" % specfile)
     sf = open(specfile, "w")
     sf.write(ruamel.yaml.dump(spec, default_style="1"))
     sf.close()
@@ -366,13 +368,13 @@ def make_spec(prod, ver, flav, qual, theirflav):
         # spack thinks this is the same as another one, just clean it out
         os.system("rm -rf %s " % basedir)
         thash = get_hash(
-            prod, ver, flav, qual, compiler, compver, recurse=False, short=True
+            prod, ver, flav, qual, compiler, compver, recurse=False, short=False
         )
 
     return thash
 
 
-def get_hash(dprod, dver, dflav, dquals, compiler, compver, short=True, recurse=True):
+def get_hash(dprod, dver, dflav, dquals, compiler, compver, short=False, recurse=True):
 
     logging.debug(
         "get_hash(%s, %s, %s, %s, %s, %s)"
