@@ -749,7 +749,7 @@ class ups_to_spack:
                     in_action = False
                 continue
             if re.search(
-                "qualifiers\\s*=\\s*"?%s"?\\s*$" % pkg.quals, line, flags=re.IGNORECASE
+                'qualifiers\\s*=\\s*"?%s"?\\s*$' % pkg.quals, line, flags=re.IGNORECASE
             ):
                 logging.debug("qualifier match")
                 if in_action:
