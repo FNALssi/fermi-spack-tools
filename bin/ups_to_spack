@@ -200,7 +200,9 @@ class package:
     @remember
     def spack_arch(self):
 
-        l1 = re.split("[- +]*", self.flav)
+        self.topbits()
+
+        l1 = re.split("[- +]*", self.top_flav)
         logging.debug("l1: %s" % repr(l1))
         f_os = l1[0]
         f_osrel = l1[1] if len(l1) > 1 else ""
@@ -377,7 +379,7 @@ class ups_to_spack:
                 self.add_cached_hash(pkg, thash)
                 self.convert_table(pkg, thash)
             else:
-                logger.info("Warning: unable to get hash for pkg %s" % pkg)
+                logging.info("Warning: unable to get hash for pkg %s" % pkg)
         else:
             logging.debug("already done: %s" % pkg)
 
@@ -430,11 +432,10 @@ class ups_to_spack:
         pkg.topbits()
         pkg.prodbits()
 
-        basedir = "%s/opt/spack/%s/%s-%s/%s-%s" % (
+        basedir = "%s/opt/spack/%s/%s/%s-%s" % (
             os.environ["SPACK_ROOT"],
             pkg.spack_arch(),
-            pkg.spack_comp()[0],
-            pkg.spack_comp()[1],
+            pkg.spack_comp(),
             pkg.prod,
             pkg.dotver,
         )
@@ -468,8 +469,8 @@ class ups_to_spack:
                             "target": tfl[2],
                         },
                         "compiler": {
-                            "version": pkg.spack_comp()[1],
-                            "name": pkg.spack_comp()[0],
+                            "name": pkg.spack_comp().split("-")[0],
+                            "version": pkg.spack_comp().split("-")[1],
                         },
                         "namespace": "builtin",
                         "parameters": {
@@ -512,7 +513,7 @@ class ups_to_spack:
                         logging.debug("skipping dependency %s -- no hash" % dpkg)
                         continue
 
-                    spec["spec"][0][pkg.prd]["dependencies"][dpkg.prod] = {
+                    spec["spec"][0][pkg.prod]["dependencies"][dpkg.prod] = {
                         "hash": dhash,
                         "type": ["build", "link"],
                     }
@@ -556,8 +557,8 @@ class ups_to_spack:
                             },
                             "namespace": "builtin",
                             "compiler": {
-                                "name": pkg.spack_comp()[0],
-                                "version": pkg.spack_comp()[1],
+                                "name": pkg.spack_comp().split("-")[0],
+                                "version": pkg.spack_comp().split("-")[1],
                             },
                         }
                     }
@@ -574,11 +575,10 @@ class ups_to_spack:
     def reindex_for_hash_and_rename(self, pkg):
         idir, thash = spack_reindex()
 
-        basedir = "%s/opt/spack/%s/%s-%s/%s-%s" % (
+        basedir = "%s/opt/spack/%s/%s/%s-%s" % (
             os.environ["SPACK_ROOT"],
             pkg.spack_arch(),
-            pkg.spack_comp()[0],
-            pkg.spack_comp()[1],
+            pkg.spack_comp(),
             pkg.prod,
             pkg.dotver,
         )
@@ -591,7 +591,7 @@ class ups_to_spack:
                 logging.debug(
                     "removing duplicate for %s"
                     % repr(
-                        [pkg.prd, pkg.ver, pkg.flav, pkg.quals, pkg.spack_arch(), thash]
+                        [pkg.prod, pkg.ver, pkg.flav, pkg.quals, pkg.spack_arch(), thash]
                     )
                 )
                 os.system("rm -rf %s" % basedir)
@@ -604,9 +604,10 @@ class ups_to_spack:
 
         # now if we re-run spack_reindex, we shouldn't see any errors...
 
-        if spack_reindex()[1] != "":
+        a,b =spack_reindex()
+        if b != "":
             raise AssertionError(
-                "ack! spack reindex is failing when we don't expect it to"
+                "ack! spack reindex is failing when we don't expect it to \n%s %s" % (a,b)
             )
         return thash
 
