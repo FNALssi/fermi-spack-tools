@@ -12,24 +12,30 @@ import traceback
 sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
 import ruamel.yaml
 
+
 def log_call(f):
     """ decorator to log calls to functions at debug level """
-    def logged(*args,**kwargs):
-        logging.debug("entering %s%s%s" % (f.__name__,repr(args),repr(kwargs)))
-        res = f(*args,**kwargs)
+
+    def logged(*args, **kwargs):
+        logging.debug("entering %s%s%s" % (f.__name__, repr(args), repr(kwargs)))
+        res = f(*args, **kwargs)
         logging.debug("leaving %s returning %s" % (f.__name__, repr(res)))
         return res
+
     return logged
 
+
 def remember(f):
-    def wrap(self,*args,**kwargs):
-        if not ' _memory' in self.__dict__:
+    def wrap(self, *args, **kwargs):
+        if not " _memory" in self.__dict__:
             self._memory = {}
         if not f.__name__ in self._memory or not self._memory[f.__name__]:
             self._memory[f.__name__] = f(self, *args, **kwargs)
         return self._memory[f.__name__]
+
     return wrap
-        
+
+
 def spack_reindex():
     """ 
         run spack reindex, 
@@ -48,13 +54,15 @@ def spack_reindex():
             f.close()
             if m:
                 return m.group(1), m.group(2)
-     
+
     f.close()
-    return "",""
+    return "", ""
+
 
 def ups_depend(prod, ver, flav, qual):
     """ run ups depend, return list of output lines """
     return ups_x("depend", prod, ver, flav, qual)
+
 
 def ups_x(what, prod, ver, flav, qual):
     """ run ups what, return list of output lines """
@@ -62,18 +70,18 @@ def ups_x(what, prod, ver, flav, qual):
     # we've gotten some weird things from bugs upstream,
     # so try to capture where they come from...
     if qual:
-        qual=qual.strip()
+        qual = qual.strip()
     if flav:
-        flav=flav.strip()
-    if qual == '-q':
+        flav = flav.strip()
+    if qual == "-q":
         logging.error("Ouch! got a -q for qualifier!")
         traceback.print_stack()
-        qual = ''
+        qual = ""
 
     if flav and flav[0] not in "NLD":
         logging.error("Ouch! got '%s' for flavor!")
         traceback.print_stack()
-        flav = ''
+        flav = ""
 
     cmd = "ups %s %s %s %s %s %s %s 2>/dev/null" % (
         what,
@@ -82,13 +90,14 @@ def ups_x(what, prod, ver, flav, qual):
         "-f" if flav else "",
         flav,
         "-q" if qual else "",
-        qual
+        qual,
     )
     logging.debug("ups_x: cmd: %s" % cmd)
     f = os.popen(cmd, "r")
     res = f.readlines()
     f.close()
     return res
+
 
 class outfile:
     """ 
@@ -122,8 +131,20 @@ class outfile:
     def close(self):
         self.outf.close()
 
+
 class package:
-    def __init__(self,depline=None, kline= None, top_flav=None, top_quals=None, depth = 0, prod=None, ver=None, flav=None, quals=None):
+    def __init__(
+        self,
+        depline=None,
+        kline=None,
+        top_flav=None,
+        top_quals=None,
+        depth=0,
+        prod=None,
+        ver=None,
+        flav=None,
+        quals=None,
+    ):
         self.top_flav = top_flav
         self.top_quals = top_quals
         self.depth = depth
@@ -136,9 +157,11 @@ class package:
             self.prod_dir = None
             self.table_file = None
         elif kline:
-             kline = kline.strip().replace('"','')
-             ll = kline.split(' ')
-             self.prod, self.ver,  self.flav, self.quals, self.prod_dir, self.table_file = ll[:7]
+            kline = kline.strip().replace('"', "")
+            ll = kline.split(" ")
+            self.prod, self.ver, self.flav, self.quals, self.prod_dir, self.table_file = ll[
+                :7
+            ]
         else:
             self.prod = prod
             self.ver = ver
@@ -147,19 +170,26 @@ class package:
             self.prod_dir = None
             self.table_file = None
 
-        if self.quals == '-q':
+        if self.quals == "-q":
             logging.error("Ouch! got a -q for qualifier!")
             traceback.print_stack()
-            self.quals = ''
+            self.quals = ""
 
     def __str__(self):
         return "%s %s -f %s -q '%s' top: -f %s -q '%s' depth %s" % (
-            self.prod, self.ver, self.flav, self.quals, self.top_flav, self.top_quals, self.depth)
+            self.prod,
+            self.ver,
+            self.flav,
+            self.quals,
+            self.top_flav,
+            self.top_quals,
+            self.depth,
+        )
 
     def __repr__(self):
         return "<Package %s>" % self.__str__()
 
-    def default_flavor(self,f_os):
+    def default_flavor(self, f_os):
         if f_os[:3] == "Dar":
             return "Darwin64bit+16.7.0"
         if f_os[:3] == "Lin":
@@ -169,7 +199,7 @@ class package:
     @log_call
     @remember
     def spack_arch(self):
-        
+
         l1 = re.split("[- +]*", self.flav)
         logging.debug("l1: %s" % repr(l1))
         f_os = l1[0]
@@ -201,11 +231,10 @@ class package:
             tf_2 = re.sub("^[0-9].*", "yosemite", tf_2)
 
         if f_os[:3] == "Lin":
-            tf_2 = re.sub(".*-2.17",  "scientific7", tf_2)
-            tf_2 = re.sub(".*-2.12",  "scientific6", tf_2)
-            tf_2 = re.sub(".*-2.6",   "scientific5", tf_2)
+            tf_2 = re.sub(".*-2.17", "scientific7", tf_2)
+            tf_2 = re.sub(".*-2.12", "scientific6", tf_2)
+            tf_2 = re.sub(".*-2.6", "scientific5", tf_2)
             tf_2 = re.sub("^[0-9].*", "scientific5", tf_2)
-
 
         # excessive intel-centrism...
         if f_os.find("64bit") > 0:
@@ -219,16 +248,18 @@ class package:
     @remember
     def upslistargs(self):
         return "%s %s -f %s -q '%s'" % (self.prod, self.ver, self.flav, self.quals)
+
     @remember
     def dependlines(self):
-         return ups_depend(self.prod, self.ver, self.flav, self.quals)
+        return ups_depend(self.prod, self.ver, self.flav, self.quals)
+
     # utilities to flesh out useful bits we might not have...
 
     def prodbits(self):
         if self.table_file == None:
-            res = ups_x('list','-K@prod_dir,@table_file', self.upslistargs(),'','')
+            res = ups_x("list", "-K@prod_dir,@table_file", self.upslistargs(), "", "")
             if res:
-                ll = res[0].strip().replace('"','').split(' ') 
+                ll = res[0].strip().replace('"', "").split(" ")
                 self.prod_dir = ll[0]
                 self.prod_dir = ll[1]
 
@@ -266,19 +297,20 @@ class package:
             return "gcc-4.4.7"
         return "gcc-4.1.1"  # sl5 compiler by default
 
-class ups_to_spack:
 
+class ups_to_spack:
     def __init__(self):
         self.already_done = set()
         self.pkglist = None
         self.all_flavors = (
-            ("Darwin64bit+13.4.0",""),
-            ("Darwin64bit+14.5.0",""),
-            ("Darwin64bit+15.6.0",""),
-            ("Darwin64bit+16.7.0",""),
-            ("Linux64bit+2.6-2.5",""),
-            ("Linux64bit+2.6-2.12",""),
-            ("Linux64bit+3.10-2.17",""))
+            ("Darwin64bit+13.4.0", ""),
+            ("Darwin64bit+14.5.0", ""),
+            ("Darwin64bit+15.6.0", ""),
+            ("Darwin64bit+16.7.0", ""),
+            ("Linux64bit+2.6-2.5", ""),
+            ("Linux64bit+2.6-2.12", ""),
+            ("Linux64bit+3.10-2.17", ""),
+        )
         self.cache_file = os.environ["SPACK_ROOT"] + "/var/ups_to_spack.cache"
 
     @log_call
@@ -288,7 +320,9 @@ class ups_to_spack:
         thash = None
         if os.access(self.cache_file, os.R_OK):
             cf = open(self.cache_file, "r")
-            pattern = ":".join([pkg.prod, pkg.ver, pkg.top_flav, pkg.top_quals, sp_arch])
+            pattern = ":".join(
+                [pkg.prod, pkg.ver, pkg.top_flav, pkg.top_quals, sp_arch]
+            )
 
             logging.debug("get_cached_hash: looking for: '%s'" % pattern)
 
@@ -304,13 +338,26 @@ class ups_to_spack:
     @log_call
     def add_cached_hash(self, pkg, thash):
 
-        if pkg.top_flav in ("NULL",""):
-            raise AssertionError("trying to add '%s' flavor product to cache" % pkg.top_flav)
+        if pkg.top_flav in ("NULL", ""):
+            raise AssertionError(
+                "trying to add '%s' flavor product to cache" % pkg.top_flav
+            )
 
         cf = open(self.cache_file, "a")
-        cf.write(":".join([pkg.prod, pkg.ver, pkg.top_flav, pkg.top_quals, pkg.spack_arch(), thash]) + "\n")
+        cf.write(
+            ":".join(
+                [
+                    pkg.prod,
+                    pkg.ver,
+                    pkg.top_flav,
+                    pkg.top_quals,
+                    pkg.spack_arch(),
+                    thash,
+                ]
+            )
+            + "\n"
+        )
         cf.close()
- 
 
     @log_call
     def migrate_one(self, pkg):
@@ -333,10 +380,9 @@ class ups_to_spack:
                 logger.info("Warning: unable to get hash for pkg %s" % pkg)
         else:
             logging.debug("already done: %s" % pkg)
-        
 
     @log_call
-    def make_recipe(self,pkg):
+    def make_recipe(self, pkg):
         recipedir = "%s/var/spack/repos/builtin/packages/%s" % (
             os.environ["SPACK_ROOT"],
             pkg.prod,
@@ -398,7 +444,6 @@ class ups_to_spack:
         if not os.access(os.path.dirname(specfile), os.R_OK):
             os.makedirs(os.path.dirname(specfile))
 
-
         logging.debug("making symlinks in basedir %s" % basedir)
         # link in bin/ lib/ etc. dirs from ups directory so links paths might work
         if pkg.prod_dir:
@@ -422,7 +467,10 @@ class ups_to_spack:
                             "platform_os": tfl[1],
                             "target": tfl[2],
                         },
-                        "compiler": {"version": pkg.spack_comp()[1], "name": pkg.spack_comp()[0]},
+                        "compiler": {
+                            "version": pkg.spack_comp()[1],
+                            "name": pkg.spack_comp()[0],
+                        },
                         "namespace": "builtin",
                         "parameters": {
                             "cppflags": [],
@@ -436,7 +484,6 @@ class ups_to_spack:
                 }
             ]
         }
-
 
         dependlines = pkg.dependlines()
 
@@ -481,7 +528,10 @@ class ups_to_spack:
                 #
                 dhash = self.get_cached_hash(dpkg)
                 if not dhash:
-                    logging.debug("skipping dependency %s -- no hash" %repr((dpkg.prod, dpkg.ver, dpkg.flav, dpkg.quals)))
+                    logging.debug(
+                        "skipping dependency %s -- no hash"
+                        % repr((dpkg.prod, dpkg.ver, dpkg.flav, dpkg.quals))
+                    )
                     continue
 
                 tfl = pkg.spack_arch().split("-")
@@ -505,7 +555,10 @@ class ups_to_spack:
                                 "target": tfl[2],
                             },
                             "namespace": "builtin",
-                            "compiler": {"name": pkg.spack_comp()[0], "version": pkg.spack_comp()[1]},
+                            "compiler": {
+                                "name": pkg.spack_comp()[0],
+                                "version": pkg.spack_comp()[1],
+                            },
                         }
                     }
                 )
@@ -535,7 +588,12 @@ class ups_to_spack:
             dest = "%s-%s" % (basedir, thash)
 
             if os.path.exists(dest):
-                logging.debug("removing duplicate for %s"% repr([pkg.prd, pkg.ver, pkg.flav, pkg.quals, pkg.spack_arch(), thash]))
+                logging.debug(
+                    "removing duplicate for %s"
+                    % repr(
+                        [pkg.prd, pkg.ver, pkg.flav, pkg.quals, pkg.spack_arch(), thash]
+                    )
+                )
                 os.system("rm -rf %s" % basedir)
             else:
                 logging.debug("renaming to %s" % dest)
@@ -547,11 +605,12 @@ class ups_to_spack:
         # now if we re-run spack_reindex, we shouldn't see any errors...
 
         if spack_reindex()[1] != "":
-            raise AssertionError("ack! spack reindex is failing when we don't expect it to")
+            raise AssertionError(
+                "ack! spack reindex is failing when we don't expect it to"
+            )
         return thash
 
-
-    def unpack(self,s):
+    def unpack(self, s):
         """ unpack/parse a line from a ups table file """
         l1 = re.split("[(), ]+", s)
         logging.debug("unpack: list: %s" % repr(l1))
@@ -560,15 +619,13 @@ class ups_to_spack:
         else:
             return {"var": "", "value": "", "args": ""}
 
-
-    def unpack_execute(self,cmdstr):
+    def unpack_execute(self, cmdstr):
         """ unpack/parse an execute statement from a ups table file """
         m = re.match("(.*)\(([^,]*),([^,]*),?(.*)\)", cmdstr)
         if m:
             return {"cmd": m.group(1), "flags": m.group(3), "envvar": m.group(2)}
         else:
             return {"cmd": "", "flags": "", "envvar": ""}
-
 
     def fix_ups_vars(self, tline, pkg):
         """ replace common ups table file variables """
@@ -598,7 +655,7 @@ class ups_to_spack:
 
         pkg.prodbits()
         pkg.topbits()
-      
+
         tclmodulefile = "%s/%s/%s-%s-%s-%s" % (
             tclbase,
             pkg.spack_arch(),
@@ -649,17 +706,17 @@ class ups_to_spack:
 
         flavor_ok = False
         in_action = False
-      
+
         if pkg.table_file:
             tff = open(pkg.table_file, "r")
         else:
-            tff = open('/dev/null','r')
+            tff = open("/dev/null", "r")
 
         for line in tff:
 
             logging.debug("processing table file line: %s" % line)
             line = line.strip()
-            line = self.fix_ups_vars(line, pkg) 
+            line = self.fix_ups_vars(line, pkg)
 
             # remove comments..
             line = re.sub("\#.*", "", line)
@@ -672,7 +729,9 @@ class ups_to_spack:
                     in_action = False
                 continue
             if re.search(
-                "flavor\\s*=\\s*%s" % pkg.flav.replace("+", "\\+"), line, flags=re.IGNORECASE
+                "flavor\\s*=\\s*%s" % pkg.flav.replace("+", "\\+"),
+                line,
+                flags=re.IGNORECASE,
             ):
                 flavor_ok = True
                 continue
@@ -683,7 +742,9 @@ class ups_to_spack:
                     tcl_out.write("}\n\n")
                     in_action = False
                 continue
-            if re.search("qualifiers\\s*=\\s*%s\\s*$" % pkg.quals, line, flags=re.IGNORECASE):
+            if re.search(
+                "qualifiers\\s*=\\s*%s\\s*$" % pkg.quals, line, flags=re.IGNORECASE
+            ):
                 logging.debug("qualifier match")
                 if in_action:
                     lmod_out.write("end\n\n")
@@ -725,9 +786,15 @@ class ups_to_spack:
                 continue
             if re.search("proddir\(|dodefaults", line, flags=re.IGNORECASE):
                 if in_action:
-                    tcl_out.write("setenv %s_DIR %s\n" % (pkg.prod.upper(), pkg.prod_dir))
-                    tcl_out.write("setenv %s_FQ_DIR %s\n" % (pkg.prod.upper(), pkg.prod_dir))
-                    lmod_out.write('setenv("%s_DIR","%s");\n' % (pkg.prod.upper(), pkg.prod_dir))
+                    tcl_out.write(
+                        "setenv %s_DIR %s\n" % (pkg.prod.upper(), pkg.prod_dir)
+                    )
+                    tcl_out.write(
+                        "setenv %s_FQ_DIR %s\n" % (pkg.prod.upper(), pkg.prod_dir)
+                    )
+                    lmod_out.write(
+                        'setenv("%s_DIR","%s");\n' % (pkg.prod.upper(), pkg.prod_dir)
+                    )
                     lmod_out.write(
                         'setenv("%s_FQ_DIR","%s");\n' % (pkg.prod.upper(), pkg.prod_dir)
                     )
@@ -742,11 +809,13 @@ class ups_to_spack:
                 d = self.unpack(line)
                 if in_action:
                     tcl_out.write("prepend-path %s %s\n" % (d["var"], d["value"]))
-                    lmod_out.write('prepend_path("%s","%s");\n' % (d["var"], d["value"]))
+                    lmod_out.write(
+                        'prepend_path("%s","%s");\n' % (d["var"], d["value"])
+                    )
                 continue
             if re.search("setup(required|optional)", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
-                cdep=self.convert_dependency(d["args"], top_flav, top_quals)
+                cdep = self.convert_dependency(d["args"], top_flav, top_quals)
                 if in_action and cdep:
                     tcl_out.write("module load %s \n" % cdep)
                     lmod_out.write('load("%s");\n' % cdep)
@@ -772,7 +841,9 @@ class ups_to_spack:
                         lmod_out.write('setenv("VERSION","%s");\n' % pkg.dotver)
 
                     if d["envvar"]:
-                        tcl_out.write("setenv %s [exec {%s}]\n" % (d["envvar"], d["cmd"]))
+                        tcl_out.write(
+                            "setenv %s [exec {%s}]\n" % (d["envvar"], d["cmd"])
+                        )
                         lmod_out.write('f=io.open("%s");\n' % d["cmd"])
                         lmod_out.write('setenv("%s",f.read());\n' % d["envvar"])
                         lmod_out.write("f.close();\n")
@@ -795,7 +866,9 @@ class ups_to_spack:
             if re.search("\\bif\\s*\\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
-                    tcl_out.write("if {![catch {exec %s} results options]} {\n" % d["args"])
+                    tcl_out.write(
+                        "if {![catch {exec %s} results options]} {\n" % d["args"]
+                    )
                     lmod_out.write('if (!os.execute("%s")) then\n' % d["args"])
                 continue
             if re.search("\\bend\\b", line, flags=re.IGNORECASE):
@@ -817,8 +890,8 @@ class ups_to_spack:
         tcl_out.close()
         lmod_out.close()
 
-    def get_dep_vers(self,prod):
-        
+    def get_dep_vers(self, prod):
+
         for pkg in self.packages:
             logging.debug("get_dep_vers: %s" % pkg)
             if pkg.prod == prod:
@@ -827,15 +900,15 @@ class ups_to_spack:
         return None
 
     def convert_dependency(self, setupargs, def_flav, def_qual):
-        setupargs=setupargs.strip()
+        setupargs = setupargs.strip()
         lsa = setupargs.split(" ")
-        prod=lsa[0]
+        prod = lsa[0]
         if len(lsa) == 1:
             logging.debug("lookup dep version...")
-            ver=get_dep_vers(setupargs)
+            ver = get_dep_vers(setupargs)
         else:
-            logging.debug("version %s"% lsa[1])
-            ver=lsa[1]
+            logging.debug("version %s" % lsa[1])
+            ver = lsa[1]
         dpkg = package(prod=prod, vers=ver, flav=def_falv, quals=def_qual)
         dhash = self.get_cached_hash(dpkg)
         if dhash:
@@ -846,10 +919,11 @@ class ups_to_spack:
     def parsed_ups_list(self, argv):
         ucmd = (
             "ups list -Kproduct:version:flavor:qualifiers:@prod_dir:@table_file "
-            + " ".join(argv) + " 2>/dev/null"
+            + " ".join(argv)
+            + " 2>/dev/null"
         )
         res = []
-        ulf = os.popen(ucmd, "r")                 
+        ulf = os.popen(ucmd, "r")
         for line in ulf:
             res.append(package(kline=line))
         ulf.close()
@@ -862,11 +936,13 @@ class ups_to_spack:
                 line.rstrip()
                 logging.debug("pud: line: %s" % line)
                 m = re.match("^[\|_ ]*", line)
-                depth = len(m.group(0))/3
-                p = package(depline=line, top_flav=pkg.flav, top_quals=pkg.quals, depth=depth)
+                depth = len(m.group(0)) / 3
+                p = package(
+                    depline=line, top_flav=pkg.flav, top_quals=pkg.quals, depth=depth
+                )
                 logging.debug("pud: pkg: %s" % p)
                 res.append(p)
-        res.sort(key=lambda x: -x.depth )
+        res.sort(key=lambda x: -x.depth)
         return res
 
     @log_call
@@ -875,13 +951,13 @@ class ups_to_spack:
         self.packages = self.parsed_ups_dependencies(pkgl)
         logging.debug("migrate_all: packages: %s" % repr(self.packages))
         for pkg in self.packages:
-            if pkg.depth == 0 and pkg.flav == 'NULL':
+            if pkg.depth == 0 and pkg.flav == "NULL":
                 for pkg.top_flav, pkg.top_quals in all_flavors:
                     self.migrate_one(pkg)
             else:
                 self.migrate_one(pkg)
 
+
 logging.basicConfig(level=logging.DEBUG)
 uts = ups_to_spack()
 uts.migrate_all(sys.argv[1:])
-
