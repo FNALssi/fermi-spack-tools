@@ -1,0 +1,38 @@
+#!/bin/sh
+
+export UPS_THIS_DB="$1"
+export SPACK_ROOT="$2"
+export PRODUCTS="$UPS_THIS_DB"
+export PATH=$SPACK_ROOT/bin:$PATH
+
+lastfile=$UPS_THIS_DB/.upsfiles/.last_ups_to_spack
+
+eval `grep SETUPS_DIR $UPS_THIS_DB/.upsfiles/dbconfig | sed -e 's/ //g'`
+
+source $SETUPS_DIR/setups
+
+if [ -r $lastfile ]
+then
+    timewindow="-newer $lastfile"
+else
+    timewindow=""
+fi
+
+touch $lastfile.new
+#
+# find recent entries in upsdb to migrate
+#
+
+prdlist=`find $UPS_THIS_DB $timewindow -print | sed -e 's;.*/;;'` 
+
+for p in $prdlist
+do
+    vlist=`find $UPS_THIS_DB/$p $timewindow -name '*.version' -print | sed -e 's;.*/;;' -e 's/.version//'`
+
+    for v in $vlist
+    do
+        ups_to_spack -a $p $v
+    done
+done
+
+mv $lastfile.new $lastfile

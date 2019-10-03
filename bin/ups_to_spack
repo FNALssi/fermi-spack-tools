@@ -443,6 +443,9 @@ class ups_to_spack:
             pkg.dotver,
         )
 
+        # tag directory as being made by .ups_to_spack
+        open("%s/.ups_to_spack" % basedir,"w").close()
+
         specfile = "%s/.spack/spec.yaml" % basedir
 
         if not os.access(os.path.dirname(specfile), os.R_OK):

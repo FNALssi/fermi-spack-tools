@@ -1,0 +1,32 @@
+#!/bin/sh
+
+set +e
+pkglist=$1
+export SPACK_ROOT=$2
+export PATH=$SPACK_ROOT/bin:$PATH
+
+spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
+spack_release=rollout
+binary_cache=https://spack-cache-1.fnal.gov/binaries/
+
+if [ ! -d $SPACK_ROOT ]
+then
+    d=`dirname $SPACK_ROOT`
+    b=`basename $SPACK_ROOT`
+    mkdir -p $d
+    cd $d
+    git clone $spack_repo $b
+    cd $b
+    git checkout $spack_release
+    spack mirror add --scope site fnal $binary_cache
+    spack install patchelf arch=linux-scientific7-x86_64
+    spack install py-machotools arch=linux-scientific7-x86_64
+fi
+
+comm -2 -3 ${pkglist} ${pkglist}.bak |
+  while read spec
+  do
+     spack buildcache install -u -a "$spec"
+  done
+
+cp ${pkglist} ${pkglist}.bak

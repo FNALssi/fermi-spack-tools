@@ -1,0 +1,60 @@
+#!/bin/sh
+
+arch="darwin-mojave-x86_64"
+arch="linux-scientific6-x86_64"
+
+set +e
+mkdir supercalifragilisticexpialidocious_padding
+cd    supercalifragilisticexpialidocious_padding
+pwd
+git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-spack spack
+cd spack 
+git checkout rollout
+set +x
+source share/spack/setup-env.sh
+case $arch in
+darwin*)
+    source /grid/fermiapp/products/larsoft/setups
+    setup clang v5_0_1
+    cat > etc/spack/compilers.yaml <<EOF
+compilers:
+- compiler:
+    environment: {}
+    extra_rpaths: []
+    flags: {}
+    modules: []
+    operating_system: mojave
+    paths:
+      cc: `which clang`
+      cxx: `which clang++`
+      f77: null
+      fc: null
+    spec: clang@5.1.0
+    target: x86_64
+
+EOF
+    ;;
+esac
+set -x
+ups flavor 
+spack arch
+which clang
+spack compiler list
+spack install "environment-modules arch=${arch}"
+spack install "lmod arch=${arch}"
+spack install "py-machotools arch=${arch}"
+spack buildcache create -u -a environment-modules
+spack buildcache create -u -a lmod
+spack buildcache create -u -a py-machotools
+tar crch="linux-scientific6-x86_64"
+
+set +e
+mkdir supercalifragilisticexpialidocious_padding
+cd    supercalifragilisticexpialidocious_padding
+pwd
+git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-spack spack
+cd spack
+git checkout rollout
+set +x
+source share/spack/setup-env.sh
+tar czvf ../../build_cache.tgz build_cache

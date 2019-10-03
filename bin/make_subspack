@@ -5,8 +5,21 @@
 src=$1
 dst=$2
 
+spack_release=rollout
+
 dstb=`basename $dst`
 dstb=`dirname $dst`
+
+for config_yaml in $src/etc/spack/default/config.yaml $src/etc/spack/config.yaml 
+do
+    if [ -r $config_yaml ]
+    then
+        install_tree_path=`grep install_tree: $config_yaml`
+        install_tcl_path=`grep tcl: $config_yaml`
+    fi
+done
+install_tree_path=${install_tree_path:-$src/opt/spack}
+install_tcl_path=${install_tcl_path:-$src/share/spack/modules}
 
 test -d $dstb || mkdir -p $dstb
 
@@ -14,14 +27,14 @@ cd $dstb
 git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-spack $dst
 
 cd $dst
-git checkout develop
+git checkout $spack_release
 
 cat >> etc/spack/upstreams.yaml <<EOF
 
  upstreams:
     spack-instance-1:
-      install_tree: $src/opt/spack
+      install_tree: $install_tree_path
       modules:
-        tcl: $src/share/spack/modules
+        tcl: $install_tcl_path
 EOF
 
