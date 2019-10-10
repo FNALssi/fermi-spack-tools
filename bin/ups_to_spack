@@ -196,8 +196,8 @@ class package:
             return "Linux64bit+3.10-2.17"
         return "Linux64bit+3.10-2.17"
 
-    @log_call
     @remember
+    @log_call
     def spack_arch(self):
 
         self.topbits()
@@ -234,9 +234,9 @@ class package:
 
         if f_os[:3] == "Lin":
             tf_2 = re.sub(".*-2.17", "scientific7", tf_2)
-            tf_2 = re.sub(".*-2.12", "scientific6", tf_2)
-            tf_2 = re.sub(".*-2.6", "scientific5", tf_2)
-            tf_2 = re.sub("^[0-9].*", "scientific5", tf_2)
+            tf_2 = re.sub(".*-2.12", "scientificfermi6", tf_2)
+            tf_2 = re.sub(".*-2.6", "scientificfermi5", tf_2)
+            tf_2 = re.sub("^[0-9].*", "scientificfermi5", tf_2)
 
         # excessive intel-centrism...
         if f_os.find("64bit") > 0:
@@ -271,6 +271,9 @@ class package:
         if self.top_quals == None and self.top_flav == None:
             self.top_quals = self.quals
             self.top_flav = self.flav
+
+        if self.top_flav == "NULL":
+            raise AssertionError("Should not have a NULL top flavor!")
 
         if self.ver:
             self.dotver = self.ver.replace("v", "").replace("b", "").replace("_", ".")
@@ -409,7 +412,7 @@ class ups_to_spack:
 
         for line in pkg.dependlines():
             if re.match("^\\|__[a-z]", line):
-                dpkg = package(depline=line)
+                dpkg = package(depline=line, top_flav = pkg.top_flav, top_quals=pkg.top_quals)
                 # if we're writing a recipe, add the dependency, to it
                 if recipe_f:
                     recipe_f.write(
@@ -443,13 +446,14 @@ class ups_to_spack:
             pkg.dotver,
         )
 
-        # tag directory as being made by .ups_to_spack
-        open("%s/.ups_to_spack" % basedir,"w").close()
 
         specfile = "%s/.spack/spec.yaml" % basedir
 
         if not os.access(os.path.dirname(specfile), os.R_OK):
             os.makedirs(os.path.dirname(specfile))
+
+        # tag directory as being made by .ups_to_spack
+        open("%s/.ups_to_spack" % basedir,"w").close()
 
         logging.debug("making symlinks in basedir %s" % basedir)
         # link in bin/ lib/ etc. dirs from ups directory so links paths might work
@@ -505,7 +509,7 @@ class ups_to_spack:
                 if re.match("^\\|__[a-z]", line):
                     # it is an immediate dependency
                     logging.debug("immediate dependency: |%s| " % line)
-                    dpkg = package(depline=line)
+                    dpkg = package(depline=line, top_flav = pkg.top_flav, top_quals = pkg.top_quals)
 
                     if not dpkg.prod:
                         continue
@@ -527,7 +531,9 @@ class ups_to_spack:
             specl = []
             for line in dependlines:
 
-                dpkg = package(depline=line)
+                logging.debug("general dependency: |%s| " % line)
+
+                dpkg = package(depline=line, top_flav = pkg.top_flav, top_quals=pkg.top_quals)
 
                 #
                 # again dependencies should have already been migrated, so this should just
@@ -545,7 +551,7 @@ class ups_to_spack:
 
                 specl.append(
                     {
-                        pkg.prod: {
+                        dpkg.prod: {
                             "version": dpkg.dotver,
                             "hash": dhash,
                             "parameters": {
@@ -606,6 +612,7 @@ class ups_to_spack:
                 os.rename(basedir, dest)
         else:
             logging.error("Error: unable to get hash for %s" % pkg)
+            sys.exit(1)
             os.system("rm -rf %s" % basedir)
 
         # now if we re-run spack_reindex, we shouldn't see any errors...
@@ -943,16 +950,23 @@ class ups_to_spack:
     def parsed_ups_dependencies(self, pkgl):
         res = []
         for pkg in pkgl:
-            for line in ups_depend(pkg.prod, pkg.ver, pkg.flav, pkg.quals):
-                line.rstrip()
-                logging.debug("pud: line: %s" % line)
-                m = re.match("^[\|_ ]*", line)
-                depth = len(m.group(0)) / 3
-                p = package(
-                    depline=line, top_flav=pkg.flav, top_quals=pkg.quals, depth=depth
-                )
-                logging.debug("pud: pkg: %s" % p)
-                res.append(p)
+            if pkg.flav == "NULL":
+                flist = self.all_flavors
+            else:
+                flist = [ (pkg.flav, pkg.quals) ]
+                
+        for hf in flist:
+            for pkg in pkgl:
+                for line in ups_depend("-H %s %s" % (hf[0], pkg.prod) , pkg.ver, pkg.flav, pkg.quals):
+                    line.rstrip()
+                    logging.debug("pud: line: %s" % line)
+                    m = re.match("^[\|_ ]*", line)
+                    depth = len(m.group(0)) / 3
+                    p = package(
+                        depline=line, top_flav=hf[0], top_quals=hf[1], depth=depth
+                    )
+                    logging.debug("pud: pkg: %s" % p)
+                    res.append(p)
         res.sort(key=lambda x: -x.depth)
         return res
 
@@ -962,11 +976,7 @@ class ups_to_spack:
         self.packages = self.parsed_ups_dependencies(pkgl)
         logging.debug("migrate_all: packages: %s" % repr(self.packages))
         for pkg in self.packages:
-            if pkg.top_flav == "NULL":
-                for pkg.top_flav, pkg.top_quals in self.all_flavors:
-                    self.migrate_one(pkg)
-            else:
-                self.migrate_one(pkg)
+            self.migrate_one(pkg)
 
 
 logging.basicConfig(level=logging.DEBUG)
