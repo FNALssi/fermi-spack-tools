@@ -1,13 +1,14 @@
 #!/bin/sh
 
-export UPSDB="$1"
-export SPACK_ROOT="$2"
-export PRODUCTS="$UPS_THIS_DB"
+export SPACK_ROOT="$1"
 export PATH=$SPACK_ROOT/bin:$PATH
 
-export UPS_THIS_DB=$UPSDB
-
 lastfile=$SPACK_ROOT/var/spack/.last_ups_to_spack
+dbfile=$SPACK_ROOT/var/spack/.ups_mirror_db
+
+export UPSDB=`cat $dbfile`
+export PRODUCTS="$UPS_THIS_DB"
+export UPS_THIS_DB=$UPSDB
 
 eval `grep SETUPS_DIR $UPSDB/.upsfiles/dbconfig | sed -e 's/ //g'`
 

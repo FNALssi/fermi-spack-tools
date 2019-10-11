@@ -401,10 +401,13 @@ class ups_to_spack:
         if not os.access(recipedir + "/package.py", os.R_OK):
             # there has to be a recipe for the package for spack to
             # look at it, so make one that's (just) good enough to pass
+            # pakage names are BiCapitalized so fife_utils -> FifeUtils
+            pkgname = pkg.prod.capitalize()
+            pkgname = re.sub("_([a-z])", lambda m: m(1).capitalize(), pkgname)
             recipe_f = open(recipedir + "/package.py", "w")
             recipe_f.write(
                 "from spack import *\n\nclass %s(AutotoolsPackage):\n    pass\n"
-                % pkg.prod.capitalize()
+                % pkgname
             )
             # recipe_f.close() -- no! do this later after adding dependencies
         else:
