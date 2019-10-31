@@ -18,7 +18,15 @@ if [ -r $lastfile ]
 then
     timewindow="-newer $lastfile"
 else
-    timewindow=""
+    if [ -r $db/.initial_ups_to_spack.tgz ]
+    then
+        cd $SPACK_ROOT
+        tar xzvf $db/.initial_ups_to_spack.tgz 
+        touch $lastfile.new
+        exit 0
+    else
+        timewindow=""
+    fi
 fi
 
 touch $lastfile.new
