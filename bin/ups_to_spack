@@ -315,8 +315,9 @@ class ups_to_spack:
         self.pkglist = None
         if pdr:
             ll = pdr.split("/")
-            self.pdrl = ll[1:]
             self.pdrn = int(ll[0])+1
+            ll[0] = ''
+            self.pdrl = ll
         else:
             self.pdrl = None
         self.all_flavors = (
