@@ -1,0 +1,39 @@
+#!/bin/sh
+
+case "x$0" in
+x*/*) dir=`echo $0 | sed -e s;\(.*\)/\([^/]*\);\1/..;` ;;
+x*)   dir=.. ;;
+esac
+
+os=spack arch --os
+
+src=$dir/template/packagelist
+dst=$1/etc/$os/packages.yaml
+
+if [ -x /usr/bin/gcc ] 
+then
+    compiler=`gcc -v  | tail -1 | sed -e 's/ version /@/' -e 's/ .*//'`
+elif [ -x clang ]
+    compiler=`clang -v | head -1 | sed -e 's/ version /@/' -e 's/ .*//'`
+fi
+
+exec 3>$dst
+echo "packages:" >&3
+
+if [ "x$compiler" != x ]
+then
+    echo "  all:"                     >&3
+    echo "    compiler: [$compiler]"  >&3
+fi
+
+for p in `cat $src`
+do
+    v=`getv $p`
+    if [ x$v = x ]
+    then
+        continue
+    fi
+    echo "  $p:"                >&3
+    echo "    paths:"           >&3
+    echo "      $p@$v: /usr"    >&3
+done

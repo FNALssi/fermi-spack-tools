@@ -46,7 +46,6 @@ spack install "py-machotools arch=${arch}"
 spack buildcache create -u -a environment-modules
 spack buildcache create -u -a lmod
 spack buildcache create -u -a py-machotools
-tar crch="linux-scientific6-x86_64"
 
 set +e
 mkdir supercalifragilisticexpialidocious_padding
