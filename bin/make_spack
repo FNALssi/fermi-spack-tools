@@ -1,0 +1,90 @@
+#!/bin/sh
+
+#
+# where to git clone spack from, and what branch/release
+#
+
+spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
+spack_release=rollout
+
+#
+# binary cache to use
+#
+
+binary_cache=https://spack-cache-1.fnal.gov/binaries/
+
+install_latest() {
+    pkg="$1"
+    pkg_ver=`spack buildcache list "$pkg $plat" | tail -1`
+    echo "latest $pkg is $pkg_ver"
+    spack buildcache install -a -u -m "$pkg_ver $plat"
+}
+
+#
+# Spack needs patchelf installed to do binary installs:
+# which creates a catch-22 when trying to do a binary install of patchelf.
+# However, it turns out we don't *actually* need to patchelf patchelf itself, 
+# as it only relies on system libraries.
+# So we can lie to spack about there being a system patchelf long enough to
+# install patchelf, and then take the lie away.
+#
+# I have a patch for spack that obviates this... then you can just
+# install with spack buildcache install patchelf...
+#
+
+bootstrap_patchelf() {
+    pf=$SPACK_ROOT/etc/packages.yaml
+    if [ -r $pf ] 
+    then
+       mv $pf $pf.bak$$
+    fi
+
+cat > $pf <<EOF
+packages:
+  patchelf:
+    paths:
+      patchelf@0.00:
+EOF
+    mkdir /tmp/.pth$$
+    PATH="/tmp/.pth$$:$PATH"
+    echo ":" > /tmp/.pth$$/patchelf
+    chmod +x /tmp/.pth$$/patchelf
+
+    install_latest patchelf
+
+    rm $pf
+
+    if [ -r $pf.bak$$ ] 
+    then
+       mv $pf.bak$$ $pf 
+    fi
+    rm -rf /tmp/.pth$$
+
+    patchelf_dir=`spack find --paths patchelf | tail -1 | sed -e 's/.* //'`
+    PATH="$patchelf_dir/bin:$PATH"
+}
+
+bootstrap_spack() {
+  
+    bootstrap_patchelf
+    install_latest environment-modules
+    install_latest lmod
+    install_latest py-machotools
+}
+
+create_spack() {
+    d=`dirname $SPACK_ROOT`
+    b=`basename $SPACK_ROOT`
+    mkdir -p $d
+    cd $d
+    git clone $spack_repo $b
+    cd $b
+    git checkout $spack_release
+    spack mirror add --scope site fnal $binary_cache
+    bootstrap_spack
+}
+
+export SPACK_ROOT=$1
+export PATH=$SPACK_ROOT/bin:$PATH
+export plat="target=`uname -i` os=`spack arch --operating-system`"
+create_spack
