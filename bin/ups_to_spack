@@ -436,7 +436,7 @@ class ups_to_spack:
             recipe_f.close()
 
     def do_pdr(self, path):
-        if self.pdrl:
+        if self.pdrl and path:
             dl = path.split("/")
             dl = self.pdrl + dl[self.pdrn:]
             dest = '/'.join(dl)
@@ -477,15 +477,18 @@ class ups_to_spack:
         # tag directory as being made by .ups_to_spack
         open("%s/.ups_to_spack" % basedir,"w").close()
 
-        logging.debug("making symlinks in basedir %s" % basedir)
+        logging.debug("making symlinks in basedir %s from %s" % (basedir,pkg.prod_dir))
         # link in bin/ lib/ etc. dirs from ups directory so links paths might work
         if pkg.prod_dir:
             for d in glob.glob("%s/*" % pkg.prod_dir):
                 if os.path.isdir(d):
                     try:
-                        dest = self.do_pdr(os.path.basename(d))
-                        os.symlink(d, "%s/%s" % (basedir,dest))
+                        destbase = os.path.basename(d)
+                        destdir = self.do_pdr(os.path.dirname(d))
+                        logging.debug(" symlink(%s/%s, %s/%s)" % (destdir,destbase, basedir, destbase))
+                        os.symlink("%s/%s" % (destdir,destbase), "%s/%s" % (basedir, destbase))
                     except:
+                        logging.exception("do_pdr/symlink")
                         pass
 
         tfl = pkg.spack_arch().split("-")
@@ -667,8 +670,8 @@ class ups_to_spack:
     def fix_ups_vars(self, tline, pkg):
         """ replace common ups table file variables """
         return (
-            tline.replace("${UPS_PROD_DIR}", do_pdr(pkg.prod_dir))
-            .replace("${UPS_UPS_DIR}", do_pdr(pkg.prod_dir) + "/ups")
+            tline.replace("${UPS_PROD_DIR}", self.do_pdr(pkg.prod_dir))
+            .replace("${UPS_UPS_DIR}", self.do_pdr(pkg.prod_dir) + "/ups")
             .replace("${UPS_PROD_VERSION}", pkg.ver)
             .replace("${UPS_SOURCE}", "source")
             .replace("$", "\\$")
@@ -1021,9 +1024,11 @@ class ups_to_spack:
 logging.basicConfig(level=logging.DEBUG)
 pdr = None
 
-if sys.argv[1][:5] == "--pdr=" :
-    pdr = sys.argv[1][5:]
-    sys.argv = sys.argv[:0] + sys.argv[2:]
+print("check: %s" %  sys.argv[1][:5])
+if sys.argv[1][:6] == "--pdr=" :
+    pdr = sys.argv[1][6:]
+    print("pdr=%s" % pdr)
+    sys.argv = sys.argv[:1] + sys.argv[2:]
 
 uts = ups_to_spack(pdr=pdr)
 
