@@ -1,19 +1,23 @@
 #!/bin/sh
 
 case "x$0" in
-x*/*) dir=`echo $0 | sed -e s;\(.*\)/\([^/]*\);\1/..;` ;;
+x*/*) dir=`echo $0 | sed -e 's;\(.*\)/\([^/]*\);\1/..;'` ;;
 x*)   dir=.. ;;
 esac
 
-os=spack arch --os
+os=`spack arch -o`
 
-src=$dir/template/packagelist
-dst=$1/etc/$os/packages.yaml
+src=$dir/templates/packagelist
+optf=$dir/templates/package_opts
+dst=$1/etc/spack/$os/packages.yaml
+
+mkdir -p `dirname $dst`
 
 if [ -x /usr/bin/gcc ] 
 then
     compiler=`gcc -v  | tail -1 | sed -e 's/ version /@/' -e 's/ .*//'`
-elif [ -x clang ]
+elif [ -x /usr/bin/clang ]
+then
     compiler=`clang -v | head -1 | sed -e 's/ version /@/' -e 's/ .*//'`
 fi
 
@@ -26,14 +30,21 @@ then
     echo "    compiler: [$compiler]"  >&3
 fi
 
+getv() {
+   rpm -q $1 | tail -1 | grep -v 'is not installed' | sed -e 's/[^-]*-//' -e 's/-.*//'
+}
+
 for p in `cat $src`
 do
     v=`getv $p`
-    if [ x$v = x ]
+    if [ "x$v" = x ]
     then
+        # not found...
         continue
     fi
+    opts=`grep "^$p\s" $optf | sed -e 's/.*\t//'`
+   
     echo "  $p:"                >&3
     echo "    paths:"           >&3
-    echo "      $p@$v: /usr"    >&3
+    echo "      $p@$v$opts: /usr"    >&3
 done
