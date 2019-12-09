@@ -80,11 +80,31 @@ create_spack() {
     git clone $spack_repo $b
     cd $b
     git checkout $spack_release
+    $add_config
     spack mirror add --scope site fnal $binary_cache
     bootstrap_spack
 }
 
-export SPACK_ROOT=$1
+if [ "x$1" = "x-u"  ]
+then
+    echo "setting up for unified layout under $2"
+
+    spackbindir=`echo $0 | sed -e 's;make_spack;;'`
+    export SPACK_ROOT=$2/spack/$spack_release/NULL
+    echo "source $SPACK_ROOT/share/spack/setup-env.sh" > $2/setup-env.sh
+    add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
+else if [ "x$1" = "x-t"  ]
+then
+    echo "setting up for traditional layout under $2"
+    spackbindir=`echo $0 | sed -e 's;make_spack;;'`
+    export SPACK_ROOT=$2/prd/spack/$spack_release/NULL
+    echo "source $SPACK_ROOT/share/spack/setup-env.sh" > $2/setup-env.sh
+    add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
+else
+    export SPACK_ROOT=$1
+    add_config=:
+fi
+
 export PATH=$SPACK_ROOT/bin:$PATH
 export plat="target=`uname -i` os=`spack arch --operating-system`"
 create_spack
