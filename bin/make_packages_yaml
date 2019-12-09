@@ -30,9 +30,29 @@ then
     echo "    compiler: [$compiler]"  >&3
 fi
 
-getv() {
-   rpm -q $1 | tail -1 | grep -v 'is not installed' | sed -e 's/[^-]*-//' -e 's/-.*//'
-}
+
+case `uname -s` in
+Linux)
+case `lsb_release -i` in
+*Ubuntu)
+    getv() {
+       apt list $1 2>/dev/null | grep '\[installed\]'| sed -e 's/[^ ]* //' -e 's/.*://' -e 's/[+-].*//'
+    }
+;;
+*Scientific|*Centos|*RedHat*)
+    getv() {
+       rpm -q $1 | tail -1 | grep -v 'is not installed' | sed -e 's/[^-]*-//' -e 's/-.*//'
+    }
+    ;;
+esac
+;;
+Darwin)
+    getv() {
+       # so pkgutil is useless at this specificity...
+       pkgutil --pkg="${1}.*" 
+    }
+    ;;
+esac
 
 for p in `cat $src`
 do

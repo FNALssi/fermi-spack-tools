@@ -5,10 +5,6 @@ pkglist=$1
 export SPACK_ROOT=$2
 export PATH=$SPACK_ROOT/bin:$PATH
 
-spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
-spack_release=rollout
-binary_cache=https://spack-cache-1.fnal.gov/binaries/
-
 if [ ! -d $SPACK_ROOT ]
 then
     make_spack $SPACK_ROOT
@@ -16,9 +12,13 @@ fi
 
 export PATH=$SPACK_ROOT/bin:$PATH
 comm -2 -3 ${pkglist} ${pkglist}.bak |
-  while read spec
+  while read what spec
   do
-     spack buildcache install -u -a "$spec"
+     case $what in
+     i) spack buildcache install -u -a "$spec" ;;
+     t) cd $SPACK_ROOT && tar xzf $spec;;
+     r) spack remove "$spec";;
+     esac
   done
 
 cp ${pkglist} ${pkglist}.bak

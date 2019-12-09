@@ -282,31 +282,35 @@ class package:
             self.dotver = self.ver.replace("v", "").replace("b", "").replace("_", ".")
 
     @log_call
-    def spack_comp(self):
+    def spack_comp(self, splitpart = -1):
         self.topbits()
         if self.top_quals.find("c2") > 0:
-            return "clang-5.0.1"
+            res = "clang-5.0.1"
         if self.top_quals.find("e17") > 0:
-            return "gcc-7.3.0"
+            res = "gcc-7.3.0"
         if self.top_quals.find("e15") > 0:
-            return "gcc-6.4.0"
+            res = "gcc-6.4.0"
         if self.top_quals.find("e14") > 0:
-            return "gcc-6.3.0"
+            res = "gcc-6.3.0"
         if self.top_quals.find("e10") > 0:
-            return "gcc-4.9.3"
+            res = "gcc-4.9.3"
         if self.top_quals.find("e7") > 0:
-            return "gcc-4.9.2"
+            res = "gcc-4.9.2"
         if self.top_quals.find("e6") > 0:
-            return "gcc-4.9.1"
+            res = "gcc-4.9.1"
         if self.top_quals.find("e5") > 0:
-            return "gcc-4.8.2"
+            res = "gcc-4.8.2"
         if self.top_quals.find("e4") > 0:
-            return "gcc-4.8.1"
+            res = "gcc-4.8.1"
         if self.top_flav.find("2.17") > 0:
-            return "gcc-4.8.5"
+            res = "gcc-4.8.5"
         if self.top_flav.find("2.12") > 0:
-            return "gcc-4.4.7"
-        return "gcc-4.1.1"  # sl5 compiler by default
+            res = "gcc-4.4.7"
+        res = "gcc-4.1.1"  # sl5 compiler by default
+        if splitpart == -1:
+            return res
+        else:
+            return res.split("-")[splitpart]
 
 
 class ups_to_spack:
@@ -444,6 +448,54 @@ class ups_to_spack:
             dest = path
         return dest
 
+    def get_spack_config(self, tag):
+        """
+           look up a line in the spack config 
+        """
+        sr = os.environ.get("SPACK_ROOT")
+        for fn in [ "%s/etc/spack/config.yaml" % sr, "%s/etc/spack/defaults/config.yaml" % sr ]:
+            try:
+                f = open(fn, "r")
+            except:
+                continue
+
+            for line in f.readlines():
+                pos = line.find("%s:" % tag)
+                if pos >= 0:
+                    val = line[(pos + len(tag)+1):]
+                    f.close()
+                    return val.strip()
+            f.close()
+        return ""
+
+    def get_basedir(self, pkg, thash = ""):
+
+        # find our install path...
+        install_tree = self.get_spack_config('install_tree').strip(' "')
+        install_path_scheme = self.get_spack_config('install_path_scheme').strip(' "')
+        basedir_fmt = "%s/%s" % (install_tree, install_path_scheme)
+
+        #convert to %(name)s ...
+
+        basedir_fmt = basedir_fmt.replace("${","%(" ).replace("}", ")s" )
+        basedir_fmt = re.sub("\$([a-z][a-z_]*)", "%(\\1)s" , basedir_fmt)
+
+        logging.debug("basedir_fmt %s " % (basedir_fmt))
+
+        basedir = (basedir_fmt % {
+            "spack": os.environ["SPACK_ROOT"],
+            "ARCHITECTURE": pkg.spack_arch(),
+            "COMPILERNAME": pkg.spack_comp(0),
+            "COMPILERVER": pkg.spack_comp(1),
+            "PACKAGE": pkg.prod,
+            "VERSION": pkg.dotver,
+            "HASH": thash,
+        })
+
+        
+        logging.debug("basedir is now %s " % (basedir))
+        return basedir
+
     @log_call
     def make_spec(self, pkg):
         """ 
@@ -460,14 +512,7 @@ class ups_to_spack:
         pkg.topbits()
         pkg.prodbits()
 
-        basedir = "%s/opt/spack/%s/%s/%s-%s" % (
-            os.environ["SPACK_ROOT"],
-            pkg.spack_arch(),
-            pkg.spack_comp(),
-            pkg.prod,
-            pkg.dotver,
-        )
-
+        basedir = self.get_basedir(pkg)
 
         specfile = "%s/.spack/spec.yaml" % basedir
 
@@ -505,8 +550,8 @@ class ups_to_spack:
                             "target": tfl[2],
                         },
                         "compiler": {
-                            "name": pkg.spack_comp().split("-")[0],
-                            "version": pkg.spack_comp().split("-")[1],
+                            "name": pkg.spack_comp(0),
+                            "version": pkg.spack_comp(1),
                         },
                         "namespace": "builtin",
                         "parameters": {
@@ -595,8 +640,8 @@ class ups_to_spack:
                             },
                             "namespace": "builtin",
                             "compiler": {
-                                "name": pkg.spack_comp().split("-")[0],
-                                "version": pkg.spack_comp().split("-")[1],
+                                "name": pkg.spack_comp(0),
+                                "version": pkg.spack_comp(1),
                             },
                         }
                     }
@@ -613,17 +658,11 @@ class ups_to_spack:
     def reindex_for_hash_and_rename(self, pkg):
         idir, thash = spack_reindex()
 
-        basedir = "%s/opt/spack/%s/%s/%s-%s" % (
-            os.environ["SPACK_ROOT"],
-            pkg.spack_arch(),
-            pkg.spack_comp(),
-            pkg.prod,
-            pkg.dotver,
-        )
+        basedir = self.get_basedir(pkg)
 
         if thash:
 
-            dest = "%s-%s" % (basedir, thash)
+            dest = self.get_basedir(pkg, thash)
 
             if os.path.exists(dest):
                 logging.debug(
