@@ -8,7 +8,7 @@
 config:
   install_tree: $spack/../../..
 
-  install_path_scheme: "%{PACKAGE}/${VERSION}/${ARCHITECTURE}-${COMPILERNAME}-${COMPILERVER}-${HASH}"
+  install_path_scheme: "${PACKAGE}/${VERSION}/${ARCHITECTURE}-${COMPILERNAME}-${COMPILERVER}-${HASH}"
 
   # Locations where different types of modules should be installed.
   module_roots:
