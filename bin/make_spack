@@ -15,9 +15,14 @@ binary_cache=https://spack-cache-1.fnal.gov/binaries/
 
 install_latest() {
     pkg="$1"
-    pkg_ver=`spack buildcache list "$pkg $plat" | tail -1`
-    echo "latest $pkg is $pkg_ver"
-    spack buildcache install -a -u -m "$pkg_ver $plat"
+    if $use_buildcache
+    then 
+        pkg_ver=`spack buildcache list "$pkg $plat" | tail -1`
+        echo "latest $pkg is $pkg_ver"
+        spack buildcache install -a -m "$pkg_ver $plat"
+    else
+        spack install "$pkg $plat"
+    fi
 }
 
 #
@@ -84,20 +89,25 @@ create_spack() {
     $add_config
     export plat="target=`uname -i` os=`spack arch --operating-system`"
     spack mirror add --scope site fnal $binary_cache
+    spack buildcache keys --install --trust --force
     bootstrap_spack
 }
 
 
 set -x 
 
-if [ "x$1" = "x-u"  ]
+if [ "x$1" = "x--no-buildcache" ]
 then
-    echo "setting up for unified layout under $2"
+    use_buildcache=false
+    shift
+else
+    use_buildcache=true
+fi
 
-    spackbindir=`echo $0 | sed -e 's;make_spack;;'`
-    export SPACK_ROOT=$2/spack/$spack_release/NULL
-    echo "source $SPACK_ROOT/share/spack/setup-env.sh" > $2/setup-env.sh
-    export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
+if [ "x$1" = "x-p" ]
+    echo "setting up for plain spack"
+    export SPACK_ROOT=$1
+    add_config=:
 elif [ "x$1" = "x-t"  ]
 then
     echo "setting up for traditional layout under $2"
@@ -105,9 +115,14 @@ then
     export SPACK_ROOT=$2/prd/spack/$spack_release/NULL
     echo "source $SPACK_ROOT/share/spack/setup-env.sh" > $2/setup-env.sh
     export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
-else
-    export SPACK_ROOT=$1
-    add_config=:
+elif [ "x$1" = "x-u"  ]
+then
+    echo "setting up for unified layout under $2"
+
+    spackbindir=`echo $0 | sed -e 's;make_spack;;'`
+    export SPACK_ROOT=$2/spack/$spack_release/NULL
+    echo "source $SPACK_ROOT/share/spack/setup-env.sh" > $2/setup-env.sh
+    export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
 fi
 
 export PATH=$SPACK_ROOT/bin:$PATH
