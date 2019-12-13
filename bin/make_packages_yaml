@@ -30,6 +30,14 @@ then
     echo "    compiler: [$compiler]"  >&3
 fi
 
+runversion() {
+   # try to get version by running executable --version
+   # in some cases this works due to error messages...
+   $1 --version 2>&1 | 
+      grep -i $1 | 
+      head -1 | 
+      sed -e 's/[^0-9]*//' -e 's/ .*//'
+}
 
 case `uname -s` in
 Linux)
@@ -48,8 +56,17 @@ esac
 ;;
 Darwin)
     getv() {
-       # so pkgutil is useless at this specificity...
-       pkgutil --pkg="${1}.*" 
+       case x$1 in
+       xlibtool) 
+           # looks like a library, but its not...
+           runversion $1
+           ;;
+       xlib*) 
+           otool -L /usr/lib/$1 | grep "$1.*current version" |  sed -e 's/.*version//' -e 's/)//'
+           ;;
+       x*)
+           runversion $1
+           ;;
     }
     ;;
 esac

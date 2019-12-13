@@ -29,6 +29,9 @@ git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-spack $dst
 cd $dst
 git checkout $spack_release
 
+spackbindir=`echo $0 | sed -e 's;make_subspack;;'`
+cp $spackbindir/../templates/config.yaml.unified etc/spack/config.yaml"
+
 cat >> etc/spack/upstreams.yaml <<EOF
 
  upstreams:

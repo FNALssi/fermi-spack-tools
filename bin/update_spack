@@ -5,6 +5,10 @@ pkglist=$1
 export SPACK_ROOT=$2
 export PATH=$SPACK_ROOT/bin:$PATH
 
+spackbindir=`echo $0 | sed -e 's;update_spack;;'`
+
+export PATH=$SPACK_ROOT/bin:$spackbindir:$PATH
+
 if [ ! -d $SPACK_ROOT ]
 then
     make_spack -u $SPACK_ROOT/../../..
@@ -12,15 +16,19 @@ then
     exit
 fi
 
-export PATH=$SPACK_ROOT/bin:$PATH
-comm -2 -3 ${pkglist} ${pkglist}.bak |
+if [ ! -r ${pkglist}.done ]
+then 
+    :> ${pkglist}.done
+fi
+
+fgrep -v -f ${pkglist}.done ${pkglist} |
   while read what spec
   do
+     echo "doing: $what $spec"
      case $what in
      i) spack buildcache install -a "$spec" ;;
-     t) cd $SPACK_ROOT && tar xzf $spec;;
+     t) cd $SPACK_ROOT/../../.. && tar xzf $spec; spack reindex;;
      r) spack uninstall "$spec";;
      esac
+     [ $? == 0 ] && echo "$what $spec" >> ${pkglist}.done
   done
-
-cp ${pkglist} ${pkglist}.bak

@@ -405,20 +405,34 @@ class ups_to_spack:
 
     @log_call
     def make_recipe(self, pkg):
-        recipedir = "%s/var/spack/repos/builtin/packages/%s" % (
+        builtin_recipedir = "%s/var/spack/repos/builtin/packages/%s" % (
             os.environ["SPACK_ROOT"],
             pkg.prod,
         )
-        if not os.access(recipedir, os.R_OK):
-            os.makedirs(recipedir)
+        uts_recipedir = "%s/ups_to_spack/packages/%s" % (
+            os.environ["SPACK_ROOT"],
+            pkg.prod,
+        )
+        uts_repo_yaml = "%s/ups_to_spack/repo.yaml" % os.environ["SPACK_ROOT"]
+        
+        # check that we have a ups_to_spack repository...
+        if not os.access(uts_repo_yaml, os.R_OK):
+            os.system("spack repo create ups_to_spack")
+            os.system("spack repo add %s/ups_to_spack" % os.environ["SPACK_ROOT"] )
+       
+        if not os.access(builtin_recipedir, os.R_OK):
+            if not os.access(uts_recipedir, os.R_OK):
+                os.makedirs(uts_recipedir)
 
-        if not os.access(recipedir + "/package.py", os.R_OK):
+        if (not os.access(builtin_recipedir + "/package.py", os.R_OK) && 
+            not os.access(uts_recipedir + "/package.py", os.R_OK)):
+
             # there has to be a recipe for the package for spack to
             # look at it, so make one that's (just) good enough to pass
             # pakage names are BiCapitalized so fife_utils -> FifeUtils
             pkgname = pkg.prod.capitalize()
             pkgname = re.sub("_([a-z])", lambda m: m.group(1).capitalize(), pkgname)
-            recipe_f = open(recipedir + "/package.py", "w")
+            recipe_f = open(utsrecipedir + "/package.py", "w")
             recipe_f.write(
                 "from spack import *\n\nclass %s(AutotoolsPackage):\n    pass\n"
                 % pkgname

@@ -1,6 +1,15 @@
 #!/bin/sh
 
-gpghome=${gpghome:-$SPACK_ROOT/opt/spack/gpg}
+# try to find a keyring to use..
+for d in $SPACK_ROOT/opt/spack/gpg $HOME/.gnupg/spack $HOME/.gnupg
+do
+    if [ -d $d ]
+    then
+        defgpghome=$d
+    fi
+done
+
+gpghome=${gpghome:-$defgpghome}
 
 for bci in $*
 do
