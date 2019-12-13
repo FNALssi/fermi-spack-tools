@@ -81,16 +81,24 @@ create_spack() {
     d=`dirname $SPACK_ROOT`
     b=`basename $SPACK_ROOT`
     mkdir -p $d
-    cd $d
-    git clone $spack_repo $b
-    cd $b
-    git checkout $spack_release
-    echo running: $add_config
-    $add_config
-    export plat="target=`uname -i` os=`spack arch --operating-system`"
-    spack mirror add --scope site fnal $binary_cache
-    spack buildcache keys --install --trust --force
-    bootstrap_spack
+    if cd $d
+    then 
+        git clone $spack_repo $b
+        if cd $b
+        then 
+            git checkout $spack_release
+            echo running: $add_config
+            $add_config
+            export plat="target=`uname -i` os=`spack arch --operating-system`"
+            spack mirror add --scope site fnal $binary_cache
+            spack buildcache keys --install --trust --force
+            bootstrap_spack
+        else
+            return 1
+        fi
+    else
+        return 1
+    fi
 }
 
 
@@ -105,10 +113,11 @@ else
 fi
 
 if [ "x$1" = "x-p" ]
+then
     echo "setting up for plain spack"
     export SPACK_ROOT=$1
     add_config=:
-elif [ "x$1" = "x-t"  ]
+elif [ "x$1" = "x-t" ]
 then
     echo "setting up for traditional layout under $2"
     spackbindir=`echo $0 | sed -e 's;make_spack;;'`
@@ -119,7 +128,7 @@ elif [ "x$1" = "x-u"  ]
 then
     echo "setting up for unified layout under $2"
 
-    spackbindir=`echo $0 | sed -e 's;make_spack;;'`
+    spackbindir=`echo $0 | sed -e 's;make_spack;;' `
     export SPACK_ROOT=$2/spack/$spack_release/NULL
     echo "source $SPACK_ROOT/share/spack/setup-env.sh" > $2/setup-env.sh
     export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"

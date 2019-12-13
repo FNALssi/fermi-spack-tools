@@ -1,6 +1,6 @@
 #!/bin/sh
 
-gpghome=$SPACK_ROOT/opt/spack/gpg 
+gpghome=${gpghome:-$SPACK_ROOT/opt/spack/gpg}
 
 for bci in $*
 do
