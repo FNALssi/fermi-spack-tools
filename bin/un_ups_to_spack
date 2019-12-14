@@ -1,18 +1,21 @@
 #!/bin/sh
 
-cd $SPACK_ROOT
+cd $SPACK_ROOT/../../..
 
 #clean out opt/ directories:
-find opt -name .ups_to_spack -print |
+find . -name .ups_to_spack -print |
     sed -e s/.ups_to_spack// |
     xargs rm -rf 
 
+cd $SPACK_ROOT
+
 # clean out module files
-find share/spack/modules share/spack/lmod -type f -print | 
+find $SPACK_ROOT/share/spack/modules share/spack/lmod -type f -print | 
   xargs grep -l '(generated|created).by.*ups_to_spack' |
   xargs rm -f
 
 # remove hash cache
+
 rm var/ups_to_spack.cache
 
 spack reindex

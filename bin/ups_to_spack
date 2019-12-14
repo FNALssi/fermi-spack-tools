@@ -1010,7 +1010,7 @@ class ups_to_spack:
         dpkg = package(prod=prod, ver=ver, flav=def_flav, quals=def_qual)
         dhash = self.get_cached_hash(dpkg)
         if dhash:
-            return "%s-%s-%s" % (dpkg.prod, dpkg.ver, dpkg.spack_comp())
+            return "%s-%s-%s-%s" % (dpkg.prod, dpkg.dotver, dpkg.spack_comp(), dhash)
         else:
             # didn't find it in depend outputs...
             return None
