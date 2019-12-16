@@ -77,6 +77,18 @@ bootstrap_spack() {
     install_latest py-machotools
 }
 
+add_recipe_repos() {
+    cd $SPACK_ROOT
+    git clone https://cdcvs.fnal.gov/projects/spack-planning-spack_art var/spack/repos/spack_art
+    spack repo add --scope=site var/spack/repos/spack_art
+
+    git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-scd_recipes var/spack/repos/scd_recipes
+    spack repo add --scope=site var/spack/repos/scd_recipes
+
+    spack repo create var/spack/repos/ups_to_spack
+    spack repo add --scope=site var/spack/repos/ups_to_spack
+}
+
 create_spack() {
     d=`dirname $SPACK_ROOT`
     b=`basename $SPACK_ROOT`
@@ -92,6 +104,7 @@ create_spack() {
             export plat="target=`uname -i` os=`spack arch --operating-system`"
             spack mirror add --scope site fnal $binary_cache
             spack buildcache keys --install --trust --force
+
             bootstrap_spack
         else
             return 1
