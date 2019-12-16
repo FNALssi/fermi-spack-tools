@@ -11,7 +11,10 @@ export PATH=$SPACK_ROOT/bin:$spackbindir:$PATH
 
 if [ ! -d $SPACK_ROOT ]
 then
-    make_spack -u $SPACK_ROOT/../../..
+    d=$(dirname $SPACK_ROOT)
+    d=$(dirname $d)
+    d=$(dirname $d)
+    make_spack -u $d
     # save the rest for later...
     exit
 fi
