@@ -31,7 +31,7 @@ fgrep -v -f ${pkglist}.done ${pkglist} |
      case $what in
      i) spack buildcache install -a "$spec" ;;
      t) cd $SPACK_ROOT/../../.. && tar xzf $spec; spack reindex;;
-     r) spack uninstall "$spec";;
+     u) spack uninstall "$spec";;
      esac
      [ $? == 0 ] && echo "$what $spec" >> ${pkglist}.done
   done

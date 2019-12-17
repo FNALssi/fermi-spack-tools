@@ -19,6 +19,7 @@ runversion() {
    $1 --version 2>&1 | 
       grep -i $1 | 
       head -1 | 
+      grep -v 'command not found' |
       sed -e 's/^.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'
 }
 
@@ -69,6 +70,9 @@ Linux)
        xlibtool) 
            # looks like a library, but its not...
            runversion $1
+           ;;
+       xtcl)
+           echo info patchlevel | tclsh
            ;;
        xlib*) 
            otool -L /usr/lib/$1 | grep "$1.*current version" |  sed -e 's/.*version//' -e 's/)//'
