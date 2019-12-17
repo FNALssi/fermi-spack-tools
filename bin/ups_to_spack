@@ -272,7 +272,8 @@ class package:
             logging.debug("saw python* quals: %s" % self.quals)
             vers= "v%s_%s_2" % (self.quals[6], self.quals[7])
             pylines = ups_depend("python", vers, "", "", hosttype=hosttype)
-            dependlines.append("|__%s" % pylines[0])
+            if pylines:
+                dependlines.append("|__%s" % pylines[0])
 
         return dependlines
 
@@ -398,7 +399,7 @@ class ups_to_spack:
             + "\n"
         )
         cf.close()
-
+ 
     @log_call
     def migrate_one(self, pkg):
         if pkg in self.already_done:
@@ -421,6 +422,21 @@ class ups_to_spack:
         else:
             logging.debug("already done: %s" % pkg)
 
+    @remember
+    def get_repo_list(self):
+        repolist = []
+        f = os.popen("spack repo list", "r")
+        first=True
+        for line in f.readlines():
+           
+            if first:
+               first=False
+               continue
+            v = line.strip().split(" ")
+            repolist.append(v[-1])
+        f.close()
+        return repolist
+
     @log_call
     def make_recipe(self, pkg):
         builtin_recipedir = "%s/var/spack/repos/builtin/packages/%s" % (
@@ -435,11 +451,7 @@ class ups_to_spack:
         uts_repo = "%s/var/spack/repos/ups_to_spack" % os.environ["SPACK_ROOT"]
         uts_repo_yaml = "%s/repo.yaml" % uts_repo
        
-        repolist = []
-        for ry in glob.glob("%s/var/spack/repos/*/repo.yaml" % os.environ["SPACK_ROOT"]):
-            repolist.append(os.path.dirname(ry))
-
-        logging.debug("repolist: %s" % repr(repolist))
+        repolist = self.get_repo_list()
 
         # check that we have a ups_to_spack repository...
         if not os.access(uts_repo_yaml, os.R_OK):
@@ -620,10 +632,7 @@ class ups_to_spack:
 
         dependlines = pkg.dependlines()
 
-
         logging.debug("qualfiers: %s" % pkg.quals)
-
-
         logging.debug("dependlines: %s" % repr(dependlines))
 
         if len(dependlines) > 1:
@@ -644,8 +653,13 @@ class ups_to_spack:
 
                     # get the hash for dependency
                     # -- it should have been converted already, so we pass lookup_only..
-
                     dhash = self.get_cached_hash(dpkg)
+
+                    if not dhash:
+                        # try unqualified...
+                        logging.debug("retry without quals")
+                        dpkg.top_quals=""
+                        dhash = self.get_cached_hash(dpkg)
 
                     if not dhash:
                         logging.debug("skipping dependency %s -- no hash" % dpkg)
@@ -668,6 +682,13 @@ class ups_to_spack:
                 # lookup the hash for the dependency.
                 #
                 dhash = self.get_cached_hash(dpkg)
+
+                if not dhash:
+                    # try unqualified...
+                    logging.debug("retry without quals")
+                    dpkg.top_quals=""
+                    dhash = self.get_cached_hash(dpkg)
+
                 if not dhash:
                     logging.debug(
                         "skipping dependency %s -- no hash"
