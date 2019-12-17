@@ -5,7 +5,7 @@ x*/*) dir=`echo $0 | sed -e 's;\(.*\)/\([^/]*\);\1/..;'` ;;
 x*)   dir=.. ;;
 esac
 
-os=`spack arch -o`
+os=${2:-`spack arch -o`}
 
 src=$dir/templates/packagelist
 optf=$dir/templates/package_opts
@@ -13,12 +13,23 @@ dst=$1/etc/spack/$os/packages.yaml
 
 mkdir -p `dirname $dst`
 
+runversion() {
+   # try to get version by running executable --version
+   # in some cases this works due to error messages...
+   $1 --version 2>&1 | 
+      grep -i $1 | 
+      head -1 | 
+      sed -e 's/^.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'
+}
+
+compiler=""
 if [ -x /usr/bin/gcc ] 
 then
-    compiler=`gcc -v  | tail -1 | sed -e 's/ version /@/' -e 's/ .*//'`
-elif [ -x /usr/bin/clang ]
+    compiler="$compiler gcc@`runversion gcc`"
+fi
+if [ -x /usr/bin/clang ]
 then
-    compiler=`clang -v | head -1 | sed -e 's/ version /@/' -e 's/ .*//'`
+    compiler="$compiler clang@`runversion clang`"
 fi
 
 exec 3>$dst
@@ -30,33 +41,31 @@ then
     echo "    compiler: [$compiler]"  >&3
 fi
 
-runversion() {
-   # try to get version by running executable --version
-   # in some cases this works due to error messages...
-   $1 --version 2>&1 | 
-      grep -i $1 | 
-      head -1 | 
-      sed -e 's/[^0-9]*//' -e 's/ .*//'
-}
 
 case `uname -s` in
 Linux)
-case `lsb_release -i` in
-*Ubuntu)
-    getv() {
-       apt list $1 2>/dev/null | grep '\[installed\]'| sed -e 's/[^ ]* //' -e 's/.*://' -e 's/[+-].*//'
-    }
-;;
-*Scientific|*Centos|*RedHat*)
-    getv() {
-       rpm -q $1 | tail -1 | grep -v 'is not installed' | sed -e 's/[^-]*-//' -e 's/-.*//'
-    }
+: linux case
+    case `lsb_release -i` in
+    *Ubuntu)
+        : ubuntu case
+        getv() {
+           apt list $1 2>/dev/null | grep '\[installed\]'| sed -e 's/[^ ]* //' -e 's/.*://' -e 's/[+-].*//'
+        }
     ;;
-esac
+    *Scientific*|*Centos*|*RedHat*)
+        getv() {
+           rpm -q $1 | tail -1 | grep -v 'is not installed' | sed -e 's/[^-]*-//' -e 's/-.*//'
+        }
+        ;;
+    esac
 ;;
-Darwin)
+*)
+    : generic / darwin case
     getv() {
        case x$1 in
+       xautotools)
+           runversion automake
+           ;;
        xlibtool) 
            # looks like a library, but its not...
            runversion $1
@@ -67,6 +76,7 @@ Darwin)
        x*)
            runversion $1
            ;;
+       esac
     }
     ;;
 esac
