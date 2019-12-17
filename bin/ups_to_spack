@@ -151,20 +151,25 @@ class package:
         self.top_flav = top_flav
         self.top_quals = top_quals
         self.depth = depth
+        self.namespace = None
         if depline:
             depline = depline.lstrip("|_ ").rstrip()
             ll = depline.split(" ")
             self.prod, self.ver, fflag, self.flav, qflag, self.quals = ll[:6]
+
             if qflag != "-q":
-                self.quals = ""
+                if qflag == "-z" and len(ll) > 6 and ll[6] == "-q":
+                    self.quals =  ll[7]
+                else:
+                    self.quals = ""
+
             self.prod_dir = None
             self.table_file = None
+
         elif kline:
             kline = kline.strip().replace('"', "")
             ll = kline.split(" ")
-            self.prod, self.ver, self.flav, self.quals, self.prod_dir, self.table_file = ll[
-                :7
-            ]
+            self.prod, self.ver, self.flav, self.quals, self.prod_dir, self.table_file = ll[:7]
         else:
             self.prod = prod
             self.ver = ver
@@ -255,8 +260,21 @@ class package:
         return "%s %s -f %s -q '%s'" % (self.prod, self.ver, self.flav, self.quals)
 
     @remember
-    def dependlines(self):
-        return ups_depend(self.prod, self.ver, self.flav, self.quals, self.top_flav)
+    def dependlines(self, hosttype = None):
+        if not hosttype:
+            hosttype = self.top_flav
+        dependlines = ups_depend(self.prod, self.ver, self.flav, self.quals, hosttype=hosttype )
+
+        #
+        # kluge for ifhdc -q python2[67]... add a python dependency
+        #
+        if self.quals[:6] == "python":
+            logging.debug("saw python* quals: %s" % self.quals)
+            vers= "v%s_%s_2" % (self.quals[6], self.quals[7])
+            pylines = ups_depend("python", vers, "", "", hosttype=hosttype)
+            dependlines.append("|__%s" % pylines[0])
+
+        return dependlines
 
     # utilities to flesh out useful bits we might not have...
 
@@ -416,11 +434,12 @@ class ups_to_spack:
         
         uts_repo = "%s/var/spack/repos/ups_to_spack" % os.environ["SPACK_ROOT"]
         uts_repo_yaml = "%s/repo.yaml" % uts_repo
-
        
         repolist = []
-        for ry in glob("%s/var/spack/repos/*/repo.yaml") 
-            repolist.push(os.path.dirname(ry))
+        for ry in glob.glob("%s/var/spack/repos/*/repo.yaml" % os.environ["SPACK_ROOT"]):
+            repolist.append(os.path.dirname(ry))
+
+        logging.debug("repolist: %s" % repr(repolist))
 
         # check that we have a ups_to_spack repository...
         if not os.access(uts_repo_yaml, os.R_OK):
@@ -429,8 +448,13 @@ class ups_to_spack:
 
         found = False
         for repo in repolist:
-            if os.access( "%s/%s/package.py" % (repo, pkg.prd), os.R_OK)):
+            pf = "%s/packages/%s/package.py" % (repo, pkg.prod)
+            logging.debug("checking for %s..",pf)
+            if os.access(pf , os.R_OK):
                 found = True
+                pkg.namespace = os.path.basename(repo)
+                
+        logging.debug("pkg %s namespace %s " % (pkg.prod, pkg.namespace))
 
         if (not found):
 
@@ -440,7 +464,12 @@ class ups_to_spack:
             # package names are BiCapitalized so fife_utils -> FifeUtils
             pkgname = pkg.prod.capitalize()
             pkgname = re.sub("_([a-z])", lambda m: m.group(1).capitalize(), pkgname)
+            pkg.namespace = "ups_to_spack"
+
+            if not os.access(uts_recipedir, os.R_OK):
+                os.makedirs(uts_recipedir)
             recipe_f = open(uts_recipedir + "/package.py", "w")
+            recipe_f.write("# fake recipe from ups_to_spack")
             recipe_f.write(
                 "from spack import *\n\nclass %s(AutotoolsPackage):\n    pass\n"
                 % pkgname
@@ -575,7 +604,7 @@ class ups_to_spack:
                             "name": pkg.spack_comp(0),
                             "version": pkg.spack_comp(1),
                         },
-                        "namespace": "ups_to_spack",
+                        "namespace": pkg.namespace,
                         "parameters": {
                             "cppflags": [],
                             "cxxflags": [],
@@ -590,6 +619,12 @@ class ups_to_spack:
         }
 
         dependlines = pkg.dependlines()
+
+
+        logging.debug("qualfiers: %s" % pkg.quals)
+
+
+        logging.debug("dependlines: %s" % repr(dependlines))
 
         if len(dependlines) > 1:
             # only add a dependencies section if there are any dependencies
@@ -660,7 +695,7 @@ class ups_to_spack:
                                 "platform_os": tfl[1],
                                 "target": tfl[2],
                             },
-                            "namespace": "ups_to_spack",
+                            "namespace": pkg.namespace,
                             "compiler": {
                                 "name": pkg.spack_comp(0),
                                 "version": pkg.spack_comp(1),
@@ -1043,7 +1078,7 @@ class ups_to_spack:
                 flist = [ (pkg.flav, pkg.quals) ]
                 
             for hf in flist:
-                for line in ups_depend( pkg.prod , pkg.ver, pkg.flav, pkg.quals, hosttype=hf[0]):
+                for line in pkg.dependlines(hosttype=hf[0]):
                     line.rstrip()
                     logging.debug("pud: line: %s" % line)
                     m = re.match("^[\|_ ]*", line)

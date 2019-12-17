@@ -17,5 +17,6 @@ find $SPACK_ROOT/share/spack/modules share/spack/lmod -type f -print |
 # remove hash cache
 
 rm var/ups_to_spack.cache
+rm -rf  var/spack/repos/ups_to_spack/packages/*
 
 spack reindex
