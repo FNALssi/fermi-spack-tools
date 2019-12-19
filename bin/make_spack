@@ -83,8 +83,8 @@ bootstrap_spack() {
 }
 
 add_recipe_repos() {
-    git clone https://cdcvs.fnal.gov/projects/spack-planning-spack_art $SPACK_ROOT/var/spack/repos/spack_art
-    spack repo add --scope=site $SPACK_ROOT/var/spack/repos/spack_art
+    git clone https://cdcvs.fnal.gov/projects/spack-planning-spack_art $SPACK_ROOT/var/spack/repos/fnal_art
+    spack repo add --scope=site $SPACK_ROOT/var/spack/repos/fnal_art
 
     git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-scd_recipes $SPACK_ROOT/var/spack/repos/scd_recipes
     spack repo add --scope=site $SPACK_ROOT/var/spack/repos/scd_recipes

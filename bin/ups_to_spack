@@ -117,6 +117,11 @@ class outfile:
         self.outf = open(fname, "w")
         logging.debug("outfile.__init__: opened: %s" % fname)
         self.fname = fname
+        self.depth = 0
+        self.depth_increase_patterns=["{","function","then"]
+        self.depth_decrease_patterns=["}","end"]
+        self.setup_patterns = ["proc setup {} {","function setup ()"]
+        self.saw_setup = False
 
     def enable(self):
         logging.debug("enabling: %s" % self.fname)
@@ -128,11 +133,49 @@ class outfile:
 
     def write(self, text):
         if self.generating:
-            logging.debug("writing on %s text: %s" % (self.fname, text))
-            self.outf.write(text)
+            logging.debug("considiring writing %s" % text)
+            for pat in self.depth_increase_patterns:
+                logging.debug("depth: checking for %s" % pat)
+                p2=text.find(pat)
+                if p2 > 0 and text[p2-1] not in [' ','{']:
+                    # do not match end in Prepend, etc.
+                    break
+                while p2 >= 0:
+                    logging.debug("depth: saw %s at %s" % (pat, p2))
+                    p2=text.find(pat,p2+1)
+                    self.depth = self.depth + 1
+
+            for pat in self.depth_decrease_patterns:
+                logging.debug("depth: checking for %s" % pat)
+                p2=text.find(pat)
+                if p2 > 0 and text[p2-1] not in [' ','{']:
+                    # do not match end in Prepend, etc.
+                    break
+                while p2 >= 0:
+                    logging.debug("depth: saw %s at %s" % (pat, p2))
+                    p2=text.find(pat,p2+1)
+                    self.depth = self.depth - 1
+
+            for pat in self.setup_patterns:
+                if text.find(pat) >= 0:
+                    self.saw_setup = True
+
+            if text in ["setup","setup();"]:
+                if not self.saw_setup:
+                    logging.debug("not writing setup call without definition")
+                     
+            if self.depth >= 0:
+                logging.debug("writing on %d %s text: %s" % (self.depth, self.fname, text))
+                self.outf.write(text)
+            else:
+                logging.debug("not writing on %s text: %s" % (self.fname, text))
+                # don't write what would send us under, but don't stick there..
+                self.depth = 0
 
     def close(self):
         self.outf.close()
+        self.depth = 0
+
 
 
 class package:
@@ -424,7 +467,7 @@ class ups_to_spack:
 
     @remember
     def get_repo_list(self):
-        repolist = []
+        repolist = {}
         f = os.popen("spack repo list", "r")
         first=True
         for line in f.readlines():
@@ -433,7 +476,7 @@ class ups_to_spack:
                first=False
                continue
             v = line.strip().split(" ")
-            repolist.append(v[-1])
+            repolist[v[-1]] = v[0]
         f.close()
         return repolist
 
@@ -464,7 +507,7 @@ class ups_to_spack:
             logging.debug("checking for %s..",pf)
             if os.access(pf , os.R_OK):
                 found = True
-                pkg.namespace = os.path.basename(repo)
+                pkg.namespace = repolist[repo]
                 
         logging.debug("pkg %s namespace %s " % (pkg.prod, pkg.namespace))
 
@@ -861,7 +904,7 @@ class ups_to_spack:
         )
         lmod_out.disable()
 
-        flavor_ok = False
+        flavor_ok = True
         in_action = False
  
         logging.debug("converting table file %s" % pkg.table_file)

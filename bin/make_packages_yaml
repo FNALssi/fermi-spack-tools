@@ -94,8 +94,8 @@ do
         continue
     fi
     opts=`grep "^$p\s" $optf | sed -e 's/.*\t//'`
-   
-    echo "  $p:"                >&3
+    lp=`echo $p | tr '[A-Z]' '[a-z]'`
+    echo "  $lp:"                >&3
     echo "    paths:"           >&3
     echo "      $p@$v$opts: /usr"    >&3
 done
