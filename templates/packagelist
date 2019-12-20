@@ -18,6 +18,7 @@ git
 glew
 glproto
 icu4c
+ImageMagick
 jemalloc
 libaio
 libdrm

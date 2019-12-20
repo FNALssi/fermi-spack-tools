@@ -94,7 +94,7 @@ do
         continue
     fi
     opts=`grep "^$p\s" $optf | sed -e 's/.*\t//'`
-    lp=`echo $p | tr '[A-Z]' '[a-z]'`
+    lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/'`
     echo "  $lp:"                >&3
     echo "    paths:"           >&3
     echo "      $p@$v$opts: /usr"    >&3
