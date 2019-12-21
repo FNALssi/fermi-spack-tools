@@ -829,13 +829,19 @@ class ups_to_spack:
 
     def fix_ups_vars(self, tline, pkg):
         """ replace common ups table file variables """
-        return (
-            tline.replace("${UPS_PROD_DIR}", self.do_pdr(pkg.prod_dir))
+        tline = tline.replace("${UPS_PROD_DIR}", self.do_pdr(pkg.prod_dir))
             .replace("${UPS_UPS_DIR}", self.do_pdr(pkg.prod_dir) + "/ups")
             .replace("${UPS_PROD_VERSION}", pkg.ver)
             .replace("${UPS_SOURCE}", "source")
-            .replace("$", "\\$")
-        )
+        return tline
+
+    def fix_env_vars_tcl(self, val):
+        # tcl does interpoplate, but needs $env(name) not ${name}
+        return '"%s"' % re.sub("\\$\{(\\w+)}","$env(\\1)",val)
+
+    def fix_env_vars_lua(self, val):
+        # lua doesn't interpolate, so actively replace it...
+        return 'string.gsub("%s", "%%${(%%w+)", os.getenv)'
 
     @log_call
     def convert_table(self, pkg, thash):
@@ -968,6 +974,10 @@ class ups_to_spack:
                 lmod_out.disable()
                 tcl_out.disable()
             if re.search("common:", line, flags=re.IGNORECASE):
+                if in_action:
+                    lmod_out.write("end\n\n")
+                    tcl_out.write("}\n\n")
+                    in_action = False
                 lmod_out.enable()
                 tcl_out.enable()
                 continue
@@ -1004,15 +1014,15 @@ class ups_to_spack:
             if re.search("envSet\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
-                    tcl_out.write("setenv %s %s\n" % (d["var"], d["value"]))
-                    lmod_out.write('setenv("%s","%s");\n' % (d["var"], d["value"]))
+                    tcl_out.write("setenv %s %s\n" % (d["var"], fix_env_vars_tcl(d["value"])))
+                    lmod_out.write('setenv("%s","%s");\n' % (d["var"], fix_env_vars_lua(d["value"])))
                 continue
             if re.search("(env|path)prepend", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
-                    tcl_out.write("prepend-path %s %s\n" % (d["var"], d["value"]))
+                    tcl_out.write("prepend-path %s %s\n" % (d["var"], fix_env_vars_tcl(d["value"])))
                     lmod_out.write(
-                        'prepend_path("%s","%s");\n' % (d["var"], d["value"])
+                        'prepend_path("%s","%s");\n' % (d["var"], fix_env_vars_lua(d["value"]))
                     )
                 continue
             if re.search("setup(required|optional)", line, flags=re.IGNORECASE):
@@ -1044,15 +1054,15 @@ class ups_to_spack:
 
                     if d["envvar"]:
                         tcl_out.write(
-                            "setenv %s [exec {%s}]\n" % (d["envvar"], d["cmd"])
+                            "setenv %s [exec %s]\n" % (d["envvar"], fix_env_vars_tcl(d["cmd"]))
                         )
-                        lmod_out.write('f=io.open("%s");\n' % d["cmd"])
+                        lmod_out.write('f=io.open(%s);\n' % fix_env_varss_lua(d["cmd"]))
                         lmod_out.write('setenv("%s",f.read());\n' % d["envvar"])
                         lmod_out.write("f.close();\n")
 
                     else:
-                        tcl_out.write("exec {%s}\n" % d["cmd"])
-                        lmod_out.write('os.execute("%s");\n' % d["cmd"])
+                        tcl_out.write("exec %s\n" % fix_env_vars_tcl(d["cmd"]))
+                        lmod_out.write('os.execute(%s);\n' % fix_env_vars_lua(d["cmd"]))
                     continue
 
             if re.search("endif", line, flags=re.IGNORECASE):
