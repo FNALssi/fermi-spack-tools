@@ -994,15 +994,15 @@ class ups_to_spack:
                     lmod_out.write("end\n\n")
                     tcl_out.write("}\n\n")
                 name = re.sub(".*action\\s*=\\s*", "", line, flags=re.IGNORECASE)
-                tcl_out.write("proc %s {} {\n" % name)
-                lmod_out.write("function %s ()\n" % name)
+                tcl_out.write("proc %s {} {\n" % name.lower)
+                lmod_out.write("function %s ()\n" % name.lower)
                 in_action = True
                 continue
             if re.search("exeaction\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
-                    tcl_out.write(d["var"] + "\n")
-                    lmod_out.write(d["var"] + "();\n")
+                    tcl_out.write(d["var"].lower() + "\n")
+                    lmod_out.write(d["var"].lower() + "();\n")
                 continue
             if re.search("proddir\(|dodefaults", line, flags=re.IGNORECASE):
                 if in_action:
@@ -1071,7 +1071,7 @@ class ups_to_spack:
                         tcl_out.write(
                             "setenv %s [exec %s]\n" % (d["envvar"], self.fix_env_vars_tcl(d["cmd"]))
                         )
-                        lmod_out.write('f=io.open(%s);\n' % self.fix_env_varss_lua(d["cmd"]))
+                        lmod_out.write('f=io.open(%s);\n' % self.fix_env_vars_lua(d["cmd"]))
                         lmod_out.write('setenv("%s",f.read());\n' % d["envvar"])
                         lmod_out.write("f.close();\n")
 
