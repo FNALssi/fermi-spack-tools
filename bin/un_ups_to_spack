@@ -10,8 +10,8 @@ find . -name .ups_to_spack -print |
 cd $SPACK_ROOT
 
 # clean out module files
-find $SPACK_ROOT/share/spack/modules share/spack/lmod -type f -print | 
-  xargs grep -l '(generated|created).by.*ups_to_spack' |
+find $SPACK_ROOT/share/spack/modules $SPACK_ROOT/share/spack/lmod -type f -print | 
+  xargs egrep -l '(generated|created).by.*ups_to_spack' |
   xargs rm -f
 
 # remove hash cache

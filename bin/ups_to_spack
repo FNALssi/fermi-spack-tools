@@ -994,8 +994,8 @@ class ups_to_spack:
                     lmod_out.write("end\n\n")
                     tcl_out.write("}\n\n")
                 name = re.sub(".*action\\s*=\\s*", "", line, flags=re.IGNORECASE)
-                tcl_out.write("proc %s {} {\n" % name.lower)
-                lmod_out.write("function %s ()\n" % name.lower)
+                tcl_out.write("proc %s {} {\n" % name.lower())
+                lmod_out.write("function %s ()\n" % name.lower())
                 in_action = True
                 continue
             if re.search("exeaction\(", line, flags=re.IGNORECASE):
