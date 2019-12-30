@@ -11,7 +11,6 @@ src=$dir/templates/packagelist
 optf=$dir/templates/package_opts
 dst=$1/etc/spack/$os/packages.yaml
 
-mkdir -p `dirname $dst`
 
 runversion() {
    # try to get version by running executable --version
@@ -42,6 +41,8 @@ then
     echo "    compiler: [$compiler]"  >&3
 fi
 
+
+# define getv depending on platform 
 
 case `uname -s` in
 Linux)
@@ -84,6 +85,9 @@ Linux)
     }
     ;;
 esac
+
+
+mkdir -p `dirname $dst`
 
 for p in `cat $src`
 do

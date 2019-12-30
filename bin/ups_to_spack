@@ -10,6 +10,7 @@ import traceback
 
 # we want to use the ruamel.yaml package from spack
 sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
+sys.path.insert(1, "%s/lib/spack" % os.environ["SPACK_ROOT"])
 import ruamel.yaml
 
 
@@ -137,7 +138,7 @@ class outfile:
             for pat in self.depth_increase_patterns:
                 logging.debug("depth: checking for %s" % pat)
                 p2=text.find(pat)
-                if p2 > 0 and text[p2-1] not in [' ','{']:
+                if p2 > 0 and pat[0] in ['t','f'] and text[p2-1] not in [' ','{']:
                     # do not match end in Prepend, etc.
                     break
                 while p2 >= 0:
@@ -148,7 +149,7 @@ class outfile:
             for pat in self.depth_decrease_patterns:
                 logging.debug("depth: checking for %s" % pat)
                 p2=text.find(pat)
-                if p2 > 0 and text[p2-1] not in [' ','{']:
+                if p2 > 0 and pat == 'end' and text[p2-1] != ' ':
                     # do not match end in Prepend, etc.
                     break
                 while p2 >= 0:
@@ -602,6 +603,11 @@ class ups_to_spack:
         logging.debug("basedir is now %s " % (basedir))
         return basedir
 
+    def get_specfile(self, pkg):
+        basedir = self.get_basedir(pkg)
+        specfile = "%s/.spack/spec.yaml" % basedir
+        return specfile
+
     @log_call
     def make_spec(self, pkg):
         """ 
@@ -619,8 +625,7 @@ class ups_to_spack:
         pkg.prodbits()
 
         basedir = self.get_basedir(pkg)
-
-        specfile = "%s/.spack/spec.yaml" % basedir
+        specfile = self.get_specfile(pkg)
 
         if not os.access(os.path.dirname(specfile), os.R_OK):
             os.makedirs(os.path.dirname(specfile))
@@ -776,8 +781,17 @@ class ups_to_spack:
         sf.write(ruamel.yaml.dump(spec, default_style="1"))
         sf.close()
 
+    def use_spack_for_hash(self, pkg):
+        import spack.spec
+ 
+        specfile = self.get_specfile(pkg)
+        st = open(specfile, "r")
+        sp = spack.spec.Spec.from_yaml(st)
+        return sp.dag_hash()
+        
     def reindex_for_hash_and_rename(self, pkg):
-        idir, thash = spack_reindex()
+        #idir, thash = spack_reindex()
+        thash = self.use_spack_for_hash(pkg)
 
         basedir = self.get_basedir(pkg)
 
@@ -803,11 +817,11 @@ class ups_to_spack:
 
         # now if we re-run spack_reindex, we shouldn't see any errors...
 
-        a,b =spack_reindex()
-        if b != "":
-            raise AssertionError(
-                "ack! spack reindex is failing when we don't expect it to \n%s %s" % (a,b)
-            )
+        #a,b =spack_reindex()
+        #if b != "":
+        #    raise AssertionError(
+        #        "ack! spack reindex is failing when we don't expect it to \n%s %s" % (a,b)
+        #    )
         return thash
 
     def unpack(self, s):
@@ -998,12 +1012,6 @@ class ups_to_spack:
                 lmod_out.write("function %s ()\n" % name.lower())
                 in_action = True
                 continue
-            if re.search("exeaction\(", line, flags=re.IGNORECASE):
-                d = self.unpack(line)
-                if in_action:
-                    tcl_out.write(d["var"].lower() + "\n")
-                    lmod_out.write(d["var"].lower() + "();\n")
-                continue
             if re.search("proddir\(|dodefaults", line, flags=re.IGNORECASE):
                 if in_action:
                     tcl_out.write(
@@ -1050,8 +1058,8 @@ class ups_to_spack:
             if re.search("exeAction(Required|Optional)", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
-                    tcl_out.write("%s\n" % d["var"])
-                    lmod_out.write("%s()\n" % d["var"])
+                    tcl_out.write("%s\n" % d["var"].lower())
+                    lmod_out.write("%s()\n" % d["var"].lower())
                 
 
             if re.search("execute", line, flags=re.IGNORECASE):
@@ -1094,9 +1102,9 @@ class ups_to_spack:
                 d = self.unpack(line)
                 if in_action:
                     tcl_out.write(
-                        "if {![catch {exec %s} results options]} {\n" % d["args"]
+                        "if {![catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"])
                     )
-                    lmod_out.write('if (!os.execute("%s")) then\n' % d["args"])
+                    lmod_out.write('if (!os.execute(%s)) then\n' % self.fix_env_vars_lua(d["args"]))
                 continue
             if re.search("\\bend\\b", line, flags=re.IGNORECASE):
                 if in_action:
