@@ -11,7 +11,6 @@ src=$dir/templates/packagelist
 optf=$dir/templates/package_opts
 dst=$1/etc/spack/$os/packages.yaml
 
-
 runversion() {
    # try to get version by running executable --version
    # in some cases this works due to error messages...
@@ -21,26 +20,6 @@ runversion() {
       grep -v 'command not found' |
       sed -e 's/^.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'
 }
-
-compiler=""
-if [ -x /usr/bin/gcc ] 
-then
-    compiler="$compiler gcc@`runversion gcc`"
-fi
-if [ -x /usr/bin/clang ]
-then
-    compiler="$compiler clang@`runversion clang`"
-fi
-
-exec 3>$dst
-echo "packages:" >&3
-
-if [ "x$compiler" != x ]
-then
-    echo "  all:"                     >&3
-    echo "    compiler: [$compiler]"  >&3
-fi
-
 
 # define getv depending on platform 
 
@@ -86,8 +65,30 @@ Linux)
     ;;
 esac
 
-
 mkdir -p `dirname $dst`
+
+compiler=""
+if [ -x /usr/bin/gcc ] 
+then
+    compiler="gcc@`runversion gcc`"
+    comp="%$compiler"
+else
+    comp=""
+fi
+
+if [ -x /usr/bin/clang ]
+then
+    compiler="$compiler clang@`runversion clang`"
+fi
+
+exec 3>$dst
+echo "packages:" >&3
+
+if [ "x$compiler" != x ]
+then
+    echo "  all:"                     >&3
+    echo "    compiler: [$compiler]"  >&3
+fi
 
 for p in `cat $src`
 do
@@ -97,9 +98,9 @@ do
         # not found...
         continue
     fi
-    opts=`grep "^$p\s" $optf | sed -e 's/.*\t//'`
+    opts=`grep "^$p\s" $optf | sed -e 's/.*\t//' -e 's/ *$//'`
     lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/'`
     echo "  $lp:"                >&3
     echo "    paths:"           >&3
-    echo "      $p@$v$opts: /usr"    >&3
+    echo "      $p@$v$opts$comp os=$os: /usr"    >&3
 done
