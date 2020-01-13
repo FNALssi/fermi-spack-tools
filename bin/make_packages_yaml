@@ -34,9 +34,16 @@ Linux)
         }
     ;;
     *Scientific*|*Centos*|*RedHat*)
+        if [ x$RPMCACHE != x ]
+        then
         getv() {
-           rpm -q $1 | tail -1 | grep -v 'is not installed' | sed -e 's/[^-]*-//' -e 's/-.*//'
+           grep "^$1-[0-9]" $RPMCACHE | tail -1 | grep -v 'is not installed' | sed -e 's/[^-]*-//' -e 's/[a-z][^-]*-//' -e 's/-.*//'
         }
+        else
+        getv() {
+           rpm -q $1 | tail -1 | grep -v 'is not installed' | sed -e 's/[^-]*-//' -e 's/[a-z][^-]*-//' -e 's/-.*//'
+        }
+        fi
         ;;
     esac
 ;;
@@ -68,17 +75,17 @@ esac
 mkdir -p `dirname $dst`
 
 compiler=""
-if [ -x /usr/bin/gcc ] 
+if [ "x`getv gcc`" != x ]
 then
-    compiler="gcc@`runversion gcc`"
+    compiler="gcc@`getv gcc`"
     comp="%$compiler"
 else
     comp=""
 fi
 
-if [ -x /usr/bin/clang ]
+if [ "x`getv clang`" != x ]
 then
-    compiler="$compiler clang@`runversion clang`"
+    compiler="$compiler clang@`getv clang`"
 fi
 
 exec 3>$dst
@@ -99,7 +106,7 @@ do
         continue
     fi
     opts=`grep "^$p\s" $optf | sed -e 's/.*\t//' -e 's/ *$//'`
-    lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/'`
+    lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/'`
     echo "  $lp:"                >&3
     echo "    paths:"           >&3
     echo "      $p@$v$opts$comp os=$os: /usr"    >&3

@@ -133,6 +133,7 @@ class outfile:
         self.generating = False
 
     def write(self, text):
+        indenting = 0
         if self.generating:
             logging.debug("considiring writing %s" % text)
             for pat in self.depth_increase_patterns:
@@ -145,6 +146,7 @@ class outfile:
                     logging.debug("depth: saw %s at %s" % (pat, p2))
                     p2=text.find(pat,p2+1)
                     self.depth = self.depth + 1
+                    indenting = 1
 
             for pat in self.depth_decrease_patterns:
                 logging.debug("depth: checking for %s" % pat)
@@ -166,6 +168,9 @@ class outfile:
                     logging.debug("not writing setup call without definition")
                      
             if self.depth >= 0:
+                # auto indent -- needed? mengel
+                text = ("  " * (self.depth - indenting)) + text
+
                 logging.debug("writing on %d %s text: %s" % (self.depth, self.fname, text))
                 self.outf.write(text)
             else:
@@ -482,6 +487,21 @@ class ups_to_spack:
         return repolist
 
     @log_call
+    def get_namespace(self, pkg):
+
+        repolist = self.get_repo_list()
+
+        found = False
+        for repo in repolist:
+            pf = "%s/packages/%s/package.py" % (repo, pkg.prod)
+            logging.debug("checking for %s..",pf)
+            if os.access(pf , os.R_OK):
+                found = True
+                pkg.namespace = repolist[repo]
+                
+        logging.debug("pkg %s namespace %s " % (pkg.prod, pkg.namespace))
+
+    @log_call
     def make_recipe(self, pkg):
         builtin_recipedir = "%s/var/spack/repos/builtin/packages/%s" % (
             os.environ["SPACK_ROOT"],
@@ -495,24 +515,15 @@ class ups_to_spack:
         uts_repo = "%s/var/spack/repos/ups_to_spack" % os.environ["SPACK_ROOT"]
         uts_repo_yaml = "%s/repo.yaml" % uts_repo
        
-        repolist = self.get_repo_list()
 
         # check that we have a ups_to_spack repository...
         if not os.access(uts_repo_yaml, os.R_OK):
             os.system("spack repo create %s ups_to_spack" % uts_repo)
             os.system("spack repo add --scope=default %s" % uts_repo )
 
-        found = False
-        for repo in repolist:
-            pf = "%s/packages/%s/package.py" % (repo, pkg.prod)
-            logging.debug("checking for %s..",pf)
-            if os.access(pf , os.R_OK):
-                found = True
-                pkg.namespace = repolist[repo]
-                
-        logging.debug("pkg %s namespace %s " % (pkg.prod, pkg.namespace))
+        self.get_namespace(pkg)
 
-        if (not found):
+        if (not pkg.namespace):
 
             # there has to be a recipe for the package for spack to
             # look at it, so make one that's (just) good enough to pass
@@ -649,6 +660,9 @@ class ups_to_spack:
 
         tfl = pkg.spack_arch().split("-")
 
+        if not pkg.namespace:
+            self.get_namespace(pkg)
+
         # create base spec file structure for the .yaml file writer
         spec = {
             "spec": [
@@ -696,6 +710,9 @@ class ups_to_spack:
                     logging.debug("immediate dependency: |%s| " % line)
                     dpkg = package(depline=line, top_flav = pkg.top_flav, top_quals = pkg.top_quals)
 
+                    if not dpkg.namespace:
+                        self.get_namespace(dpkg)
+
                     if not dpkg.prod:
                         continue
 
@@ -716,6 +733,7 @@ class ups_to_spack:
                     spec["spec"][0][pkg.prod]["dependencies"][dpkg.prod] = {
                         "hash": dhash,
                         "type": ["build", "link"],
+                        "namespace": dpkg.namespace,
                     }
 
             specl = []
@@ -746,6 +764,9 @@ class ups_to_spack:
 
                 tfl = pkg.spack_arch().split("-")
 
+                if not dpkg.namespace:
+                    self.get_namespace(dpkg)
+
                 specl.append(
                     {
                         dpkg.prod: {
@@ -764,10 +785,10 @@ class ups_to_spack:
                                 "platform_os": tfl[1],
                                 "target": tfl[2],
                             },
-                            "namespace": pkg.namespace,
+                            "namespace": dpkg.namespace,
                             "compiler": {
-                                "name": pkg.spack_comp(0),
-                                "version": pkg.spack_comp(1),
+                                "name": dpkg.spack_comp(0),
+                                "version": dpkg.spack_comp(1),
                             },
                         }
                     }
@@ -829,7 +850,7 @@ class ups_to_spack:
         l1 = re.split("[(), ]+", s)
         logging.debug("unpack: list: %s" % repr(l1))
         if len(l1) > 2:
-            return {"var": l1[1], "value": " ".join(l1[2:]), "args": " ".join(l1[1:])}
+            return {"var": l1[1].strip(), "value": " ".join(l1[2:]).strip(), "args": " ".join(l1[1:]).strip(), "argl":l1[1:]}
         else:
             return {"var": "", "value": "", "args": ""}
 
@@ -837,7 +858,7 @@ class ups_to_spack:
         """ unpack/parse an execute statement from a ups table file """
         m = re.match("(.*)\(([^,]*),([^,]*),?(.*)\)", cmdstr)
         if m:
-            return {"cmd": m.group(2), "flags": m.group(3), "envvar": m.group(4)}
+            return {"cmd": m.group(2).strip('" '), "flags": m.group(3).strip(), "envvar": m.group(4).strip()}
         else:
             return {"cmd": "", "flags": "", "envvar": ""}
 
@@ -851,19 +872,24 @@ class ups_to_spack:
 
     def fix_env_vars_tcl(self, val):
         # tcl does interpoplate, but needs $::env(name) not ${name}
+        val = val.strip('" ')
+        val = '"%s"' % val
+        if val.find("`") >= 0:
+            val = re.sub("`([^`]*)`", "[exec \\1]", val)
         if val.find("$") >= 0:
-            val = val.strip('" ')
-            return '"%s"' % re.sub("\\$\\{(\\w+)\\}","$::env(\\1)",val)
-        else:
-            return val
+            val = re.sub("\\$\\{(\\w+)\\}","$::env(\\1)",val)
+            val = re.sub("\\$(\\w+)","$::env(\\1)",val)
+        return val
 
     def fix_env_vars_lua(self, val):
         # lua doesn't interpolate, so actively replace it...
+        val = val.strip('"')
+        val = '"%s"' % val
+        if val.find("`") >= 0:
+            val = 'string.gsub(%s, "`(.+)`", backquote)' % val
         if val.find("$") >= 0:
-            val = val.strip('"')
-            return 'string.gsub("%s", "%%${(%%w+)}", os.getenv)' % val
-        else:
-            return val
+            val = 'string.gsub(string.gsub(%s, "%%${(%%w+)}", os.getenv),"%%$(%%w+)", os.getenv)' % val
+        return val
 
     @log_call
     def convert_table(self, pkg, thash):
@@ -892,12 +918,13 @@ class ups_to_spack:
             pkg.spack_comp(),
             shorthash,
         )
-        lmodmodulefile = "%s/%s/Core/%s/%s-%s-%s.lua" % (
+        lmodmodulefile = "%s/%s/%s/%s/%s/%s-%s.lua" % (
             lmodbase,
             pkg.spack_arch(),
+            pkg.spack_comp(0),
+            pkg.spack_comp(1),
             pkg.prod,
             pkg.dotver,
-            pkg.spack_comp(),
             shorthash,
         )
 
@@ -926,6 +953,12 @@ class ups_to_spack:
     whatis([[Name : %s]])
     whatis([[Version : %s]])
 
+    function backquote(s)
+       f=io.popen(s,"r"); 
+       res=f:read("*all");
+       f:close(); 
+       return res;
+    end
 
     """
             % (sys.argv[0], pkg.prod, pkg.dotver)
@@ -1008,8 +1041,8 @@ class ups_to_spack:
                     lmod_out.write("end\n\n")
                     tcl_out.write("}\n\n")
                 name = re.sub(".*action\\s*=\\s*", "", line, flags=re.IGNORECASE)
-                tcl_out.write("proc %s {} {\n" % name.lower())
-                lmod_out.write("function %s ()\n" % name.lower())
+                tcl_out.write("\n  proc %s {} {\n" % name.lower())
+                lmod_out.write("\n  function %s ()\n" % name.lower())
                 in_action = True
                 continue
             if re.search("proddir\(|dodefaults", line, flags=re.IGNORECASE):
@@ -1038,7 +1071,7 @@ class ups_to_spack:
                 if in_action:
                     tcl_out.write("prepend-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write(
-                        'prepend_path("%s","%s");\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
+                        'prepend_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
                     )
                 continue
             if re.search("setup(required|optional)", line, flags=re.IGNORECASE):
@@ -1077,12 +1110,11 @@ class ups_to_spack:
 
                     if d["envvar"]:
                         tcl_out.write(
-                            "setenv %s [exec %s]\n" % (d["envvar"], self.fix_env_vars_tcl(d["cmd"]))
+                            'setenv %s [exec %s]\n' % (d["envvar"], d["cmd"])
                         )
-                        lmod_out.write('f=io.open(%s);\n' % self.fix_env_vars_lua(d["cmd"]))
-                        lmod_out.write('setenv("%s",f.read());\n' % d["envvar"])
-                        lmod_out.write("f.close();\n")
-
+                        lmod_out.write(
+                            'setenv("%s",backquote("%s"));\n' % ( d["envvar"], d["cmd"])
+                        )
                     else:
                         tcl_out.write("exec %s\n" % self.fix_env_vars_tcl(d["cmd"]))
                         lmod_out.write('os.execute(%s);\n' % self.fix_env_vars_lua(d["cmd"]))
@@ -1102,7 +1134,7 @@ class ups_to_spack:
                 d = self.unpack(line)
                 if in_action:
                     tcl_out.write(
-                        "if {![catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"])
+                        "if {![catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"].strip('" '))
                     )
                     lmod_out.write('if (!os.execute(%s)) then\n' % self.fix_env_vars_lua(d["args"]))
                 continue

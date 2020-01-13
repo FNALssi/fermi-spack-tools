@@ -29,7 +29,7 @@ fgrep -v -f ${pkglist}.done ${pkglist} |
   do
      echo "doing: $what $spec"
      case $what in
-     i) spack buildcache install -a "$spec" ;;
+     i) spack find "$spec" || spack buildcache install -a "$spec" ;;
      t) cd $SPACK_ROOT/../../.. && tar xzf $spec; spack reindex;;
      u) spack uninstall "$spec";;
      esac
