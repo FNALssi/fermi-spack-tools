@@ -5,6 +5,11 @@ pkglist=$1
 export SPACK_ROOT=$2
 export PATH=$SPACK_ROOT/bin:$PATH
 
+case ${pkglist} in
+*/worklist) ;;
+*) echo "unexpected worklist file, goodbye"; exit 1;;
+esac
+
 spackbindir=`echo $0 | sed -e 's;update_spack;;'`
 
 export PATH=$SPACK_ROOT/bin:$spackbindir:$PATH
@@ -24,7 +29,12 @@ then
     :> ${pkglist}.done
 fi
 
-fgrep -v -f ${pkglist}.done ${pkglist} |
+if [ ! -r ${pkglist}.failed ]
+then 
+    :> ${pkglist}.failed
+fi
+
+cat ${pkglist} |
   while read what spec
   do
      echo "doing: $what $spec"
@@ -33,5 +43,7 @@ fgrep -v -f ${pkglist}.done ${pkglist} |
      t) cd $SPACK_ROOT/../../.. && tar xzf $spec; spack reindex;;
      u) spack uninstall "$spec";;
      esac
-     [ $? == 0 ] && echo "$what $spec" >> ${pkglist}.done
+     [ $? == 0 ] && echo "$what $spec" >> ${pkglist}.done || echo "$what $spec" >> ${pkglist}.failed
   done
+
+rm -f ${pkglist}
