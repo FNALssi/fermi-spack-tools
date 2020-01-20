@@ -137,6 +137,7 @@ then
 elif [ "x$1" = "x-t" ]
 then
     echo "setting up for traditional layout under $2"
+    mkdir -p $2
     export SPACK_ROOT=$2/prd/spack/$spack_release/NULL
     echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $2/setup-env.sh
     echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $2/setup-env.csh
@@ -145,10 +146,18 @@ elif [ "x$1" = "x-u"  ]
 then
     echo "setting up for unified layout under $2"
 
+    mkdir -p $2
     export SPACK_ROOT=$2/spack/$spack_release/NULL
     echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $2/setup-env.sh
     echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $2/setup-env.csh
     export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
+else
+    echo "Usage: $1 -[utp] /base/directory"
+    echo "  make a spack instance with given layout"
+    echo "  -u fermi 'unified' layout"
+    echo "  -t fermi 'traditional' layout"
+    echo "  -p plain spack default layout"
+    exit 1
 fi
 
 export PATH=$SPACK_ROOT/bin:$PATH

@@ -5,9 +5,13 @@ pkglist=$1
 export SPACK_ROOT=$2
 export PATH=$SPACK_ROOT/bin:$PATH
 
+usage() {
+   echo usage: $0 worklist-file SPACK_ROOT
+}
+
 case ${pkglist} in
 */worklist) ;;
-*) echo "unexpected worklist file, goodbye"; exit 1;;
+*) usage; exit 1;;
 esac
 
 spackbindir=`echo $0 | sed -e 's;update_spack;;'`

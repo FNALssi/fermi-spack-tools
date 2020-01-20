@@ -11,6 +11,9 @@ src=$dir/templates/packagelist
 optf=$dir/templates/package_opts
 dst=$1/etc/spack/$os/packages.yaml
 
+# packages to make not buildable...
+force_system="(openssl|perl)"
+
 runversion() {
    # try to get version by running executable --version
    # in some cases this works due to error messages...
@@ -91,11 +94,13 @@ fi
 exec 3>$dst
 echo "packages:" >&3
 
-if [ "x$compiler" != x ]
-then
-    echo "  all:"                     >&3
-    echo "    compiler: [$compiler]"  >&3
-fi
+# don't put the compiler tag in, we may not want to build
+# with the system compiler by default...
+#if [ "x$compiler" != x ]
+#then
+#    echo "  all:"                     >&3
+#    echo "    compiler: [$compiler]"  >&3
+#fi
 
 for p in `cat $src`
 do
@@ -110,4 +115,9 @@ do
     echo "  $lp:"                >&3
     echo "    paths:"           >&3
     echo "      $p@$v$opts$comp os=$os: /usr"    >&3
+
+    if echo $p | egrep "$force_system" > /dev/null
+    then
+         echo "    buildable: False"           >&3
+    fi
 done
