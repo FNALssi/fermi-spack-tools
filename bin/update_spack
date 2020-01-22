@@ -6,17 +6,22 @@ export SPACK_ROOT=$2
 export PATH=$SPACK_ROOT/bin:$PATH
 
 usage() {
+   echo "command: $0 $*"
    echo usage: $0 worklist-file SPACK_ROOT
 }
 
-case ${pkglist} in
-*/worklist) ;;
-*) usage; exit 1;;
+case "${pkglist}" in
+*/workfile) ;;
+*) usage "$@"; exit 1;;
 esac
+
 
 spackbindir=`echo $0 | sed -e 's;update_spack;;'`
 
 export PATH=$SPACK_ROOT/bin:$spackbindir:$PATH
+
+printf "arch: "
+spack arch
 
 if [ ! -d $SPACK_ROOT ]
 then
@@ -43,7 +48,7 @@ cat ${pkglist} |
   do
      echo "doing: $what $spec"
      case $what in
-     i) spack find "$spec" || spack buildcache install -a "$spec" ;;
+     i) spack find "$spec" || python $SPACK_ROOT/bin/spack buildcache install -a -m "$spec" ;;
      t) cd $SPACK_ROOT/../../.. && tar xzf $spec; spack reindex;;
      u) spack uninstall "$spec";;
      esac
