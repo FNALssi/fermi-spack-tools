@@ -1060,11 +1060,17 @@ class ups_to_spack:
                         'setenv("%s_FQ_DIR","%s");\n' % (pkg.prod.upper(), self.do_pdr(pkg.prod_dir))
                     )
                 continue
-            if re.search("envSet\(", line, flags=re.IGNORECASE):
+            if re.search("(env|path)Set\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
                     tcl_out.write("setenv %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write('setenv("%s","%s");\n' % (d["var"], self.fix_env_vars_lua(d["value"])))
+                continue
+            if re.search("(env|path)unSet\(", line, flags=re.IGNORECASE):
+                d = self.unpack(line)
+                if in_action:
+                    tcl_out.write("unsetenv %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
+                    lmod_out.write('unsetenv("%s","%s");\n' % (d["var"], self.fix_env_vars_lua(d["value"])))
                 continue
             if re.search("(env|path)prepend", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
@@ -1072,6 +1078,30 @@ class ups_to_spack:
                     tcl_out.write("prepend-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write(
                         'prepend_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
+                    )
+                continue
+            if re.search("(env|path)append", line, flags=re.IGNORECASE):
+                d = self.unpack(line)
+                if in_action:
+                    tcl_out.write("append-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
+                    lmod_out.write(
+                        'append_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
+                    )
+                continue
+            if re.search("(env|path)remove", line, flags=re.IGNORECASE):
+                d = self.unpack(line)
+                if in_action:
+                    tcl_out.write("remove-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
+                    lmod_out.write(
+                        'remove_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
+                    )
+                continue
+            if re.search("addAlias", line, flags=re.IGNORECASE):
+                if in_action:
+                    d = self.unpack(line)
+                    tcl_out.write("set-alias %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
+                    lmod_out.write(
+                        'set_alias("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
                     )
                 continue
             if re.search("setup(required|optional)", line, flags=re.IGNORECASE):
@@ -1120,7 +1150,7 @@ class ups_to_spack:
                         lmod_out.write('os.execute(%s);\n' % self.fix_env_vars_lua(d["cmd"]))
                     continue
 
-            if re.search("endif", line, flags=re.IGNORECASE):
+            if re.search("end(if|unless)", line, flags=re.IGNORECASE):
                 if in_action:
                     tcl_out.write("}\n\n")
                     lmod_out.write("end\n\n")
@@ -1137,6 +1167,14 @@ class ups_to_spack:
                         "if {![catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"].strip('" '))
                     )
                     lmod_out.write('if (!os.execute(%s)) then\n' % self.fix_env_vars_lua(d["args"]))
+                continue
+            if re.search("\\bunless\\s*\\(", line, flags=re.IGNORECASE):
+                d = self.unpack(line)
+                if in_action:
+                    tcl_out.write(
+                        "if {[catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"].strip('" '))
+                    )
+                    lmod_out.write('if (os.execute(%s)) then\n' % self.fix_env_vars_lua(d["args"]))
                 continue
             if re.search("\\bend\\b", line, flags=re.IGNORECASE):
                 if in_action:
