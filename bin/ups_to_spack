@@ -891,6 +891,10 @@ class ups_to_spack:
             val = 'string.gsub(string.gsub(%s, "%%${(%%w+)}", os.getenv),"%%$(%%w+)", os.getenv)' % val
         return val
 
+    def clean_colon(self, s):
+        s = s.replace(':','')
+        s = s.strip(""" "' """)
+
     @log_call
     def convert_table(self, pkg, thash):
 
@@ -1074,6 +1078,10 @@ class ups_to_spack:
                 continue
             if re.search("(env|path)prepend", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
+
+                if d["value"].find(':') > 0:
+                   d["value"] = self.clean_colon(d["value"])
+
                 if in_action:
                     tcl_out.write("prepend-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write(
