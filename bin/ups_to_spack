@@ -1069,7 +1069,7 @@ class ups_to_spack:
                 lmod_out.write("\n  function %s ()\n" % name.lower())
                 in_action = True
                 continue
-            if re.search("proddir\(|dodefaults", line, flags=re.IGNORECASE):
+            if re.search("proddir\s*\(|dodefaults", line, flags=re.IGNORECASE):
                 if in_action:
                     tcl_out.write(
                         "setenv %s_DIR %s\n" % (pkg.prod.upper(), self.do_pdr(pkg.prod_dir))
@@ -1084,13 +1084,22 @@ class ups_to_spack:
                         'setenv("%s_FQ_DIR","%s");\n' % (pkg.prod.upper(), self.do_pdr(pkg.prod_dir))
                     )
                 continue
-            if re.search("(env|path)Set\(", line, flags=re.IGNORECASE):
+
+            if re.search("(env|path)Set\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
                     tcl_out.write("setenv %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write('setenv("%s","%s");\n' % (d["var"], self.fix_env_vars_lua(d["value"])))
                 continue
-            if re.search("(env|path)unSet\(", line, flags=re.IGNORECASE):
+
+            if re.search("proDir\s*\(", line, flags=re.IGNORECASE):
+                if in_action:
+                    d = self.unpack(line)
+                    tcl_out.write("setenv %s%s %s\n" % (pkg.prod.upper(),d["var"], self.fix_env_vars_tcl(d["value"])))
+                    lmod_out.write('setenv("%s%s","%s");\n' % (pkg.prod.upper(), d["var"], self.fix_env_vars_lua(d["value"])))
+                continue
+                   
+            if re.search("(env|path)unSet\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
                     tcl_out.write("unsetenv %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
@@ -1116,7 +1125,7 @@ class ups_to_spack:
                         'append_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
                     )
                 continue
-            if re.search("(env|path)remove", line, flags=re.IGNORECASE):
+            if re.search("(env|path)remove\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
                     tcl_out.write("remove-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
@@ -1124,7 +1133,7 @@ class ups_to_spack:
                         'remove_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
                     )
                 continue
-            if re.search("addAlias", line, flags=re.IGNORECASE):
+            if re.search("addAlias\s*\(", line, flags=re.IGNORECASE):
                 if in_action:
                     d = self.unpack(line)
                     tcl_out.write("set-alias %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
@@ -1132,28 +1141,23 @@ class ups_to_spack:
                         'set_alias("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
                     )
                 continue
-            if re.search("setup(required|optional)", line, flags=re.IGNORECASE):
+
+            if re.search("setup(required|optional)\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 cdep = self.convert_dependency(d["args"], pkg.top_flav, pkg.top_quals)
                 if in_action and cdep:
                     tcl_out.write("module load %s \n" % cdep)
                     lmod_out.write('load("%s");\n' % cdep)
                 continue
-            if re.search("addalias", line, flags=re.IGNORECASE):
-                d = self.unpack(line)
-                if in_action:
-                    tcl_out.write("set-alias %s %s\n" % (d["var"], d["value"]))
-                    lmod_out.write('set_alias("%s","%s");\n' % (d["var"], d["value"]))
-                continue
 
-            if re.search("exeAction(Required|Optional)", line, flags=re.IGNORECASE):
+            if re.search("exeAction(Required|Optional)\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
                     tcl_out.write("%s\n" % d["var"].lower())
                     lmod_out.write("%s()\n" % d["var"].lower())
                 
 
-            if re.search("execute", line, flags=re.IGNORECASE):
+            if re.search("execute\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack_execute(line)
                 if in_action:
                     if d["flags"] == "UPS_ENV":
