@@ -64,6 +64,10 @@ def ups_depend(prod, ver, flav, qual, hosttype=''):
     """ run ups depend, return list of output lines """
     return ups_x("depend", prod, ver, flav, qual, hosttype)
 
+def canon_quals(qual):
+    ll = qual.split(":")
+    ll.sort()
+    return ":".join(ll)
 
 def ups_x(what, prod, ver, flav, qual, hosttype=''):
     """ run ups what, return list of output lines """
@@ -486,20 +490,25 @@ class ups_to_spack:
         f.close()
         return repolist
 
+
+
     @log_call
     def get_namespace(self, pkg):
 
+        pkg.namespace = self.get_prod_namespace(pkg.prod)
+        logging.debug("pkg %s namespace %s " % (pkg.prod, pkg.namespace))
+
+    @remember
+    def get_prod_namespace(self, prod):
+
         repolist = self.get_repo_list()
 
-        found = False
         for repo in repolist:
-            pf = "%s/packages/%s/package.py" % (repo, pkg.prod)
+            pf = "%s/packages/%s/package.py" % (repo, prod)
             logging.debug("checking for %s..",pf)
             if os.access(pf , os.R_OK):
-                found = True
-                pkg.namespace = repolist[repo]
-                
-        logging.debug("pkg %s namespace %s " % (pkg.prod, pkg.namespace))
+                return repolist[repo]
+        return None
 
     @log_call
     def make_recipe(self, pkg):
@@ -864,14 +873,19 @@ class ups_to_spack:
 
     def fix_ups_vars(self, tline, pkg):
         """ replace common ups table file variables """
-        tline = (tline.replace("${UPS_PROD_DIR}", self.do_pdr(pkg.prod_dir))
+        tline = (tline
+            .replace("${UPS_PROD_DIR}", self.do_pdr(pkg.prod_dir))
             .replace("${UPS_UPS_DIR}", self.do_pdr(pkg.prod_dir) + "/ups")
             .replace("${UPS_PROD_VERSION}", pkg.ver)
-            .replace("${UPS_SOURCE}", "source"))
+            .replace("${UPS_SOURCE}", "source")
+            .replace("${UPS_PROD_FLAVOR}", pkg.flav)
+            .replace("${UPS_PROD_NAME_UC}", pkg.prod.upper()))
         return tline
 
     def fix_env_vars_tcl(self, val):
         # tcl does interpoplate, but needs $::env(name) not ${name}
+        if not val:
+            return ""
         val = val.strip('" ')
         val = '"%s"' % val
         if val.find("`") >= 0:
@@ -882,6 +896,8 @@ class ups_to_spack:
         return val
 
     def fix_env_vars_lua(self, val):
+        if not val:
+            return ""
         # lua doesn't interpolate, so actively replace it...
         val = val.strip('"')
         val = '"%s"' % val
@@ -1009,9 +1025,10 @@ class ups_to_spack:
                     tcl_out.write("}\n\n")
                     in_action = False
                 continue
-            if re.search(
-                'qualifiers\\s*=\\s*"?%s"?\\s*$' % pkg.quals, line, flags=re.IGNORECASE
-            ):
+            m = re.search(
+                'qualifiers\\s*=\\s*"?([^" ]*)"?\\s*$', line, flags=re.IGNORECASE
+            )
+            if m and canon_quals(m.group(1)) == canon_quals(pkg.quals):
                 logging.debug("qualifier match")
                 if in_action:
                     lmod_out.write("end\n\n")
@@ -1025,7 +1042,10 @@ class ups_to_spack:
                     tcl_out.disable()
                 continue
             if re.search("qualifiers\\s*=", line, flags=re.IGNORECASE):
-                logging.debug("qualifier mismatch")
+                if m and m.group(1):
+                    logging.debug("qualifier mismatch %s vs %s" % (canon_quals(m.group(1)),canon_quals(pkg.quals)))
+                else:
+                    logging.debug("qualifier mismatch")
                 if in_action:
                     lmod_out.write("end\n\n")
                     tcl_out.write("}\n\n")
