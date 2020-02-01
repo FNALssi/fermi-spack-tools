@@ -1231,7 +1231,7 @@ class ups_to_spack:
                     m = re.match("sh -c 'for dd in ([a-z])*;do \[ -d",d["args"])
                     if m:
                        d["args"] = "test -d %s" % m.group(1)
-                    }
+                    
                     tcl_out.write(
                         "if {[catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"].strip('" '))
                     )
