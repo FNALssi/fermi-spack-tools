@@ -865,9 +865,12 @@ class ups_to_spack:
 
     def unpack_execute(self, cmdstr):
         """ unpack/parse an execute statement from a ups table file """
-        m = re.match("(.*)\(([^,]*),([^,]*),?(.*)\)", cmdstr)
-        if m:
-            return {"cmd": m.group(2).strip('" '), "flags": m.group(3).strip(), "envvar": m.group(4).strip()}
+        m1 = re.match('(.*)\("([^"]*)",([^,]*),?(.*)\)', cmdstr)
+        m2 = re.match('(.*)\(([^,]*),([^,]*),?(.*)\)', cmdstr)
+        if m1:
+            return {"cmd": m1.group(2).strip('" '), "flags": m1.group(3).strip(), "envvar": m1.group(4).strip()}
+        elif m2:
+            return {"cmd": m2.group(2).strip('" '), "flags": m2.group(3).strip(), "envvar": m2.group(4).strip()}
         else:
             return {"cmd": "", "flags": "", "envvar": ""}
 
@@ -879,17 +882,26 @@ class ups_to_spack:
             .replace("${UPS_PROD_VERSION}", pkg.ver)
             .replace("${UPS_SOURCE}", "source")
             .replace("${UPS_PROD_FLAVOR}", pkg.flav)
+            .replace("${UPS_PROD_QUALIFIERS}", canon_quals(pkg.quals))
             .replace("${UPS_PROD_NAME_UC}", pkg.prod.upper()))
         return tline
 
+
     def fix_env_vars_tcl(self, val):
+
+        def fix_exec_tcl(m):
+            what = re.sub("'([^']*)'","{\\1}",m.group(1))
+            return "[exec %s]" % what
+
         # tcl does interpoplate, but needs $::env(name) not ${name}
         if not val:
             return ""
         val = val.strip('" ')
         val = '"%s"' % val
+
         if val.find("`") >= 0:
-            val = re.sub("`([^`]*)`", "[exec \\1]", val)
+            val = re.sub("`([^`]*)`", fix_exec_tcl, val)
+
         if val.find("$") >= 0:
             val = re.sub("\\$\\{(\\w+)\\}","$::env(\\1)",val)
             val = re.sub("\\$(\\w+)","$::env(\\1)",val)
@@ -1069,7 +1081,7 @@ class ups_to_spack:
                 lmod_out.write("\n  function %s ()\n" % name.lower())
                 in_action = True
                 continue
-            if re.search("proddir\s*\(|dodefaults", line, flags=re.IGNORECASE):
+            if re.search("dodefaults\s*\(", line, flags=re.IGNORECASE):
                 if in_action:
                     tcl_out.write(
                         "setenv %s_DIR %s\n" % (pkg.prod.upper(), self.do_pdr(pkg.prod_dir))
@@ -1092,9 +1104,15 @@ class ups_to_spack:
                     lmod_out.write('setenv("%s","%s");\n' % (d["var"], self.fix_env_vars_lua(d["value"])))
                 continue
 
-            if re.search("proDir\s*\(", line, flags=re.IGNORECASE):
+            if re.search("prodDir\s*\(", line, flags=re.IGNORECASE):
                 if in_action:
                     d = self.unpack(line)
+
+                    if d['var'] == "":
+                        d['var'] = "_DIR"
+                    if d['value'] == "":
+                        d['value'] = self.do_pdr(pkg.prod_dir)
+
                     tcl_out.write("setenv %s%s %s\n" % (pkg.prod.upper(),d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write('setenv("%s%s","%s");\n' % (pkg.prod.upper(), d["var"], self.fix_env_vars_lua(d["value"])))
                 continue
@@ -1172,10 +1190,10 @@ class ups_to_spack:
 
                     if d["envvar"]:
                         tcl_out.write(
-                            'setenv %s [exec %s]\n' % (d["envvar"], d["cmd"])
+                            'setenv %s [exec %s]\n' % (d["envvar"], re.sub("'([^']*)'","{\\1}",self.fix_env_vars_tcl(d["cmd"]).strip('" ')))
                         )
                         lmod_out.write(
-                            'setenv("%s",backquote("%s"));\n' % ( d["envvar"], d["cmd"])
+                            'setenv("%s",backquote(%s));\n' % ( d["envvar"], self.fix_env_vars_lua(d["cmd"]))
                         )
                     else:
                         tcl_out.write("exec %s\n" % self.fix_env_vars_tcl(d["cmd"]))
@@ -1195,14 +1213,25 @@ class ups_to_spack:
             if re.search("\\bif\\s*\\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
+
+                    # fix evil test in assorted larsoft dependencies
+                    m = re.match("sh -c 'for dd in ([a-z])*;do \[ -d",d["args"])
+                    if m:
+                       d["args"] = "test -d %s" % m.group(1)
+
                     tcl_out.write(
-                        "if {![catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"].strip('" '))
+                        "if {![catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"]).strip('" ')
                     )
                     lmod_out.write('if (!os.execute(%s)) then\n' % self.fix_env_vars_lua(d["args"]))
                 continue
             if re.search("\\bunless\\s*\\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
+                    # fix evil test in assorted larsoft dependencies
+                    m = re.match("sh -c 'for dd in ([a-z])*;do \[ -d",d["args"])
+                    if m:
+                       d["args"] = "test -d %s" % m.group(1)
+                    }
                     tcl_out.write(
                         "if {[catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"].strip('" '))
                     )
