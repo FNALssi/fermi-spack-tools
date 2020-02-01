@@ -920,8 +920,8 @@ class ups_to_spack:
         return val
 
     def clean_colon(self, s):
-        s = s.replace(':','')
-        s = s.strip(""" "' """)
+        s = s.replace(' :', '')
+        s = s.replace(" ':'", '')
 
     @log_call
     def convert_table(self, pkg, thash):
@@ -1126,7 +1126,7 @@ class ups_to_spack:
             if re.search("(env|path)prepend", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
 
-                if d["value"].find(':') > 0:
+                if d["value"].rfind(':') > len(d["value"])-3:
                    d["value"] = self.clean_colon(d["value"])
 
                 if in_action:
@@ -1215,9 +1215,9 @@ class ups_to_spack:
                 if in_action:
 
                     # fix evil test in assorted larsoft dependencies
-                    m = re.match("sh -c 'for dd in ([a-z])*;do \[ -d",d["args"])
+                    m = re.match("sh -c 'for dd in ([a-z0-9]*);do \\[ -d (\\$.*)/",d["args"])
                     if m:
-                       d["args"] = "test -d %s" % m.group(1)
+                       d["args"] = "test -d %s/%s" % (m.group(2), m.group(1))
 
                     tcl_out.write(
                         "if {![catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"]).strip('" ')
@@ -1228,9 +1228,9 @@ class ups_to_spack:
                 d = self.unpack(line)
                 if in_action:
                     # fix evil test in assorted larsoft dependencies
-                    m = re.match("sh -c 'for dd in ([a-z])*;do \[ -d",d["args"])
+                    m = re.match("sh -c 'for dd in ([a-z0-9]*);do \\[ -d (\\$.*)/",d["args"])
                     if m:
-                       d["args"] = "test -d %s" % m.group(1)
+                       d["args"] = "test -d %s/%s" % (m.group(2), m.group(1))
                     
                     tcl_out.write(
                         "if {[catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"].strip('" '))
