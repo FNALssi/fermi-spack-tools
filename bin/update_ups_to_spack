@@ -6,11 +6,31 @@ export PATH=$SPACK_ROOT/bin:$PATH
 lastfile=$SPACK_ROOT/var/spack/.last_ups_to_spack
 dbfile=$SPACK_ROOT/var/spack/.ups_mirror_db
 
+if [ ! -r $dbfile ]
+then
+    echo "no dbfile $dbfile"
+    exit 1
+fi
+
 export UPSDB=`cat $dbfile`
-export PRODUCTS="$UPS_THIS_DB"
 export UPS_THIS_DB=$UPSDB
+export PRODUCTS="$UPS_THIS_DB"
+
+if [ ! -d $UPSDB ]
+then
+    echo "No ups db directory: $UPSDB"
+    echo "from dbfile $dbfile"
+    exit 1
+fi
 
 eval `grep SETUPS_DIR $UPSDB/.upsfiles/dbconfig | sed -e 's/ //g'`
+
+if [ ! -r $SETUPS_DIR/setups ]
+then
+    echo "No SETUPS_DIR in  $UPSDB/.upsfiles/dbconfig"
+    echo "db from dbfile $dbfile"
+    exit 1
+fi
 
 source $SETUPS_DIR/setups
 
@@ -42,6 +62,7 @@ do
 
     for v in $vlist
     do
+        echo " ==== updating $p $v "
         ups_to_spack -a $p $v
     done
 done
