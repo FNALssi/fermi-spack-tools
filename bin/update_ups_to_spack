@@ -64,6 +64,7 @@ touch $lastfile.new
 
 prdlist=`find $UPSDB -maxdepth 1 $timewindow -print | sed -e 's;.*/;;'` 
 
+didone=false
 for p in $prdlist
 do
     vlist=`find $UPSDB/$p -maxdepth 1 $timewindow -name '*.version' -print | sed -e 's;.*/;;' -e 's/.version//'`
@@ -72,9 +73,13 @@ do
     do
         echo " ==== updating $p $v "
         ups_to_spack -a $p $v > /tmp/uts_${p}_${v} 2>&1
+        didone=true
     done
 done
 
-spack reindex 
+if $didone
+then
+    spack reindex 
+fi
 
 mv $lastfile.new $lastfile
