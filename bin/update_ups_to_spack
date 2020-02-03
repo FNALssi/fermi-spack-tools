@@ -1,7 +1,14 @@
 #!/bin/sh
 
+spackbindir=`echo $0 | sed -e 's;update_ups_to_spack;;' `
+case x$spackbindir in
+x/*) ;;
+x*)  spackbindir="$PWD/$spackbindir"
+esac
+
 export SPACK_ROOT="$1"
-export PATH=$SPACK_ROOT/bin:$PATH
+export PATH=$SPACK_ROOT/bin:$spackbindir:$PATH
+
 
 lastfile=$SPACK_ROOT/var/spack/.last_ups_to_spack
 dbfile=$SPACK_ROOT/var/spack/.ups_mirror_db
@@ -11,6 +18,7 @@ then
     echo "no dbfile $dbfile"
     exit 1
 fi
+
 
 export UPSDB=`cat $dbfile`
 export UPS_THIS_DB=$UPSDB
@@ -54,17 +62,19 @@ touch $lastfile.new
 # find recent entries in upsdb to migrate
 #
 
-prdlist=`find $UPSDB $timewindow -maxdepth 1 -print | sed -e 's;.*/;;'` 
+prdlist=`find $UPSDB -maxdepth 1 $timewindow -print | sed -e 's;.*/;;'` 
 
 for p in $prdlist
 do
-    vlist=`find $UPSDB/$p $timewindow -name '*.version' -print | sed -e 's;.*/;;' -e 's/.version//'`
+    vlist=`find $UPSDB/$p -maxdepth 1 $timewindow -name '*.version' -print | sed -e 's;.*/;;' -e 's/.version//'`
 
     for v in $vlist
     do
         echo " ==== updating $p $v "
-        ups_to_spack -a $p $v
+        ups_to_spack -a $p $v > /tmp/uts_${p}_${v} 2>&1
     done
 done
+
+spack reindex 
 
 mv $lastfile.new $lastfile
