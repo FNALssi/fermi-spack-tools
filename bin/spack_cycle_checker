@@ -1,0 +1,66 @@
+#!/usr/bin/evn python
+
+import sys
+import os
+import re
+import importlib
+
+visited = set()
+paths = []
+
+
+def find_repo_paths():
+    global paths 
+    f = os.popen('%s/bin/spack repo list'% os.environ['SPACK_ROOT'], 'r')
+    for line in f:
+        ll = line.strip().split(" ")
+        if ll and ll[-1]:
+            paths.append(ll[-1])
+    print("repo paths: %s" % repr(paths))
+
+def get_deps(fname):
+    if not fname:
+        return []
+    res = set()
+    f = open(fname,'r')
+    for line in f:
+        line = re.sub("\\#.*", "", line)
+        mbt = re.search("""type=["'](build|test)["']""", line)
+        mw = re.search("when=", line)
+        m = re.search("""depends_on\\(\\s*['"]([^'"@+]*)['"+@].*""", line)
+        if m and not mbt and not mw:
+            res.add(m.group(1))
+    return list(res)
+
+def get_pkg_filename(pkg):
+     global paths
+     for p in paths:
+         mf = '%s/packages/%s/package.py' % (p, pkg)
+         if os.access(mf, os.R_OK):
+             print("filename for %s is %s" % (pkg, mf))
+             return mf
+     print("filename for %s not found" % pkg)
+     return None
+            
+def check(pkg, path=[]):
+    global visited
+
+    if pkg in visited:
+        raise AssertionError("cycle on pkg %s: %s" % (pkg, ",".join(path)))
+
+    visited.add(pkg)
+
+    pkg_deps = get_deps(get_pkg_filename(pkg))
+
+    print("deps of pkg %s are %s" % ( pkg, ",".join(pkg_deps)))
+    sys.stdout.flush()
+    for dpkg in pkg_deps:
+        check(dpkg, path + [pkg])
+     
+    visited.remove(pkg)
+
+find_repo_paths()
+try:
+    check(sys.argv[1])
+except AssertionError as e:
+    print(e)
