@@ -12,7 +12,7 @@ optf=$dir/templates/package_opts
 dst=$1/etc/spack/$os/packages.yaml
 
 # packages to make not buildable...
-force_system="(openssl|perl)"
+force_system="(bzip2|fontconfig|findutils|image-magick|libjpeg-turbo|libx11|libxau|libxcb|libxfixes|libxft|libxi|libxmu|libxpm|libxshmfence|libxt|libxxf86vm|ncurses|openssh|openssl|tar)"
 
 runversion() {
    # try to get version by running executable --version
@@ -28,7 +28,6 @@ runversion() {
 
 case `uname -s` in
 Linux)
-: linux case
     case `lsb_release -i` in
     *Ubuntu)
         : ubuntu case
@@ -112,11 +111,12 @@ do
     fi
     opts=`grep "^$p\s" $optf | sed -e 's/.*\t//' -e 's/ *$//'`
     lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/'`
-    echo "  $lp:"                >&3
+    echo "  $lp:"               >&3
+    echo "    version: [$v]"    >&3
     echo "    paths:"           >&3
-    echo "      $p@$v$opts$comp os=$os: /usr"    >&3
+    echo "      $lp@$v$opts$comp os=$os: /usr"    >&3
 
-    if echo $p | egrep "$force_system" > /dev/null
+    if echo $lp | egrep "$force_system" > /dev/null
     then
          echo "    buildable: False"           >&3
     fi

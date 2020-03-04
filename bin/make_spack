@@ -5,7 +5,8 @@
 #
 
 spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
-spack_release=rollout
+#spack_release=rollout
+spack_release=rollout2
 
 spackbindir=`echo $0 | sed -e 's;make_spack;;' `
 case x$spackbindir in

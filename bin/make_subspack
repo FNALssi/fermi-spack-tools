@@ -1,14 +1,27 @@
 #!/bin/sh
 
 # make a sub-spack repository
+# ...but make it unified layout...
 
 src=$1
 dst=$2
 
-spack_release=rollout
+dst="$dst/spack/rollout/NULL/"
+
+spackbindir=`echo $0 | sed -e 's;make_subspack;;' `
+case x$spackbindir in
+x/*) ;;
+x*)  spackbindir="$PWD/$spackbindir"
+esac
+
+
+spack_release=rollout2
 
 dstb=`basename $dst`
 dstb=`dirname $dst`
+
+mkdir -p $dstb
+export SPACK_ROOT=$dst
 
 for config_yaml in $src/etc/spack/default/config.yaml $src/etc/spack/config.yaml 
 do
@@ -26,6 +39,7 @@ test -d $dstb || mkdir -p $dstb
 cd $dstb
 git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-spack $dst
 
+cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml
 cd $dst
 git checkout $spack_release
 
