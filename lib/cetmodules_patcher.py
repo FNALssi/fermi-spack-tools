@@ -16,11 +16,11 @@ tbb_re = re.compile("\$\{TBB}")
 dir_re = re.compile("\$\{\([A-Z_]\)_DIR\}")
 drop_re = re.compile("(_cet_check\()|(include\(CPack\))|(add_subdirectory\(\s*ups\s*\))")
 
-def cetmodules_file_patcher(fname, toplevel, proj, vers):
+def cetmodules_file_patcher(fname, toplevel=True, proj='foo', vers='1.0'):
     fin = open(fname,"r")
     fout = open(fname+".new", "w")
-    need_cmake_min = True
-    need_project = True
+    need_cmake_min = toplevel
+    need_project = toplevel
 
     for line in fin:
         line = line.rstrip()
@@ -69,7 +69,12 @@ def cetmodules_file_patcher(fname, toplevel, proj, vers):
         fout.write(line+"\n")
     fin.close()
     fout.close()
+    os.link(fname, fname+'.bak')
+    os.rename(fname+'.new', fname)
 
 if __name__ == '__main__':
     import sys
-    cetmodules_file_patcher(sys.argv[1], True, "foo","1.0")
+    if len(sys.argv) != 4 or not os.path.isdir(sys.argv[2]):
+        sys.stderr.write("usage: %s directory package-name package-version" % sys.argv[0])
+        sys.exit(1)
+    cetmodules_file_patcher(sys.argv[1], sys.argv[2],sys.argv[3])
