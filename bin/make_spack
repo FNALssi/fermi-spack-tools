@@ -1,11 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 
 #
 # where to git clone spack from, and what branch/release
 #
 
 spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
-#spack_release=rollout
 spack_release=rollout2
 
 spackbindir=`echo $0 | sed -e 's;make_spack;;' `
@@ -13,6 +12,7 @@ case x$spackbindir in
 x/*) ;;
 x*)  spackbindir="$PWD/$spackbindir"
 esac
+
 #
 # binary cache to use
 #
@@ -24,7 +24,7 @@ install_latest() {
     if $use_buildcache
     then 
         pkg_ver=`spack buildcache list "$pkg $plat" | tail -1`
-        echo "latest $pkg is $pkg_ver"
+        echo "make_spack: info: latest $pkg is $pkg_ver"
         spack buildcache install -a -m "$pkg_ver $plat"
     else
         spack install "$pkg $plat"
@@ -75,12 +75,17 @@ EOF
     PATH="$patchelf_dir/bin:$PATH"
 }
 
+find_compilers() {
+   spack compiler find --scope=site
+}
+
 bootstrap_spack() {
-  
     bootstrap_patchelf
+    find_compilers
     install_latest environment-modules
     install_latest lmod
     install_latest py-machotools
+    make_packages_yaml $SPACK_ROOT
 }
 
 add_recipe_repos() {
@@ -105,7 +110,13 @@ create_spack() {
         if cd $b
         then 
             git checkout $spack_release
-            echo running: $add_config
+            if [ $? != 0 ]
+            then
+                echo "make_spack: ERROR: Unable to git checkout $spack_relase from $spack_repo" >&2
+                echo "FAILED"
+                exit 1
+            fi
+            echo "make_spack: INFO: running: $add_config"
             $add_config
             export plat="target=`uname -i` os=`spack arch --operating-system`"
             spack mirror add --scope site fnal $binary_cache
@@ -113,15 +124,16 @@ create_spack() {
             add_recipe_repos
             bootstrap_spack
         else
-            return 1
+            echo "echo make_spack: ERROR: Unable to git clone $spack_repo as $b" >&2
+            echo "FAILED"
+            exit 1
         fi
     else
-        return 1
+        echo "make_spack: ERROR: Unable to make/change directories to $d" >&2
+        echo "FAILED"
+        exit 1
     fi
 }
-
-
-set -x 
 
 if [ "x$1" = "x--no-buildcache" ]
 then
@@ -131,27 +143,57 @@ else
     use_buildcache=true
 fi
 
+make_absolute() {
+   case x$1 in
+   x.)   echo $PWD;;
+   x./*) echo $PWD/$1;;
+   x/*)  echo $1;;
+   *)    echo $PWD/$1;;
+   esac
+}
+
+dir=make_absolute
 if [ "x$1" = "x-p" ]
 then
-    echo "setting up for plain spack"
-    export SPACK_ROOT=$1
+    echo "make_spack: INFO: Setting up for plain spack..."
+    export SPACK_ROOT=`make_absolute $2`
+    mkdir -p "$SPACK_ROOT" 
+    if [ ! -d "$SPACK_ROOT" -o ! -w "$SPACK_ROOT" ]
+    then
+        echo "make_spack: ERROR: Unable to make writable directory '$SPACK_ROOT'" >&2
+        echo "FAILED" >&2
+        exit 1
+    fi
     add_config=:
 elif [ "x$1" = "x-t" ]
 then
-    echo "setting up for traditional layout under $2"
-    mkdir -p $2
-    export SPACK_ROOT=$2/prd/spack/$spack_release/NULL
-    echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $2/setup-env.sh
-    echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $2/setup-env.csh
+    echo "make_spack: INFO: setting up for traditional layout under $2"
+    dir=`make_absolute "$2"`
+    mkdir -p "$dir" 
+    if [ ! -d "$dir" -o ! -w "$dir" ]
+    then
+        echo "make_spack: ERROR: Unable to make writable directory '$dir'" >&2
+        echo "FAILED" >&2
+        exit 1
+    fi
+    export SPACK_ROOT=$dir/prd/spack/$spack_release/NULL
+    echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $dir/setup-env.sh
+    echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $dir/setup-env.csh
     export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
 elif [ "x$1" = "x-u"  ]
 then
-    echo "setting up for unified layout under $2"
-
-    mkdir -p $2
-    export SPACK_ROOT=$2/spack/$spack_release/NULL
-    echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $2/setup-env.sh
-    echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $2/setup-env.csh
+    dir=`make_absolute "$2"`
+    echo "make_spack: INFO: setting up for unified layout under $dir"
+    mkdir -p "$dir" 
+    if [ ! -d "$dir" -o ! -w "$dir" ]
+    then
+        echo "make_spack: ERROR: Unable to make writable directory '$dir'" >&2
+        echo "FAILED" >&2
+        exit 1
+    fi
+    export SPACK_ROOT=$dir/spack/$spack_release/NULL
+    echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $dir/setup-env.sh
+    echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $dir/setup-env.csh
     export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
 else
     echo "Usage: $1 -[utp] /base/directory"

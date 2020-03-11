@@ -119,6 +119,7 @@ perl
 perl-libwww-perl
 perl-version
 pixman
+pkgconfig
 pkg-config
 popt
 ppl

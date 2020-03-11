@@ -12,7 +12,7 @@ optf=$dir/templates/package_opts
 dst=$1/etc/spack/$os/packages.yaml
 
 # packages to make not buildable...
-force_system="(bzip2|fontconfig|findutils|image-magick|libjpeg-turbo|libx11|libxau|libxcb|libxfixes|libxft|libxi|libxmu|libxpm|libxshmfence|libxt|libxxf86vm|ncurses|openssh|openssl|tar)"
+force_system="(bzip2|fontconfig|findutils|image-magick|libjpeg-turbo|libuuid|libx11|libxau|libxcb|libxfixes|libxft|libxi|libxmu|libxpm|libxshmfence|libxt|libxxf86vm|ncurses|openssh|openssl|pkgconf|pkg-config|tar)"
 
 runversion() {
    # try to get version by running executable --version
@@ -20,30 +20,38 @@ runversion() {
    $1 --version 2>&1 | 
       grep -i $1 | 
       head -1 | 
-      grep -v 'command not found' |
+      egrep -iv 'command not found|illegal option' |
+      sed -e 's/^.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'
+}
+runversion2() {
+   # try to get version by running executable --version
+   # in some cases this works due to error messages...
+   $1 --version 2>&1 | 
+      head -1 | 
+      egrep -iv 'command not found|illegal option' |
       sed -e 's/^.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'
 }
 
 # define getv depending on platform 
-
+# for linux distros, prefer the apt/rpm version...
 case `uname -s` in
 Linux)
     case `lsb_release -i` in
     *Ubuntu)
         : ubuntu case
         getv() {
-           apt list $1 2>/dev/null | grep '\[installed\]'| sed -e 's/[^ ]* //' -e 's/.*://' -e 's/[+-].*//'
+           apt list $1 2>/dev/null | grep '\[installed\]'| sed -e 's/[^ ]* //' -e 's/.*://' -e 's/[+-].*//' || runversion $1
         }
     ;;
     *Scientific*|*Centos*|*RedHat*)
         if [ x$RPMCACHE != x ]
         then
         getv() {
-           grep "^$1-[0-9]" $RPMCACHE | tail -1 | grep -v 'is not installed' | sed -e 's/[^-]*-//' -e 's/[a-z][^-]*-//' -e 's/-.*//'
+           grep "^$1-[0-9]" $RPMCACHE | tail -1 | grep -v 'is not installed' | sed -e 's/[^-]*-//' -e 's/[a-z][^-]*-//' -e 's/-.*//' || runversion $1
         }
         else
         getv() {
-           rpm -q $1 | tail -1 | grep -v 'is not installed' | sed -e 's/[^-]*-//' -e 's/[a-z][^-]*-//' -e 's/-.*//'
+           rpm -q $1 | tail -1 | grep -v 'is not installed' | sed -e 's/[^-]*-//' -e 's/[a-z][^-]*-//' -e 's/-.*//' || runversion $1
         }
         fi
         ;;
@@ -61,6 +69,7 @@ Linux)
            runversion $1
            ;;
        xtcl)
+           # its tclsh not tcl, AND it doesn't take --version...
            echo info patchlevel | tclsh
            ;;
        xlib*) 
@@ -74,22 +83,40 @@ Linux)
     ;;
 esac
 
+getv2() {
+  # more robust getv that does the generic getv, but also tries runversion
+  # and runversion2.
+  # This has some chance of finding, say, UPS packges you have setup, but
+  # does help with the whole pkgconf/pkg-config silliness...
+  x=`getv $1`
+  if [ "$x" = "" ]
+  then
+      x=`runversion $1`
+  fi
+  if [ "$x" = "" ]
+  then
+      x=`runversion2 $1`
+  fi
+  echo $x
+}
+
 mkdir -p `dirname $dst`
 
 compiler=""
-if [ "x`getv gcc`" != x ]
+if [ "x`getv2 gcc`" != x ]
 then
-    compiler="gcc@`getv gcc`"
+    compiler="gcc@`getv2 gcc`"
     comp="%$compiler"
 else
     comp=""
 fi
 
-if [ "x`getv clang`" != x ]
+if [ "x`getv2 clang`" != x ]
 then
-    compiler="$compiler clang@`getv clang`"
+    compiler="$compiler clang@`getv2 clang`"
 fi
 
+echo "make_packages_yaml: INFO: creating $dst"
 exec 3>$dst
 echo "packages:" >&3
 
@@ -103,14 +130,15 @@ echo "packages:" >&3
 
 for p in `cat $src`
 do
-    v=`getv $p`
+    # find local version if any...
+    v=`getv2 $p`
     if [ "x$v" = x ]
     then
         # not found...
         continue
     fi
     opts=`grep "^$p\s" $optf | sed -e 's/.*\t//' -e 's/ *$//'`
-    lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/'`
+    lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/' -e 's/pkgconfig/pkgconf/'`
     echo "  $lp:"               >&3
     echo "    version: [$v]"    >&3
     echo "    paths:"           >&3
