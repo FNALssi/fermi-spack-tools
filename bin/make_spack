@@ -152,7 +152,6 @@ make_absolute() {
    esac
 }
 
-dir=make_absolute
 if [ "x$1" = "x-p" ]
 then
     echo "make_spack: INFO: Setting up for plain spack..."

@@ -5,11 +5,12 @@ import re
 def cetmodules_dir_patcher(dir, proj, vers):
     for rt, drs, fnames in os.walk(dir):
         if "CMakeLists.txt" in fnames:
-            cetmodules_file_patcher(rt + "/CMakeList.txt", rt == dir, proj, vers)
+            cetmodules_file_patcher(rt + "/CMakeLists.txt", rt == dir, proj, vers)
 
 cmake_min_re =     re.compile("cmake_minimum_required\((\d*\.\d*)\)")
 cmake_project_re = re.compile("project\(\s*(\S*)(.*)\)")
 cmake_find_ups_re  = re.compile("find_ups_product\(\s*(\S*).*\)")
+cmake_find_cetbuild_re = re.compile("find_package\((cetbuildtools.*)\)")
 boost_re = re.compile("\$\{BOOST_(\w*)_LIBRARY\}")
 root_re = re.compile("\$\{ROOT_(\w*)\}")
 tbb_re = re.compile("\$\{TBB}")
@@ -27,6 +28,7 @@ def cetmodules_file_patcher(fname, toplevel=True, proj='foo', vers='1.0'):
         line = dir_re.sub(lambda x:'${%s_DIR}' % x.group(1).lower(), line)
         line = boost_re.sub(lambda x:'Boost::%s' % x.group(1).lower(), line)
         line = root_re.sub(lambda x: 'ROOT::%s%s' % (x.group(1)[0],x.group(1)[1:].lower()), line)
+        line = cmake_find_cetbuild_re.sub("find_package(cetmodules)", line)
         line = tbb_re.sub('TBB:tbb', line)
         mat = drop_re.match(line)
         if mat: 
@@ -74,7 +76,8 @@ def cetmodules_file_patcher(fname, toplevel=True, proj='foo', vers='1.0'):
 
 if __name__ == '__main__':
     import sys
-    if len(sys.argv) != 4 or not os.path.isdir(sys.argv[2]):
+    if len(sys.argv) != 4 or not os.path.isdir(sys.argv[1]):
+        sys.stderr.write("len(sys.argv) == %s" % len(sys.argv))
         sys.stderr.write("usage: %s directory package-name package-version" % sys.argv[0])
         sys.exit(1)
-    cetmodules_file_patcher(sys.argv[1], sys.argv[2],sys.argv[3])
+    cetmodules_dir_patcher(sys.argv[1], sys.argv[2],sys.argv[3])
