@@ -12,7 +12,9 @@ optf=$dir/templates/package_opts
 dst=$1/etc/spack/$os/packages.yaml
 
 # packages to make not buildable...
-force_system="(bzip2|fontconfig|findutils|image-magick|libjpeg-turbo|libuuid|libx11|libxau|libxcb|libxfixes|libxft|libxi|libxmu|libxpm|libxshmfence|libxt|libxxf86vm|ncurses|openssh|openssl|pkgconf|pkg-config|tar)"
+force_system="(bzip2|curl|diffutils|expat|findutils|freetype|gdbm|gettext|libdrm|libedit|libffi|libjpeg-turbo|libpciaccess|libpng|libxml2|lz4|ncurses|openssl|pcre|pkgconf|pkg-config|readline|tar|xz|zlib)"
+
+force_x86_64="(asciidoc|autoconf|automake|autogen|binutils|bison|cmake|conv|damageproto|davix|environment-modules|fixesproto|flex|freeglut|gdb|git|gl2ps|glew|glproto|gmake|help2man|icu4c|jemalloc|libbsd|libice|libiconv|libedit|libevent|libffi|libjpeg|libpthread-stubs|libsigsegv|libsm|libtool|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxft|libxi|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|libyaml|lua|m4|matplotlib|mesa|mesa-glu|mpich|mysql|nasm|openblas|patchelf|pcre2|perl|pkgconf|presentproto|sqlite|swig|texinfo|texlive|tcl|tk|unzip|util-macros|videoproto|xextproto|xproto|xxhash)"
 
 runversion() {
    # try to get version by running executable --version
@@ -85,10 +87,14 @@ esac
 
 getv2() {
   # more robust getv that does the generic getv, but also tries runversion
-  # and runversion2.
+  # and runversion2, and finally checking templates/preferred_versions
   # This has some chance of finding, say, UPS packges you have setup, but
-  # does help with the whole pkgconf/pkg-config silliness...
-  x=`getv $1`
+  # does help with the whole pkgconf/pkg-config silliness..
+  x=`grep $1 $dir/templates/preferred_versions | sed -e 's/.*@//'`
+  if [ "$x" = "" ]
+  then
+      x=`getv $1`
+  fi
   if [ "$x" = "" ]
   then
       x=`runversion $1`
@@ -96,6 +102,10 @@ getv2() {
   if [ "$x" = "" ]
   then
       x=`runversion2 $1`
+  fi
+  if [ "$x" = "" ]
+  then
+      x=`grep $1 $dir/templates/default_versions | sed -e 's/.*@//'`
   fi
   echo $x
 }
@@ -120,6 +130,17 @@ echo "make_packages_yaml: INFO: creating $dst"
 exec 3>$dst
 echo "packages:" >&3
 
+cat <<EOF >&3
+  providers:
+    pkgconfig: [pkg-config]
+    blas: [openblas]
+    lapack: [openblas]
+    mpi: [mpich]
+    gl: [mesa]
+    glx: [mesa]
+    glu: [mesa-glu]
+EOF
+
 # don't put the compiler tag in, we may not want to build
 # with the system compiler by default...
 #if [ "x$compiler" != x ]
@@ -135,17 +156,29 @@ do
     if [ "x$v" = x ]
     then
         # not found...
+        echo "Notice: no version found for package $p"
         continue
     fi
     opts=`grep "^$p\s" $optf | sed -e 's/.*\t//' -e 's/ *$//'`
     lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/' -e 's/pkgconfig/pkgconf/'`
     echo "  $lp:"               >&3
     echo "    version: [$v]"    >&3
-    echo "    paths:"           >&3
-    echo "      $lp@$v$opts$comp os=$os: /usr"    >&3
-
+    if echo $lp | egrep "$force_x86_64" > /dev/null
+    then
+        echo "    arch: x86_64"     >&3
+    fi
+    cprefix=`ls -d /cvmfs/fermilab.opensciencegrid.org/packages/common/$lp/$v/*-$os-x86_64-* 2>/dev/null | head -1`
     if echo $lp | egrep "$force_system" > /dev/null
     then
-         echo "    buildable: False"           >&3
+        echo "    paths:"           >&3
+        echo "      $lp@$v$opts$comp os=$os: /usr"    >&3
+
+        echo "    buildable: False"           >&3
+    elif [ -d "$cprefix" ]
+    then   
+        # if we have it in cvmfs, use that one
+        echo "    paths:"           >&3
+        echo "      $lp@$v$opts$comp os=$os: $cprefix"    >&3
+        echo "    buildable: False"           >&3
     fi
 done
