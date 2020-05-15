@@ -131,14 +131,15 @@ exec 3>$dst
 echo "packages:" >&3
 
 cat <<EOF >&3
-  providers:
-    pkgconfig: [pkg-config]
-    blas: [openblas]
-    lapack: [openblas]
-    mpi: [mpich]
-    gl: [mesa]
-    glx: [mesa]
-    glu: [mesa-glu]
+  all:
+    providers:
+      pkgconfig: [pkg-config]
+      blas: [openblas]
+      lapack: [openblas]
+      mpi: [mpich]
+      gl: [mesa]
+      glx: [mesa]
+      glu: [mesa-glu]
 EOF
 
 # don't put the compiler tag in, we may not want to build
@@ -165,7 +166,7 @@ do
     echo "    version: [$v]"    >&3
     if echo $lp | egrep "$force_x86_64" > /dev/null
     then
-        echo "    arch: x86_64"     >&3
+        echo "    target: [x86_64]"     >&3
     fi
     cprefix=`ls -d /cvmfs/fermilab.opensciencegrid.org/packages/common/$lp/$v/*-$os-x86_64-* 2>/dev/null | head -1`
     if echo $lp | egrep "$force_system" > /dev/null
