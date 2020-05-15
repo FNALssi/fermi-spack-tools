@@ -167,6 +167,7 @@ do
     if echo $lp | egrep "$force_x86_64" > /dev/null
     then
         echo "    target: [x86_64]"     >&3
+        echo "    compiler: [$compiler]" >&3
     fi
     cprefix=`ls -d /cvmfs/fermilab.opensciencegrid.org/packages/common/$lp/$v/*-$os-x86_64-* 2>/dev/null | head -1`
     if echo $lp | egrep "$force_system" > /dev/null
