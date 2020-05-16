@@ -1,9 +1,9 @@
-binutils ~nls
+binutils	~nls
 bzip2	+shared
 doxygen	+graphviz
 pcre	+jit+utf
 zlib	+optimize+pic+shared
-gettext ~libxml2
-pkg-config +internal_glib
-openssl +systemcerts
-ncurses ~symlinks+termlib
+gettext	~libxml2
+pkg-config	+internal_glib
+openssl	+systemcerts
+ncurses	~symlinks+termlib
