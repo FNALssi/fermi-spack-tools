@@ -12,9 +12,11 @@ optf=$dir/templates/package_opts
 dst=$1/etc/spack/$os/packages.yaml
 
 # packages to make not buildable...
-force_system="(binutils|bzip2|curl|diffutils|expat|findutils|freetype|gdbm|gettext|libdrm|libedit|libffi|libjpeg-turbo|libpciaccess|libpng|lz4|ncurses|openssl|pcre|pkgconf|pkg-config|readline|tar|xz|zlib)"
+force_system="(binutils|bzip2|curl|diffutils|expat|findutils|gdbm|gettext|libdrm|libedit|libffi|libjpeg-turbo|libpciaccess|libpng|lz4|ncurses|openssl|pcre|pkgconf|pkg-config|readline|tar|xz|zlib)"
 
-force_x86_64="(asciidoc|autoconf|autogen|automake|binutils|bison|bzip2|cmake|conv|curl|damageproto|davix|diffutils|environment-modules|expat|findutils|fixesproto|flex|freeglut|freetype|gdb|gdbm|gettext|git|gl2ps|glew|glproto|gmake|help2man|icu4c|jemalloc|libbsd|libdrm|libedit|libevent|libffi|libice|libiconv|libjpeg|libjpeg-turbo|libpciaccess|libpng|libpthread-stubs|libsigsegv|libsm|libtool|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxft|libxi|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|libyaml|lua|lz4|m4|matplotlib|mesa|mesa-glu|mpich|mysql|nasm|ncurses|openblas|openssl|patchelf|pcre|pcre2|perl|pkgconf|pkg-config|presentproto|readline|sqlite|swig|tar|tcl|texinfo|texlive|tk|unzip|util-macros|videoproto|xextproto|xproto|xxhash|xz|zlib)"
+no_devel='(diffutils|findutils|pkg-config|pkgconfig|tar)'
+
+force_x86_64="(asciidoc|autoconf|autogen|automake|binutils|bison|bzip2|cmake|conv|curl|damageproto|davix|diffutils|environment-modules|expat|findutils|fixesproto|flex|font-util|freeglut|freetype|gdb|gdbm|gettext|git|gl2ps|glew|glproto|gmake|help2man|icu4c|jemalloc|libbsd|libdrm|libedit|libevent|libffi|libice|libiconv|libjpeg|libjpeg-turbo|libpciaccess|libpng|libpthread-stubs|libsigsegv|libsm|libtool|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxft|libxi|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|libyaml|lua|lz4|m4|matplotlib|mesa|mesa-glu|mpich|mysql|nasm|ncurses|openblas|openssl|patchelf|pcre|pcre2|perl|pkgconf|pkg-config|presentproto|readline|sqlite|swig|tar|tcl|texinfo|texlive|tk|unzip|util-macros|videoproto|xextproto|xproto|xxhash|xz|zlib)"
 
 runversion() {
    # try to get version by running executable --version
@@ -164,6 +166,10 @@ do
     lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/' -e 's/pkgconfig/pkgconf/'`
     echo "  $lp:"               >&3
     echo "    version: [$v]"    >&3
+    if [ "x$opts" != "x" ]
+    then
+        echo "    variants: $opts"     >&3
+    fi
     if echo $lp | egrep "$force_x86_64" > /dev/null
     then
         echo "    target: [x86_64]"     >&3
@@ -176,6 +182,13 @@ do
         echo "      $lp@$v$opts$comp os=$os: /usr"    >&3
 
         echo "    buildable: False"           >&3
+
+        # there isnt a curl-devel, but there is a libcurl-devel
+        p=`echo $p | sed  -e s/curl/libcurl/`
+        (echo $p | egrep "$no_devel" >/dev/null) ||
+		rpm -q $p-devel  > /dev/null || 
+		echo "Need to install rpm: $p-devel"
+
     elif [ -d "$cprefix" ]
     then   
         # if we have it in cvmfs, use that one
@@ -184,3 +197,4 @@ do
         echo "    buildable: False"           >&3
     fi
 done
+

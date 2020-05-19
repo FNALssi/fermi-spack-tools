@@ -7,3 +7,4 @@ gettext	~libxml2
 pkg-config	+internal_glib
 openssl	+systemcerts
 ncurses	~symlinks+termlib
+font-util	fonts=encodings

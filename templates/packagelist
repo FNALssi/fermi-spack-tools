@@ -16,6 +16,7 @@ expat
 findutils
 fixesproto
 flex
+font-util
 freeglut
 freetype
 gdb
