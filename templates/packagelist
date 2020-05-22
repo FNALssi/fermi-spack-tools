@@ -41,6 +41,7 @@ libice
 libiconv
 libjpeg
 libjpeg-turbo
+libgcrypt
 libpciaccess
 libpng
 libpthread-stubs

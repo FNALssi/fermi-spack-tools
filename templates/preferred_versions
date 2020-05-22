@@ -10,6 +10,7 @@ gdb@9.1
 glproto@1.4.17 
 libiconv@1.16 
 libjpeg@9c 
+libgcrypt@1.5.3
 libpthread-stubs@0.4 
 libsigsegv@2.12 
 lua@5.3.5 
