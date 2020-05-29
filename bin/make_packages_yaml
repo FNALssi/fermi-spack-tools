@@ -24,7 +24,7 @@ runversion() {
    $1 --version 2>&1 | 
       grep -i $1 | 
       head -1 | 
-      egrep -iv 'command not found|illegal option' |
+      egrep -iv 'not found|illegal option' |
       sed -e 's/^.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'
 }
 runversion2() {
@@ -32,7 +32,7 @@ runversion2() {
    # in some cases this works due to error messages...
    $1 --version 2>&1 | 
       head -1 | 
-      egrep -iv 'command not found|illegal option' |
+      egrep -iv 'not found|illegal option' |
       sed -e 's/^.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*$/\1/'
 }
 
