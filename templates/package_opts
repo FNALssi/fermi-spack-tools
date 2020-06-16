@@ -1,4 +1,3 @@
-binutils	~nls
 bzip2	+shared
 doxygen	+graphviz
 pcre	+jit+utf

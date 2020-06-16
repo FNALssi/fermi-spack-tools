@@ -12,7 +12,7 @@ optf=$dir/templates/package_opts
 dst=$1/etc/spack/$os/packages.yaml
 
 # packages to make not buildable...
-force_system="(binutils|bzip2|curl|diffutils|expat|findutils|gdbm|gettext|libdrm|libedit|libffi|libjpeg-turbo|libgcrypt|libpciaccess|libpng|lz4|ncurses|openssl|pcre|pkgconf|pkg-config|readline|tar|xz|zlib)"
+force_system="(bzip2|curl|diffutils|expat|findutils|gdbm|gettext|libdrm|libedit|libffi|libjpeg-turbo|libgcrypt|libpciaccess|libpng|lz4|ncurses|openssl|pcre|pkgconf|pkg-config|readline|tar|xz|zlib)"
 
 no_devel='(diffutils|findutils|pkg-config|pkgconfig|tar)'
 
