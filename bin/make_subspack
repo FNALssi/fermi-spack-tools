@@ -58,6 +58,7 @@ git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-spack $SPACK_ROOT
 cd $SPACK_ROOT
 git checkout $spack_release
 
+echo "installing config.yaml..."
 if $unified
 then
 cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml
@@ -65,6 +66,7 @@ else
 cp $spackbindir/../templates/config.yaml.traditional $SPACK_ROOT/etc/spack/config.yaml
 fi
 
+echo "installing upstreams.yaml..."
 cat >> etc/spack/upstreams.yaml <<EOF
 
  upstreams:
@@ -76,3 +78,22 @@ EOF
 
 echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $dst/setup-env.sh
 echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $dst/setup-env.csh
+
+# now clone package repos..
+
+echo "adding package repos..."
+source $dst/setup-env.sh
+
+( SPACK_ROOT=$src $src/bin/spack repo list ) | (
+    
+    read header
+    while read name path
+    do
+        if [ $name != builtin ]
+        then
+            echo Adding repo $name $path to $SPACK_ROOT
+            spack repo add $path
+        fi
+    done
+)
+echo "done."
