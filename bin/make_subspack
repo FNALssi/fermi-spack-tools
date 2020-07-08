@@ -92,7 +92,7 @@ source $dst/setup-env.sh
         if [ $name != builtin ]
         then
             echo Adding repo $name $path to $SPACK_ROOT
-            spack repo add $path
+            spack repo add --scope=site $path
         fi
     done
 )
