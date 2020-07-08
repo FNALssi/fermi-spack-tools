@@ -6,7 +6,6 @@
 src=$1
 dst=$2
 
-dst="$dst/spack/rollout/NULL/"
 
 spackbindir=`echo $0 | sed -e 's;make_subspack;;' `
 case x$spackbindir in
@@ -16,6 +15,8 @@ esac
 
 
 spack_release=rollout2
+
+dst="$dst/spack/$spack_release/NULL/"
 
 dstb=`basename $dst`
 dstb=`dirname $dst`
