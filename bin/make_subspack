@@ -6,10 +6,12 @@
 if [ "$1" == "-t" ]
 then
    unified=false
+   shift
 fi
 if [ "$1" == "-u" ]
 then
     unified=true
+   shift
 fi
 if [ $# != 2 ]
 then
