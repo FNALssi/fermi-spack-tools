@@ -3,6 +3,22 @@
 # make a sub-spack repository
 # ...but make it unified layout...
 
+if [ "$1" == "-t" ]
+then
+   unified=false
+   shift
+fi
+if [ "$1" == "-u" ]
+then
+    unified=true
+   shift
+fi
+if [ $# != 2 ]
+then
+    echo "usage: make_subspack [-t|-u] /path/to/existing/spack /path/to/new/area"
+    exit 1
+fi
+
 src=$1
 dst=$2
 
@@ -16,36 +32,38 @@ esac
 
 spack_release=rollout2
 
-dst="$dst/spack/$spack_release/NULL/"
+# assume unified layout...
+if $unified
+then
+    install_tree_path=$src
+    SPACK_ROOT="$dst/spack/$spack_release/NULL/"
+    src="$src/spack/$spack_release/NULL/"
+else
+    install_tree_path=$src/prd
+    SPACK_ROOT="$dst/prd/spack/$spack_release/NULL/"
+    src="$src/prd/spack/$spack_release/NULL/"
+fi
+install_tcl_path=$src/share/spack/modules
 
-dstb=`basename $dst`
-dstb=`dirname $dst`
+SPACK_ROOTb=`basename $dst`
+SPACK_ROOTb=`dirname $dst`
 
-mkdir -p $dstb
-export SPACK_ROOT=$dst
+mkdir -p $SPACK_ROOTb
+export SPACK_ROOT
 
-for config_yaml in $src/etc/spack/default/config.yaml $src/etc/spack/config.yaml 
-do
-    if [ -r $config_yaml ]
-    then
-        install_tree_path=`grep install_tree: $config_yaml`
-        install_tcl_path=`grep tcl: $config_yaml`
-    fi
-done
-install_tree_path=${install_tree_path:-$src/opt/spack}
-install_tcl_path=${install_tcl_path:-$src/share/spack/modules}
+test -d $SPACK_ROOTb || mkdir -p $SPACK_ROOTb
 
-test -d $dstb || mkdir -p $dstb
-
-cd $dstb
-git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-spack $dst
-
-cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml
-cd $dst
+cd $SPACK_ROOTb
+git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-spack $SPACK_ROOT
+cd $SPACK_ROOT
 git checkout $spack_release
 
-spackbindir=`echo $0 | sed -e 's;make_subspack;;'`
-cp $spackbindir/../templates/config.yaml.unified etc/spack/config.yaml"
+if $unified
+then
+cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml
+else
+cp $spackbindir/../templates/config.yaml.traditional $SPACK_ROOT/etc/spack/config.yaml
+fi
 
 cat >> etc/spack/upstreams.yaml <<EOF
 
@@ -56,3 +74,5 @@ cat >> etc/spack/upstreams.yaml <<EOF
         tcl: $install_tcl_path
 EOF
 
+echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $dst/setup-env.sh
+echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $dst/setup-env.csh
