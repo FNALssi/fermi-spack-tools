@@ -83,8 +83,8 @@ bootstrap_spack() {
     bootstrap_patchelf
     find_compilers
     install_latest environment-modules
-    install_latest lmod
-    install_latest py-machotools
+    $minimal || install_latest lmod
+    $minimal || install_latest py-machotools
     make_packages_yaml $SPACK_ROOT
 }
 
@@ -152,6 +152,13 @@ make_absolute() {
    esac
 }
 
+minimal=false
+if [ "x$1" = "x-m" ]
+then
+    minimal=true
+    shift
+fi
+
 if [ "x$1" = "x-p" ]
 then
     echo "make_spack: INFO: Setting up for plain spack..."
@@ -195,11 +202,12 @@ then
     echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $dir/setup-env.csh
     export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
 else
-    echo "Usage: $1 -[utp] /base/directory"
+    echo "Usage: $0 [-m] -[utp] /base/directory"
     echo "  make a spack instance with given layout"
     echo "  -u fermi 'unified' layout"
     echo "  -t fermi 'traditional' layout"
     echo "  -p plain spack default layout"
+    echo "  -m minimal setup"
     exit 1
 fi
 
