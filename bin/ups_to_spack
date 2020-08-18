@@ -356,8 +356,14 @@ class package:
     @log_call
     def spack_comp(self, splitpart = -1):
         self.topbits()
+        if self.top_quals.find("c7") > 0:
+            res = "clang-7.0.0"
         if self.top_quals.find("c2") > 0:
             res = "clang-5.0.1"
+        if self.top_quals.find("e19") > 0:
+            res= "gcc-8.2.0"
+        if self.top_quals.find("e18") > 0:
+            res= "gcc-7.3.0"
         if self.top_quals.find("e17") > 0:
             res = "gcc-7.3.0"
         if self.top_quals.find("e15") > 0:
@@ -1345,13 +1351,19 @@ class ups_to_spack:
             self.migrate_one(pkg)
 
 
+if not os.environ.get("UPS_DIR", None) or not os.environ.get("SPACK_ROOT", none):
+    print("This script requires UPS and Spack to both be setup.")
+    print("Please source a UPS setups.sh and a Spack setup-env.sh before running.")
+    sys.exit(1)
+
+
 logging.basicConfig(level=logging.DEBUG)
 pdr = None
 
-print("check: %s" %  sys.argv[1][:5])
+#print("check: %s" %  sys.argv[1][:5])
 if sys.argv[1][:6] == "--pdr=" :
     pdr = sys.argv[1][6:]
-    print("pdr=%s" % pdr)
+    #print("pdr=%s" % pdr)
     sys.argv = sys.argv[:1] + sys.argv[2:]
 
 uts = ups_to_spack(pdr=pdr)
