@@ -123,6 +123,7 @@ class outfile:
         if not os.access(os.path.dirname(fname), os.R_OK):
             os.makedirs(os.path.dirname(fname))
         if flag == "a":
+            logging.debug("outfile.__init__: append for %s..." % fname)
             if not os.path.exists(fname):
                 self.skip = True
                 return
@@ -131,7 +132,8 @@ class outfile:
             # done this one...
             f = open(fname,"r")
             for line in f:
-                if line.find("setup_run_environment") > 0:
+                if line.find("def setup_run_environment") > 0:
+                    logging.debug("outfile.__init__: Already did table file for %s..." % fname)
                     self.skip = True
             f.close()
             if self.skip:
@@ -140,7 +142,7 @@ class outfile:
         logging.debug("outfile.__init__: opened: %s" % fname)
         self.depth_increase_patterns=["{","function","then"]
         self.depth_decrease_patterns=["}","end"]
-        self.setup_patterns = ["proc setup {} {","function setup ()"]
+        self.setup_patterns = ["proc setup {} {","function setup ()","def tf_setup"]
         self.saw_setup = False
 
     def enable(self):
@@ -189,7 +191,7 @@ class outfile:
                     logging.debug("not writing setup call without definition")
                      
             if self.depth >= 0:
-                # auto indent -- needed? mengel
+                # auto indent -- needed? mengel --definitely for python..
                 text = ("  " * (self.depth - indenting)) + text
 
                 logging.debug("writing on %d %s text: %s" % (self.depth, self.fname, text))
@@ -202,8 +204,6 @@ class outfile:
     def close(self):
         self.outf.close()
         self.depth = 0
-
-
 
 class package:
     def __init__(
@@ -915,9 +915,10 @@ class ups_to_spack:
         if not val:
             return ""
         val = val.strip('" ')
+        val = val.replace('"','\\"')
         val = '("%s")' % val
         if val.find("`") >= 0:
-            val = re.sub("`([^`]*)`", '" + self.backquote("\1") + "', val)
+            val = re.sub("`([^`]*)`", '" + self.backquote("\\1") + "', val)
         if val.find("$") >= 0:
             val = re.sub("\\$\\{(\\w+)\\}","%(\\1)s",val)
             val = val + "% self.env_get(env)"
@@ -933,6 +934,7 @@ class ups_to_spack:
         if not val:
             return ""
         val = val.strip('" ')
+        val = val.replace('"','\\"')
         val = '"%s"' % val
 
         if val.find("`") >= 0:
@@ -948,6 +950,7 @@ class ups_to_spack:
             return ""
         # lua doesn't interpolate, so actively replace it...
         val = val.strip('"')
+        val = val.replace('"','\\"')
         val = '"%s"' % val
         if val.find("`") >= 0:
             val = 'string.gsub(%s, "`(.+)`", backquote)' % val
@@ -1158,6 +1161,7 @@ class ups_to_spack:
                 tcl_out.write("\n  proc %s {} {\n" % name.lower())
                 lmod_out.write("\n  function %s ()\n" % name.lower())
                 recipe_out.write("\n    def tf_%s(self,env):\n" % name.lower())
+
                 in_action = True
                 continue
             if re.search("dodefaults\s*\(", line, flags=re.IGNORECASE):
@@ -1357,6 +1361,7 @@ class ups_to_spack:
 
         recipe_out.write(
             """
+
     def setup_run_environment(self,env):
         self.tf_setup(env)
 """)
@@ -1364,6 +1369,7 @@ class ups_to_spack:
         lmod_out.write("\nsetup();\n")
         tcl_out.close()
         lmod_out.close()
+        recipe_out.close()
 
     def get_dep_vers(self, prod):
 
