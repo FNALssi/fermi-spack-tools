@@ -118,15 +118,26 @@ class outfile:
     def __init__(self, fname, flag="w"):
         self.generating = False
         self.skip = False
+        self.depth = 0
+        self.fname = fname
         if not os.access(os.path.dirname(fname), os.R_OK):
             os.makedirs(os.path.dirname(fname))
-        if flag == "a";
+        if flag == "a":
             if not os.path.exists(fname):
                 self.skip = True
+                return
+            # this sort of breaks the wall, but we share the recipe
+            # file for  multiple instances, so check if we've already
+            # done this one...
+            f = open(fname,"r")
+            for line in f:
+                if line.find("setup_run_environment") > 0:
+                    self.skip = True
+            f.close()
+            if self.skip:
+                return
         self.outf = open(fname, flag)
         logging.debug("outfile.__init__: opened: %s" % fname)
-        self.fname = fname
-        self.depth = 0
         self.depth_increase_patterns=["{","function","then"]
         self.depth_decrease_patterns=["}","end"]
         self.setup_patterns = ["proc setup {} {","function setup ()"]
@@ -901,13 +912,15 @@ class ups_to_spack:
 
     def fix_env_vars_python(self, val):
         # python doesn't interpolate, so actively replace it...
+        if not val:
+            return ""
         val = val.strip('" ')
         val = '("%s")' % val
         if val.find("`") >= 0:
             val = re.sub("`([^`]*)`", '" + self.backquote("\1") + "', val)
         if val.find("$") >= 0:
             val = re.sub("\\$\\{(\\w+)\\}","%(\\1)s",val)
-            val = val + "% os.environ"
+            val = val + "% self.env_get(env)"
         return val
 
     def fix_env_vars_tcl(self, val):
@@ -1003,6 +1016,14 @@ class ups_to_spack:
         f.close()
         return res
 
+    # method to get modified environment so far
+    def env_get(self, env):
+        res = os.environ.copy()
+        for name, actions env.group_by_name():
+            for x in actions:
+                x.execute(res)
+        return res
+
 """
 )
         recipe_out.disable()
@@ -1068,7 +1089,7 @@ class ups_to_spack:
                 if in_action:
                     lmod_out.write("end\n\n")
                     tcl_out.write("}\n\n")
-                    recipe_out.depth = recipe_out.depth - 1
+                    recipe_out.depth = recipe_out.depth - 2
                     in_action = False
                 continue
             if re.search(
@@ -1160,7 +1181,7 @@ class ups_to_spack:
             if re.search("(env|path)Set\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
-                    recipe_out.write("       env.set('%s',%s)\n" % (d["var"], self.fix_env_vars_python(d["value"])))
+                    recipe_out.write("        env.set('%s',%s)\n" % (d["var"], self.fix_env_vars_python(d["value"])))
                     tcl_out.write("setenv %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write('setenv("%s","%s");\n' % (d["var"], self.fix_env_vars_lua(d["value"])))
                 continue
@@ -1174,7 +1195,7 @@ class ups_to_spack:
                     if d['value'] == "":
                         d['value'] = self.do_pdr(pkg.prod_dir)
 
-                    recipe_out.write("       env.set('%s%s',%s)\n" % (pkg.prod.upper(),d["var"], self.fix_env_vars_python(d["value"])))
+                    recipe_out.write("        env.set('%s%s',%s)\n" % (pkg.prod.upper(),d["var"], self.fix_env_vars_python(d["value"])))
                     tcl_out.write("setenv %s%s %s\n" % (pkg.prod.upper(),d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write('setenv("%s%s","%s");\n' % (pkg.prod.upper(), d["var"], self.fix_env_vars_lua(d["value"])))
                 continue
@@ -1280,13 +1301,13 @@ class ups_to_spack:
                 if in_action:
                     tcl_out.write("}\n\n")
                     lmod_out.write("end\n\n")
-                    recipe_out.depth -= 1
+                    recipe_out.depth -= 2
                 continue
             if re.search("\\belse\\b", line, flags=re.IGNORECASE):
                 if in_action:
                     tcl_out.write("} else {\n")
                     lmod_out.write("else\n")
-                    recipe_out.write("else\n")
+                    recipe_out.write("    else:\n")
                 continue
             if re.search("\\bif\\s*\\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
@@ -1301,7 +1322,8 @@ class ups_to_spack:
                         "if {![catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"]).strip('" ')
                     )
                     lmod_out.write('if (!os.execute(%s)) then\n' % self.fix_env_vars_lua(d["args"]))
-                    recipe_out.write('if not os.system(%s)):\n' % self.fix_env_vars_python(d["args"]))
+                    recipe_out.write('        if not os.system(%s)):\n' % self.fix_env_vars_python(d["args"]))
+                    recipe_out.depth += 2
                 continue
             if re.search("\\bunless\\s*\\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
@@ -1315,13 +1337,13 @@ class ups_to_spack:
                         "if {[catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"].strip('" '))
                     )
                     lmod_out.write('if (os.execute(%s)) then\n' % self.fix_env_vars_lua(d["args"]))
-                    recipe_out.write('if not not os.system(%s)):\n' % self.fix_env_vars_python(d["args"]))
+                    recipe_out.write('        if not not os.system(%s)):\n' % self.fix_env_vars_python(d["args"]))
                 continue
             if re.search("\\bend\\b", line, flags=re.IGNORECASE):
                 if in_action:
                     tcl_out.write("}\n")
                     lmod_out.write("end\n")
-                    recipe_out.depth -= 1
+                    recipe_out.depth -= 2
                     in_action = False
                 continue
 
