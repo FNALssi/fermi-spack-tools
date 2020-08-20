@@ -916,7 +916,7 @@ class ups_to_spack:
         # python doesn't interpolate, so actively replace it...
         if not val:
             return ""
-        val = val.strip('" ')
+        val = val.strip(' ')
         val = val.replace('"','\\"')
         val = '("%s")' % val
         if val.find("`") >= 0:
@@ -935,7 +935,7 @@ class ups_to_spack:
         # tcl does interpoplate, but needs $::env(name) not ${name}
         if not val:
             return ""
-        val = val.strip('" ')
+        val = val.strip(' ')
         val = val.replace('"','\\"')
         val = '"%s"' % val
 
@@ -951,7 +951,6 @@ class ups_to_spack:
         if not val:
             return ""
         # lua doesn't interpolate, so actively replace it...
-        val = val.strip('"')
         val = val.replace('"','\\"')
         val = '"%s"' % val
         if val.find("`") >= 0:
