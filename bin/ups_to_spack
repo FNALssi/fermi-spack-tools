@@ -202,6 +202,8 @@ class outfile:
                 self.depth = 0
 
     def close(self):
+        if self.skip:
+            return
         self.outf.close()
         self.depth = 0
 
@@ -1359,14 +1361,12 @@ class ups_to_spack:
             tcl_out.write("}\n")
             lmod_out.write("end\n")
 
-        recipe_out.write(
-            """
-
-    def setup_run_environment(self,env):
-        self.tf_setup(env)
-""")
+        recipe_out.write("\n\n")
+        recipe_out.write("    def setup_run_environment(self, env):\n")
+        recipe_out.write("        self.tf_setup(env)\n")
         tcl_out.write("\nsetup\n")
         lmod_out.write("\nsetup();\n")
+
         tcl_out.close()
         lmod_out.close()
         recipe_out.close()
