@@ -4,8 +4,6 @@
 # where to git clone spack from, and what branch/release
 #
 
-spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
-spack_release=rollout2
 
 spackbindir=`echo $0 | sed -e 's;make_spack;;' `
 case x$spackbindir in
@@ -83,8 +81,13 @@ bootstrap_spack() {
     bootstrap_patchelf
     find_compilers
     install_latest environment-modules
-    install_latest lmod
-    install_latest py-machotools
+    if $minimal
+    then
+        :
+    else
+	install_latest lmod
+	install_latest py-machotools
+    fi
     make_packages_yaml $SPACK_ROOT
 }
 
@@ -135,14 +138,6 @@ create_spack() {
     fi
 }
 
-if [ "x$1" = "x--no-buildcache" ]
-then
-    use_buildcache=false
-    shift
-else
-    use_buildcache=true
-fi
-
 make_absolute() {
    case x$1 in
    x.)   echo $PWD;;
@@ -151,6 +146,33 @@ make_absolute() {
    *)    echo $PWD/$1;;
    esac
 }
+
+spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
+spack_release=rollout2
+use_buildcache=true
+minimal=false
+while echo x$1 | grep x-- > /dev/null
+do
+    case "x$1" in
+    x--spack_release)
+       spack_release=$2
+       shift; shift
+       ;;
+    x--no-buildcache)
+	use_buildcache=false
+	shift
+	;;
+    x--minimal)
+	minimal=true
+	shift
+	;;
+    *)
+        echo "unknown option $1"
+        shift
+        ;;
+    esac
+done
+
 
 if [ "x$1" = "x-p" ]
 then
@@ -195,7 +217,11 @@ then
     echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $dir/setup-env.csh
     export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
 else
-    echo "Usage: $1 -[utp] /base/directory"
+    echo "Usage: $0 [options] -[utp] /base/directory"
+    echo " options:"
+    echo "  --no-buildcache"
+    echo "  --spack_release ver"
+    echo "  --minimal"
     echo "  make a spack instance with given layout"
     echo "  -u fermi 'unified' layout"
     echo "  -t fermi 'traditional' layout"

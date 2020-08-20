@@ -409,7 +409,6 @@ class package:
         else:
             return res.split("-")[splitpart]
 
-
 class ups_to_spack:
     def __init__(self, pdr=None):
         self.already_done = set()
@@ -535,6 +534,13 @@ class ups_to_spack:
                 return repolist[repo]
         return None
 
+    def get_pkgname(self, pkg):
+        # package names are BiCapitalized so fife_utils -> FifeUtils
+        
+        pkgname = pkg.prod.capitalize()
+        pkgname = re.sub("_([a-z])", lambda m: m.group(1).capitalize(), pkgname)
+        return pkgname
+
     @log_call
     def make_recipe(self, pkg):
         builtin_recipedir = "%s/var/spack/repos/builtin/packages/%s" % (
@@ -559,12 +565,11 @@ class ups_to_spack:
 
         if (not pkg.namespace):
 
+            
             # there has to be a recipe for the package for spack to
             # look at it, so make one that's (just) good enough to pass
             #
-            # package names are BiCapitalized so fife_utils -> FifeUtils
-            pkgname = pkg.prod.capitalize()
-            pkgname = re.sub("_([a-z])", lambda m: m.group(1).capitalize(), pkgname)
+            pkgname = self.get_pkgname(pkg)
             pkg.namespace = "ups_to_spack"
 
             if not os.access(uts_recipedir, os.R_OK):
@@ -1023,7 +1028,7 @@ class ups_to_spack:
     # method to get modified environment so far
     def env_get(self, env):
         res = os.environ.copy()
-        for name, actions env.group_by_name():
+        for name, actions in env.group_by_name():
             for x in actions:
                 x.execute(res)
         return res
@@ -1257,6 +1262,7 @@ class ups_to_spack:
                 d = self.unpack(line)
                 cdep = self.convert_dependency(d["args"], pkg.top_flav, pkg.top_quals)
                 if in_action and cdep:
+                    # punting on dependencies for python; use spack load -r
                     tcl_out.write("module load %s \n" % cdep)
                     lmod_out.write('load("%s");\n' % cdep)
                 continue
