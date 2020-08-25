@@ -26,16 +26,18 @@ def log_call(f):
     return logged
 
 
+
+_memory = {}
 def remember(f):
-    def wrap(self, *args, **kwargs):
-        if not " _memory" in self.__dict__:
-            self._memory = {}
-        if not f.__name__ in self._memory or not self._memory[f.__name__]:
-            self._memory[f.__name__] = f(self, *args, **kwargs)
-        return self._memory[f.__name__]
+    def wrap(*args, **kwargs):
+        global _memory
+        key = "%s_%s_%s" % (f.__name__,repr(args),repr(kwargs))
+        if not key in _memory or not _memory[key]:
+            logging.debug("remembering: %s" % f.__name__)
+            _memory[key] = f(*args, **kwargs)
+        return _memory[key]
 
     return wrap
-
 
 def spack_reindex():
     """ 
@@ -255,6 +257,13 @@ class package:
             traceback.print_stack()
             self.quals = ""
 
+        self.uprod = self.prod
+        self.prod = self.dashfix(self.prod)
+
+    def dashfix(self,s):
+        if s != None:
+            return  s.replace("_","-")
+
     def __str__(self):
         return "%s %s -f %s -q '%s' top: -f %s -q '%s' depth %s" % (
             self.prod,
@@ -329,13 +338,13 @@ class package:
 
     @remember
     def upslistargs(self):
-        return "%s %s -f %s -q '%s'" % (self.prod, self.ver, self.flav, self.quals)
+        return "%s %s -f %s -q '%s'" % (self.uprod, self.ver, self.flav, self.quals)
 
     @remember
     def dependlines(self, hosttype = None):
         if not hosttype:
             hosttype = self.top_flav
-        dependlines = ups_depend(self.prod, self.ver, self.flav, self.quals, hosttype=hosttype )
+        dependlines = ups_depend(self.uprod, self.ver, self.flav, self.quals, hosttype=hosttype )
 
         #
         # kluge for ifhdc -q python2[67]... add a python dependency
@@ -575,7 +584,7 @@ class ups_to_spack:
             if not os.access(uts_recipedir, os.R_OK):
                 os.makedirs(uts_recipedir)
             recipe_f = open(uts_recipedir + "/package.py", "w")
-            recipe_f.write("# fake recipe from ups_to_spack")
+            recipe_f.write("# fake recipe from ups_to_spack\n")
             recipe_f.write(
                 "from spack import *\n\nclass %s(AutotoolsPackage):\n    pass\n"
                 % pkgname
@@ -1092,6 +1101,14 @@ class ups_to_spack:
             # remove comments..
             line = re.sub("\#.*", "", line)
 
+            # kluge alert -- we aren't clever enough for some things,
+            # so skip them:
+            # 1) TRACE has obnoxious alias definitions...
+            if (pkg.prod == "trace" and 
+                re.search("addAlias\s*\(", line, flags=re.IGNORECASE)):
+                continue
+            # end kluges
+
             if re.search("flavor\\s*=\\s*ANY", line, flags=re.IGNORECASE):
                 flavor_ok = True
                 if in_action:
@@ -1208,6 +1225,10 @@ class ups_to_spack:
                     tcl_out.write("setenv %s%s %s\n" % (pkg.prod.upper(),d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write('setenv("%s%s","%s");\n' % (pkg.prod.upper(), d["var"], self.fix_env_vars_lua(d["value"])))
                 continue
+            if re.search("source(Required|Optional)\s*\(", line, flags=re.IGNORECASE):
+                    d = self.unpack(line)
+                    tcl_out.write("source-sh %s\n" % d["args"])
+                    lmod_out.write('execute("source %s");\n' % d["args"])
                    
             if re.search("(env|path)unSet\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
@@ -1224,9 +1245,9 @@ class ups_to_spack:
 
                 if in_action:
                     #recipe_out.write("        env.prepend_path('%s',%s)\n" % (d["var"], self.fix_env_vars_python(d["value"])))
-                    tcl_out.write("prepend-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
+                    tcl_out.write("prepend-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["argl"][1])))
                     lmod_out.write(
-                        'prepend_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
+                        'prepend_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["argl"][1]))
                     )
                 continue
             if re.search("(env|path)append", line, flags=re.IGNORECASE):
@@ -1296,14 +1317,14 @@ class ups_to_spack:
                     if d["envvar"]:
                         #recipe_out.write('        env.set(%s, self.backquote(%s))\n' % (d["envvar"], re.sub("'([^']*)'","{\\1}",self.fix_env_vars_python(d["cmd"]).strip())))
                         tcl_out.write(
-                            'setenv %s [exec %s]\n' % (d["envvar"], re.sub("'([^']*)'","{\\1}",self.fix_env_vars_tcl(d["cmd"]).strip()))
+                            'setenv %s [eval "exec " %s]\n' % (d["envvar"], re.sub("'([^']*)'","{\\1}",self.fix_env_vars_tcl(d["cmd"]).strip()))
                         )
                         lmod_out.write(
                             'setenv("%s",backquote(%s));\n' % ( d["envvar"], self.fix_env_vars_lua(d["cmd"]))
                         )
                     else:
                         #recipe_out.write("        self.backquote(%s)\n" % self.fix_env_vars_python(d["cmd"]))
-                        tcl_out.write("exec %s\n" % self.fix_env_vars_tcl(d["cmd"]))
+                        tcl_out.write('eval "exec  " %s\n' % self.fix_env_vars_tcl(d["cmd"]))
                         lmod_out.write('os.execute(%s);\n' % self.fix_env_vars_lua(d["cmd"]))
                     continue
 
@@ -1378,7 +1399,7 @@ class ups_to_spack:
     def get_dep_vers(self, prod):
 
         for pkg in self.packages:
-            if pkg.prod == prod:
+            if pkg.prod == pkg.dashfix(prod):
                 return pkg.ver
         return None
 
