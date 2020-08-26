@@ -158,17 +158,10 @@ do
        spack_release=$2
        shift; shift
        ;;
-    x--no-buildcache)
-	use_buildcache=false
-	shift
-	;;
-    x--minimal)
-	minimal=true
-	shift
-	;;
     *)
         echo "unknown option $1"
         shift
+        exit
         ;;
     esac
 done

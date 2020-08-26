@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import stat
 import sys
 import re
 import os.path
@@ -204,8 +205,13 @@ class outfile:
                 self.depth = 0
 
     def close(self):
+        #
         if self.skip:
             return
+        #
+        # make file not writable so module refresh will not stomp on it
+        #
+        os.fchmod(self.outf.fileno(), (stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH))
         self.outf.close()
         self.depth = 0
 
@@ -528,7 +534,8 @@ class ups_to_spack:
     @log_call
     def get_namespace(self, pkg):
 
-        pkg.namespace = self.get_prod_namespace(pkg.prod)
+        #pkg.namespace = self.get_prod_namespace(pkg.prod)
+        pkg.namespace = "ups_to_spack"
         logging.debug("pkg %s namespace %s " % (pkg.prod, pkg.namespace))
 
     @remember
@@ -547,7 +554,7 @@ class ups_to_spack:
         # package names are BiCapitalized so fife_utils -> FifeUtils
         
         pkgname = pkg.prod.capitalize()
-        pkgname = re.sub("_([a-z])", lambda m: m.group(1).capitalize(), pkgname)
+        pkgname = re.sub("[_-]([a-z])", lambda m: m.group(1).capitalize(), pkgname)
         return pkgname
 
     @log_call
@@ -572,7 +579,11 @@ class ups_to_spack:
 
         self.get_namespace(pkg)
 
-        if (not pkg.namespace):
+        # always make a recipe in ups_to_spack for this instance, even if
+        # there already is one, we should use ours for setups in newer
+        # Spack versions
+        # if (not pkg.namespace):
+        if (True):
 
             
             # there has to be a recipe for the package for spack to
@@ -589,6 +600,18 @@ class ups_to_spack:
                 "from spack import *\n\nclass %s(AutotoolsPackage):\n    pass\n"
                 % pkgname
             )
+            recipe_f.write("""
+
+    def url_for_version(self, version):\n
+        url = 'https://cdcvs.fnal.gov/cgi-bin/git_archive.cgi/cvs/projects/{0}.v{1}.tbz2'
+        #url = 'https://github.com/SBNSoftware/{0}/archive/v{1}.tar.gz'
+        return url.format(self.name, version.underscored)
+
+""")
+            # include a cxxstd variant if we see a c7 or e19 qualifier...
+            if re.search("[ce][0-9]", pkg.quals):
+                recipe_f.write("\n    variant('cxxstd',default='17')\n\n")
+
             # recipe_f.close() -- no! do this later after adding dependencies
         else:
             recipe_f = None
@@ -712,6 +735,24 @@ class ups_to_spack:
             self.get_namespace(pkg)
 
         # create base spec file structure for the .yaml file writer
+        params = {
+            "cppflags": [],
+            "cxxflags": [],
+            "ldflags": [],
+            "cflags": [],
+            "fflags": [],
+            "ldlibs": [],
+        }
+
+        # things with c7 or e19 should have a cxxstd=17...
+        if re.search("[ce][0-9]", pkg.quals):
+             params['cxxstd'] = '17'
+
+        if re.search("debug", pkg.quals):
+            params['cppflags'] = ['-g']
+            params['cxxflags'] = ['-g']
+            params['cflags'] = ['-g']
+
         spec = {
             "spec": [
                 {
@@ -727,14 +768,7 @@ class ups_to_spack:
                             "version": pkg.spack_comp(1),
                         },
                         "namespace": pkg.namespace,
-                        "parameters": {
-                            "cppflags": [],
-                            "cxxflags": [],
-                            "ldflags": [],
-                            "cflags": [],
-                            "fflags": [],
-                            "ldlibs": [],
-                        },
+                        "parameters": params,
                     }
                 }
             ]
@@ -780,7 +814,7 @@ class ups_to_spack:
 
                     spec["spec"][0][pkg.prod]["dependencies"][dpkg.prod] = {
                         "hash": dhash,
-                        "type": ["build", "link"],
+                        "type": ["build", "link", "run"],
                         "namespace": dpkg.namespace,
                     }
 
@@ -815,19 +849,30 @@ class ups_to_spack:
                 if not dpkg.namespace:
                     self.get_namespace(dpkg)
 
+                params = {
+                    "cppflags": [],
+                    "cxxflags": [],
+                    "ldflags": [],
+                    "cflags": [],
+                    "fflags": [],
+                    "ldlibs": [],
+                }
+
+                # things with c7 or e19 should have a cxxstd=17...
+                if re.search("[ce][0-9]", dpkg.quals):
+                    params['cxxstd'] = '17'
+
+                if re.search("debug", dpkg.quals):
+                    params['cppflags'] = ['-g']
+                    params['cxxflags'] = ['-g']
+                    params['cflags'] = ['-g']
+
                 specl.append(
                     {
                         dpkg.prod: {
                             "version": dpkg.dotver,
                             "hash": dhash,
-                            "parameters": {
-                                "cppflags": [],
-                                "cxxflags": [],
-                                "ldflags": [],
-                                "cflags": [],
-                                "fflags": [],
-                                "ldlibs": [],
-                            },
+                            "parameters": params,
                             "arch": {
                                 "platform": tfl[0],
                                 "platform_os": tfl[1],
@@ -922,7 +967,7 @@ class ups_to_spack:
             .replace("${UPS_SOURCE}", "source")
             .replace("${UPS_PROD_FLAVOR}", pkg.flav)
             .replace("${UPS_PROD_QUALIFIERS}", canon_quals(pkg.quals))
-            .replace("${UPS_PROD_NAME_UC}", pkg.prod.upper()))
+            .replace("${UPS_PROD_NAME_UC}", pkg.prod.upper().replace('-','_')))
         return tline
 
 
@@ -977,6 +1022,32 @@ class ups_to_spack:
         s = s.replace(' :', '')
         s = s.replace(" ':'", '')
 
+    def update_tcl_module_index(self, tclbase, thash, tclmodulefile):
+
+        tcl_module_index = "%s/module-index.yaml" % (
+            tclbase
+        )
+
+        if not os.path.exists(tcl_module_index):
+            f = open(tcl_module_index, "w")  
+            f.write("module_index:\n")
+            f.close()
+
+        # check if entry exists
+
+        f =  open(tcl_module_index, "r")
+        found = False
+        for line in f:
+            if line.strip(' :\n') == thash:
+                found = True
+                break
+        f.close()
+
+        if not found:
+            f = open(tcl_module_index, "a")
+            f.write("  %s:\n    path: %s\n" % (thash, tclmodulefile))
+            f.close()
+
     @log_call
     def convert_table(self, pkg, thash):
 
@@ -1014,6 +1085,8 @@ class ups_to_spack:
             shorthash,
         )
 
+        self.update_tcl_module_index(tclbase, thash, tclmodulefile)
+
         recipefile=  "%s/var/spack/repos/ups_to_spack/packages/%s/package.py" % (
             os.environ["SPACK_ROOT"],
             pkg.prod
@@ -1021,29 +1094,29 @@ class ups_to_spack:
 
         # this actually appends to the recipe file
 
-        #recipe_out = outfile(recipefile,"a")
-        #recipe_out.enable()
-        #recipe_out.write(
-        ####    """
+        recipe_out = outfile(recipefile,"a")
+        recipe_out.enable()
+        recipe_out.write(
+            """
 
-        ## method to handle backquotes in actions
-        #def backquote(self, cmd):
-        #    import os
-        #    f = os.popen("cmd","r")
-        #    res = f.read()
-        #    f.close()
-        #    return res
+    # method to handle backquotes in actions
+    def backquote(self, cmd):
+        import os
+        f = os.popen("cmd","r")
+        res = f.read()
+        f.close()
+        return res
 
-        ## method to get modified environment so far
-        #def env_get(self, env):
-        #    res = os.environ.copy()
-        #    for name, actions in env.group_by_name():
-        #        for x in actions:
-        #            x.execute(res)
-        #    return res
-        #
-        #""")
-        #recipe_out.disable()
+    # method to get modified environment so far
+    def env_get(self, env):
+        res = os.environ.copy()
+        for name, actions in env.group_by_name():
+            for x in actions:
+                x.execute(res)
+        return res
+        
+            """)
+        recipe_out.disable()
 
         tcl_out = outfile(tclmodulefile)
         tcl_out.enable()
@@ -1109,12 +1182,25 @@ class ups_to_spack:
                 continue
             # end kluges
 
+            if re.search("action\\s*=", line, flags=re.IGNORECASE):
+                if in_action:
+                    lmod_out.write("end\n\n")
+                    tcl_out.write("}\n\n")
+                    recipe_out.write("\n\n")
+                name = re.sub(".*action\\s*=\\s*", "", line, flags=re.IGNORECASE)
+                tcl_out.write("\n  proc %s {} {\n" % name.lower())
+                lmod_out.write("\n  function %s ()\n" % name.lower())
+                recipe_out.write("\n    def tf_%s(self,env):\n        pass\n" % name.lower())
+
+                in_action = True
+                continue
+
             if re.search("flavor\\s*=\\s*ANY", line, flags=re.IGNORECASE):
                 flavor_ok = True
                 if in_action:
                     lmod_out.write("end\n\n")
                     tcl_out.write("}\n\n")
-                    #recipe_out.depth = recipe_out.depth - 2
+                    recipe_out.depth = recipe_out.depth - 2
                     in_action = False
                 continue
             if re.search(
@@ -1129,7 +1215,7 @@ class ups_to_spack:
                 if in_action:
                     lmod_out.write("end\n\n")
                     tcl_out.write("}\n\n")
-                    #recipe_out.write("\n\n")
+                    recipe_out.write("\n\n")
                     in_action = False
                 continue
             m = re.search(
@@ -1140,16 +1226,16 @@ class ups_to_spack:
                 if in_action:
                     lmod_out.write("end\n\n")
                     tcl_out.write("}\n\n")
-                    #recipe_out.write("\n\n")
+                    recipe_out.write("\n\n")
                     in_action = False
                 if flavor_ok:
                     lmod_out.enable()
                     tcl_out.enable()
-                    #recipe_out.enable()
+                    recipe_out.enable()
                 else:
                     lmod_out.disable()
                     tcl_out.disable()
-                    #recipe_out.disable()
+                    recipe_out.disable()
                 continue
             if re.search("qualifiers\\s*=", line, flags=re.IGNORECASE):
                 if m and m.group(1):
@@ -1159,55 +1245,43 @@ class ups_to_spack:
                 if in_action:
                     lmod_out.write("end\n\n")
                     tcl_out.write("}\n\n")
-                    #recipe_out.write("\n\n")
+                    recipe_out.write("\n\n")
                     in_action = False
                 lmod_out.disable()
                 tcl_out.disable()
-                #recipe_out.disable()
+                recipe_out.disable()
             if re.search("common:", line, flags=re.IGNORECASE):
                 if in_action:
                     lmod_out.write("end\n\n")
                     tcl_out.write("}\n\n")
-                    #recipe_out.write("\n\n")
+                    recipe_out.write("\n\n")
                     in_action = False
                 lmod_out.enable()
                 tcl_out.enable()
-                #recipe_out.enable()
-                continue
-            if re.search("action\\s*=", line, flags=re.IGNORECASE):
-                if in_action:
-                    lmod_out.write("end\n\n")
-                    tcl_out.write("}\n\n")
-                    #recipe_out.write("\n\n")
-                name = re.sub(".*action\\s*=\\s*", "", line, flags=re.IGNORECASE)
-                tcl_out.write("\n  proc %s {} {\n" % name.lower())
-                lmod_out.write("\n  function %s ()\n" % name.lower())
-                #recipe_out.write("\n    def tf_%s(self,env):\n" % name.lower())
-
-                in_action = True
+                recipe_out.enable()
                 continue
             if re.search("dodefaults\s*\(", line, flags=re.IGNORECASE):
                 if in_action:
-                    #recipe_out.write("        env.set('%s_DIR' %s)\n" %(pkg.prod.upper(), self.do_pdr(pkg.prod_dir)))
-                    #recipe_out.write("        env.set('%s_FQ_DIR' %s)\n" %(pkg.prod.upper(), self.do_pdr(pkg.prod_dir)))
+                    recipe_out.write("        env.set('%s_DIR' %s)\n" %(pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir)))
+                    recipe_out.write("        env.set('%s_FQ_DIR' %s)\n" %(pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir)))
                     tcl_out.write(
-                        "setenv %s_DIR %s\n" % (pkg.prod.upper(), self.do_pdr(pkg.prod_dir))
+                        "setenv %s_DIR %s\n" % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir))
                     )
                     tcl_out.write(
-                        "setenv %s_FQ_DIR %s\n" % (pkg.prod.upper(), self.do_pdr(pkg.prod_dir))
+                        "setenv %s_FQ_DIR %s\n" % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir))
                     )
                     lmod_out.write(
-                        'setenv("%s_DIR","%s");\n' % (pkg.prod.upper(), self.do_pdr(pkg.prod_dir))
+                        'setenv("%s_DIR","%s");\n' % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir))
                     )
                     lmod_out.write(
-                        'setenv("%s_FQ_DIR","%s");\n' % (pkg.prod.upper(), self.do_pdr(pkg.prod_dir))
+                        'setenv("%s_FQ_DIR","%s");\n' % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir))
                     )
                 continue
 
             if re.search("(env|path)Set\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
-                    #recipe_out.write("        env.set('%s',%s)\n" % (d["var"], self.fix_env_vars_python(d["value"])))
+                    recipe_out.write("        env.set('%s',%s)\n" % (d["var"], self.fix_env_vars_python(d["value"])))
                     tcl_out.write("setenv %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write('setenv("%s","%s");\n' % (d["var"], self.fix_env_vars_lua(d["value"])))
                 continue
@@ -1221,19 +1295,20 @@ class ups_to_spack:
                     if d['value'] == "":
                         d['value'] = self.do_pdr(pkg.prod_dir)
 
-                    #recipe_out.write("        env.set('%s%s',%s)\n" % (pkg.prod.upper(),d["var"], self.fix_env_vars_python(d["value"])))
-                    tcl_out.write("setenv %s%s %s\n" % (pkg.prod.upper(),d["var"], self.fix_env_vars_tcl(d["value"])))
-                    lmod_out.write('setenv("%s%s","%s");\n' % (pkg.prod.upper(), d["var"], self.fix_env_vars_lua(d["value"])))
+                    recipe_out.write("        env.set('%s%s',%s)\n" % (pkg.prod.upper().replace('-','_'),d["var"], self.fix_env_vars_python(d["value"])))
+                    tcl_out.write("setenv %s%s %s\n" % (pkg.prod.upper().replace('-','_'),d["var"], self.fix_env_vars_tcl(d["value"])))
+                    lmod_out.write('setenv("%s%s","%s");\n' % (pkg.prod.upper().replace('-','_'), d["var"], self.fix_env_vars_lua(d["value"])))
                 continue
             if re.search("source(Required|Optional)\s*\(", line, flags=re.IGNORECASE):
-                    d = self.unpack(line)
+                d = self.unpack(line)
+                if in_action:
                     tcl_out.write("source-sh %s\n" % d["args"])
                     lmod_out.write('execute("source %s");\n' % d["args"])
                    
             if re.search("(env|path)unSet\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
-                    #recipe_out.write("        env.unset('%s')\n" % d["var"])
+                    recipe_out.write("        env.unset('%s')\n" % d["var"])
                     tcl_out.write("unsetenv %s\n" % (d["var"]))
                     lmod_out.write('unsetenv("%s");\n' % (d["var"]))
                 continue
@@ -1244,7 +1319,7 @@ class ups_to_spack:
                    d["value"] = self.clean_colon(d["value"])
 
                 if in_action:
-                    #recipe_out.write("        env.prepend_path('%s',%s)\n" % (d["var"], self.fix_env_vars_python(d["value"])))
+                    recipe_out.write("        env.prepend_path('%s',%s)\n" % (d["var"], self.fix_env_vars_python(d["value"])))
                     tcl_out.write("prepend-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["argl"][1])))
                     lmod_out.write(
                         'prepend_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["argl"][1]))
@@ -1253,7 +1328,7 @@ class ups_to_spack:
             if re.search("(env|path)append", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
-                    #recipe_out.write("        env.append_path('%s',%s)\n" % (d["var"], self.fix_env_vars_python(d["value"])))
+                    recipe_out.write("        env.append_path('%s',%s)\n" % (d["var"], self.fix_env_vars_python(d["value"])))
                     tcl_out.write("append-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write(
                         'append_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
@@ -1262,7 +1337,7 @@ class ups_to_spack:
             if re.search("(env|path)remove\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
-                    #recipe_out.write("        env.remove_path('%s',%s)\n" % (d["var"], self.fix_env_vars_python(d["value"])))
+                    recipe_out.write("        env.remove_path('%s',%s)\n" % (d["var"], self.fix_env_vars_python(d["value"])))
                     tcl_out.write("remove-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write(
                         'remove_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
@@ -1271,7 +1346,7 @@ class ups_to_spack:
             if re.search("addAlias\s*\(", line, flags=re.IGNORECASE):
                 if in_action:
                     d = self.unpack(line)
-                    #recipe_out.write("        env.add_alias('%s',%s)\n" % (d["var"], self.fix_env_vars_python(d["value"])))
+                    recipe_out.write("        env.add_alias('%s',%s)\n" % (d["var"], self.fix_env_vars_python(d["value"])))
                     tcl_out.write("set-alias %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write(
                         'set_alias("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
@@ -1290,7 +1365,7 @@ class ups_to_spack:
             if re.search("exeAction(Required|Optional)\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
-                    #recipe_out.write("        self.tf_%s(env)\n" % d["var"].lower())
+                    recipe_out.write("        self.tf_%s(env)\n" % d["var"].lower())
                     tcl_out.write("%s\n" % d["var"].lower())
                     lmod_out.write("%s()\n" % d["var"].lower())
                 
@@ -1299,32 +1374,32 @@ class ups_to_spack:
                 d = self.unpack_execute(line)
                 if in_action:
                     if d["flags"] == "UPS_ENV":
-                        #recipe_out.write("        env.set('UPS_PROD_NAME','%s')\n" % pkg.prod)
+                        recipe_out.write("        env.set('UPS_PROD_NAME','%s')\n" % pkg.prod)
                         tcl_out.write("setenv UPS_PROD_NAME %s\n" % pkg.prod)
                         tcl_out.write("setenv UPS_PROD_DIR %s\n" % self.do_pdr(pkg.prod_dir))
-                        #recipe_out.write("        env.set('UPS_UPS_DIR','%s')\n" %  self.do_pdr(pkg.prod_dir))
+                        recipe_out.write("        env.set('UPS_UPS_DIR','%s')\n" %  self.do_pdr(pkg.prod_dir))
                         tcl_out.write("setenv UPS_UPS_DIR %s/ups\n" % self.do_pdr(pkg.prod_dir))
-                        #recipe_out.write("        env.set('VERSION','%s')\n" %  self.do_pdr(pkg.prod_dir))
+                        recipe_out.write("        env.set('VERSION','%s')\n" %  self.do_pdr(pkg.prod_dir))
                         tcl_out.write("setenv VERSION %s\n" % pkg.dotver)
-                        #recipe_out.write("        env.set('UPS_PROD_NAME','%s')\n" %  pkg.prod)
+                        recipe_out.write("        env.set('UPS_PROD_NAME','%s')\n" %  pkg.prod)
                         lmod_out.write('setenv("UPS_PROD_NAME","%s");\n' % pkg.prod)
-                        #recipe_out.write("        env.set('UPS_PROD_DIR','%s')\n" %  self.do_pdr(pkg.prod_dir))
+                        recipe_out.write("        env.set('UPS_PROD_DIR','%s')\n" %  self.do_pdr(pkg.prod_dir))
                         lmod_out.write('setenv("UPS_PROD_DIR","%s");\n' % self.do_pdr(pkg.prod_dir))
-                        #recipe_out.write("        env.set('UPS_UPS_DIR','%s')\n" %  self.do_pdr(pkg.prod_dir))
+                        recipe_out.write("        env.set('UPS_UPS_DIR','%s')\n" %  self.do_pdr(pkg.prod_dir))
                         lmod_out.write('setenv("UPS_UPS_DIR","%s/ups");\n' % self.do_pdr(pkg.prod_dir))
                         lmod_out.write('setenv("VERSION","%s");\n' % pkg.dotver)
 
                     if d["envvar"]:
-                        #recipe_out.write('        env.set(%s, self.backquote(%s))\n' % (d["envvar"], re.sub("'([^']*)'","{\\1}",self.fix_env_vars_python(d["cmd"]).strip())))
+                        recipe_out.write('        env.set(%s, self.backquote(%s))\n' % (d["envvar"], re.sub("'([^']*)'","{\\1}",self.fix_env_vars_python(d["cmd"]).strip())))
                         tcl_out.write(
-                            'setenv %s [eval "exec " %s]\n' % (d["envvar"], re.sub("'([^']*)'","{\\1}",self.fix_env_vars_tcl(d["cmd"]).strip()))
+                            'setenv %s [eval "exec /bin/sh -c {" %s "}"]\n' % (d["envvar"], re.sub("'([^']*)'","{\\1}",self.fix_env_vars_tcl(d["cmd"]).strip()))
                         )
                         lmod_out.write(
                             'setenv("%s",backquote(%s));\n' % ( d["envvar"], self.fix_env_vars_lua(d["cmd"]))
                         )
                     else:
-                        #recipe_out.write("        self.backquote(%s)\n" % self.fix_env_vars_python(d["cmd"]))
-                        tcl_out.write('eval "exec  " %s\n' % self.fix_env_vars_tcl(d["cmd"]))
+                        recipe_out.write("        self.backquote(%s)\n" % self.fix_env_vars_python(d["cmd"]))
+                        tcl_out.write('eval "exec /bin/sh -c {" %s "}"\n' % self.fix_env_vars_tcl(d["cmd"]))
                         lmod_out.write('os.execute(%s);\n' % self.fix_env_vars_lua(d["cmd"]))
                     continue
 
@@ -1332,13 +1407,13 @@ class ups_to_spack:
                 if in_action:
                     tcl_out.write("}\n\n")
                     lmod_out.write("end\n\n")
-                    #recipe_out.depth -= 2
+                    recipe_out.depth -= 2
                 continue
             if re.search("\\belse\\b", line, flags=re.IGNORECASE):
                 if in_action:
                     tcl_out.write("} else {\n")
                     lmod_out.write("else\n")
-                    #recipe_out.write("    else:\n")
+                    recipe_out.write("    else:\n")
                 continue
             if re.search("\\bif\\s*\\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
@@ -1353,8 +1428,8 @@ class ups_to_spack:
                         "if {![catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"]).strip()
                     )
                     lmod_out.write('if (!os.execute(%s)) then\n' % self.fix_env_vars_lua(d["args"]))
-                    #recipe_out.write('        if not os.system(%s):\n' % self.fix_env_vars_python(d["args"]))
-                    #recipe_out.depth += 2
+                    recipe_out.write('        if not os.system(%s):\n' % self.fix_env_vars_python(d["args"]))
+                    recipe_out.depth += 2
                 continue
             if re.search("\\bunless\\s*\\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
@@ -1368,33 +1443,33 @@ class ups_to_spack:
                         "if {[catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"].strip())
                     )
                     lmod_out.write('if (os.execute(%s)) then\n' % self.fix_env_vars_lua(d["args"]))
-                    #recipe_out.write('        if not not os.system(%s)):\n' % self.fix_env_vars_python(d["args"]))
+                    recipe_out.write('        if not not os.system(%s)):\n' % self.fix_env_vars_python(d["args"]))
                 continue
             if re.search("\\bend\\b", line, flags=re.IGNORECASE):
                 if in_action:
                     tcl_out.write("}\n")
                     lmod_out.write("end\n")
-                    #recipe_out.depth -= 2
+                    recipe_out.depth -= 2
                     in_action = False
                 continue
 
         tcl_out.enable()
         lmod_out.enable()
-        #recipe_out.enable()
+        recipe_out.enable()
 
         if in_action:
             tcl_out.write("}\n")
             lmod_out.write("end\n")
 
-        #recipe_out.write("\n\n")
-        #recipe_out.write("    def setup_run_environment(self, env):\n")
-        #recipe_out.write("        self.tf_setup(env)\n")
+        recipe_out.write("\n\n")
+        recipe_out.write("    def setup_run_environment(self, env):\n")
+        recipe_out.write("        self.tf_setup(env)\n")
         tcl_out.write("\nsetup\n")
         lmod_out.write("\nsetup();\n")
 
         tcl_out.close()
         lmod_out.close()
-        #recipe_out.close()
+        recipe_out.close()
 
     def get_dep_vers(self, prod):
 
@@ -1454,6 +1529,9 @@ class ups_to_spack:
                     p = package(
                         depline=line, top_flav=hf[0], top_quals=hf[1], depth=depth
                     )
+                    if p.prod in ('clang','gcc') and depth > 1:
+                        logging.debug("ignoring dependency on compiler %s" % p.prod)
+                        continue
                     logging.debug("pud: pkg: %s" % p)
                     res.append(p)
 
@@ -1503,3 +1581,5 @@ if sys.argv[1][:6] == "--pdr=" :
 uts = ups_to_spack(pdr=pdr)
 
 uts.migrate_all(sys.argv[1:])
+
+os.system('spack reindex')
