@@ -1223,7 +1223,7 @@ proc getenv { x } {
             # kluge alert -- we aren't clever enough for some things,
             # so skip them:
             # 1) TRACE has obnoxious alias definitions...
-            if (pkg.prod == "trace" and 
+            if (pkg.prod == "TRACE" and 
                 re.search("addAlias\s*\(", line, flags=re.IGNORECASE)):
                 continue
             # end kluges
@@ -1500,10 +1500,10 @@ proc getenv { x } {
                        d["args"] = "test -d %s/%s" % (m.group(2), m.group(1))
 
                     tcl_out.write(
-                         "if {![eval \"catch {exec /bin/sh -c {%s}} results options]\"]} {\n" % self.fix_env_vars_tcl(d["args"])[1:-1]
+                         "if {![eval \"catch {exec /bin/sh -c {%s}} results options\"]} {\n" % d["args"].replace('[','\\[').replace(']','\\]').replace('"','\\"').replace('$','\\$')
                     )
-                    lmod_out.write('if (!os.execute(%s)) then\n' % self.fix_env_vars_lua(d["args"]))
-                    recipe_out.write('if not os.system(%s):\n' % self.fix_env_vars_python(pkg, d["args"]))
+                    lmod_out.write('if (!os.execute("%s")) then\n' % d["args"].replace('"','\\"'))
+                    recipe_out.write('if not os.system("%s"):\n' % d["args"].replace('"','\\"'))
                     recipe_out.write('pass\n')
                 continue
             if re.search("\\bunless\\s*\\(", line, flags=re.IGNORECASE):
