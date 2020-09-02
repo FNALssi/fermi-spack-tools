@@ -162,6 +162,8 @@ class outfile:
         self.generating = False
 
     def raw_write(self, text):
+        if self.skip:
+            return 
         self.outf.write(text)
 
     def depth_check(self, text):
@@ -237,7 +239,8 @@ class outfile_python(outfile):
     # in python, there is no end of block symbol
     # so they just have to tell us
     def end_block(self):
-        self.depth -= 1
+        if self.generating:
+            self.depth -= 1
 
 class package:
     def __init__(
@@ -291,6 +294,9 @@ class package:
         self.prod = self.dashfix(self.prod)
 
     def dashfix(self,s):
+        
+        if s == "tbb":
+            return "intel-tbb"
         if s != None:
             return  s.replace("_","-")
 
@@ -643,6 +649,9 @@ class ups_to_spack:
             # include a cxxstd variant if we see a c7 or e19 qualifier...
             if re.search("[ce][0-9]", pkg.quals):
                 recipe_f.write("\n    variant('cxxstd',default='17')\n\n")
+
+            if pkg.prod in ("python","ruby","perl"):
+                recipe_f.write("\n    extendable = True\n")
 
             # recipe_f.close() -- no! do this later after adding dependencies
         else:
