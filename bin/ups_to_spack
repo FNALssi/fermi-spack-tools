@@ -415,8 +415,8 @@ class package:
                 self.prod_dir = ll[0]
                 self.table_file = ll[1]
         if self.prod_fq_dir == None:
-            f = os.popen(". `ups setup %s`; echo ${%s_FQ_DIR:-$%s_DIR} " % (
-                 self.keyval(), self.prod.upper(), self.prod.upper()))
+            f = os.popen(". `ups setup %s`; echo ${%s_FQ_DIR:-${%s_BASE:-$%s_DIR}} " % (
+                 self.keyval(), self.prod.upper(), self.prod.upper(), self.prod.upper()))
             self.prod_fq_dir = f.read()
             f.close()
             self.prod_fq_dir = self.prod_fq_dir.strip()
@@ -745,7 +745,7 @@ endif()
             recipe_f = open(uts_recipedir + "/package.py", "w")
             recipe_f.write("# fake recipe from ups_to_spack\n")
             recipe_f.write(
-                "from spack import *\n\nclass %s(AutotoolsPackage):\n    pass\n"
+                "from spack import *\nimport os\n\nclass %s(AutotoolsPackage):\n    pass\n"
                 % pkgname
             )
             recipe_f.write("""
@@ -1141,7 +1141,7 @@ endif()
     def fix_env_vars_python(self, pkg, val):
         # python doesn't interpolate, so actively replace it...
         if not val:
-            return ""
+            return "''"
         val = val.strip(' ')
         val = val.replace('"','\\"')
         val = '("%s")' % val
@@ -1287,12 +1287,14 @@ endif()
 
     # method to get modified environment so far
     def env_get(self, env):
-        res = os.environ.copy()
+        from collections import defaultdict
+        res = defaultdict(str)
+        res.update(os.environ)
         for name, actions in env.group_by_name():
             for x in actions:
                 x.execute(res)
         return res
-        
+
             """)
         # we're already in a class
 
@@ -1480,6 +1482,10 @@ proc getenv { x } {
             if re.search("(env|path)Set\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
+                    if d["var"] == "PATH":
+                        # usually someone trying to use dropit, but in this
+                        # case it hoses the path...
+                        continue
                     recipe_out.write("env.set('%s',%s)\n" % (d["var"], self.fix_env_vars_python(pkg, d["value"])))
                     tcl_out.write("set ::env(%s) %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
                     tcl_out.write("setenv %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
@@ -1597,7 +1603,9 @@ proc getenv { x } {
                         lmod_out.write('setenv("VERSION","%s");\n' % pkg.dotver)
 
                     if d["envvar"]:
-                        recipe_out.write('env.set(%s, self.backquote(%s))\n' % (d["envvar"], re.sub("'([^']*)'","{\\1}",self.fix_env_vars_python(pkg, d["cmd"]).strip())))
+                        if d["envvar"] == "PATH":
+                            continue
+                        recipe_out.write('env.set("%s", self.backquote(%s))\n' % (d["envvar"], self.fix_env_vars_python(pkg, d["cmd"]).strip()))
                         tcl_out.write(
                             'set ::env(%s) [eval "exec /bin/sh -c {" %s "}"]\n' % (d["envvar"], self.fix_env_vars_tcl(d["cmd"]))
                         )
