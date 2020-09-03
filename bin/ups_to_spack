@@ -557,8 +557,15 @@ class ups_to_spack:
 
         basedir = self.get_basedir(pkg, thash)
         cfname = "%s/%sConfig.cmake" % (basedir,pkg.prod)
+        cfName = "%s/%s%sConfig.cmake" % (basedir,pkg.prod[0].upper(), pkg.prod[1:])
+        cfNAME = "%s/%sConfig.cmake" % (basedir,pkg.prod.upper())
         logging.debug("Writing: %s" % cfname )
         f = open(cfname, "w")
+        try:
+            os.link(cfname, cfName)
+            os.link(cfname, cfNAME)
+        except:
+            pass
         f.write("""
 ####### written by ups_to_spack  #######
 
@@ -628,7 +635,7 @@ endif()
                      pkg.prod.upper(), lspec.upper(), lib))
         for d in self.depcache.get(pkg.keyval(),[]):
             f.write("find_package(%s REQUIRED)\n" % d)
-        f.write('message("${CMAKE_CURRENT_LIST_FILE} ends:")\n'
+        f.write('message("${CMAKE_CURRENT_LIST_FILE} ends:")\n')
         f.close()
            
     @log_call
@@ -750,6 +757,8 @@ endif()
 
     def setup_dependent_environment(self, spack_env, run_env, dspec):
         spack_env.prepend_path('CMAKE_PREFIX_PATH',self.prefix)
+        if hasattr(self, 'tf_setup'):
+            self.tf_setup(spack_env)
 """)
             # include a cxxstd variant if we see a c7 or e19 qualifier...
             if re.search("[ce][0-9]", pkg.quals):
