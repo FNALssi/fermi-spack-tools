@@ -254,10 +254,12 @@ class package:
         ver=None,
         flav=None,
         quals=None,
+        prod_fq_dir = None
     ):
         self.top_flav = top_flav
         self.top_quals = top_quals
         self.depth = depth
+        self.prod_fq_dir = prod_fq_dir
         self.namespace = None
         if depline:
             depline = depline.lstrip("|_ ").rstrip()
@@ -412,6 +414,12 @@ class package:
                 logging.debug("prod_dir etc splt: %s" % repr(ll))
                 self.prod_dir = ll[0]
                 self.table_file = ll[1]
+        if self.prod_fq_dir == None:
+            f = os.popen(". `ups setup %s`; echo ${%s_FQ_DIR:-$%s_DIR} " % (
+                 self.keyval(), self.prod.upper(), self.prod.upper()))
+            self.prod_fq_dir = f.read()
+            f.close()
+            self.prod_fq_dir = self.prod_fq_dir.strip()
 
     def topbits(self):
         if self.top_quals == None and self.top_flav == None:
@@ -529,9 +537,103 @@ class ups_to_spack:
             + "\n"
         )
         cf.close()
- 
+
+    @log_call
+    def make_cmake_config(self, pkg, thash):
+        # this is so various packages can be found with 
+        # cmake find_package()...
+        # this has to be called after make_spec because
+        # make_spec populates self.depcache...
+
+        # check if there is one...
+        #f = os.popen("find %s -name %sConfig.cmake -print" % (pkg.prod_fq_dir, pkg.prod))
+        #l = f.readlines()
+        #f.close()
+        #logging.debug("checking for Config.cmake: got %s" % repr(l))
+        #if len(l) >= 1:
+        #    # already is one...
+        #    logging.debug("returning due to existing Config.cmake")
+        #    return
+
+        basedir = self.get_basedir(pkg, thash)
+        cfname = "%s/%sConfig.cmake" % (basedir,pkg.prod)
+        logging.debug("Writing: %s" % cfname )
+        f = open(cfname, "w")
+        f.write("""
+####### written by ups_to_spack  #######
+
+message("${CMAKE_CURRENT_LIST_FILE} starting:")
+
+get_filename_component(PACKAGE_PREFIX_DIR "${CMAKE_CURRENT_LIST_DIR}/" 
+ABSOLUTE)
+
+macro(set_and_check _var _file)
+  set(${_var} "${_file}")
+  if(NOT EXISTS "${_file}")
+    message(FATAL_ERROR "File or directory ${_file} referenced by variable ${_va
+r} does not exist !")
+  endif()
+endmacro()
+
+macro(check_required_components _NAME)
+  foreach(comp ${${_NAME}_FIND_COMPONENTS})
+    if(NOT ${_NAME}_${comp}_FOUND)
+      if(${_NAME}_FIND_REQUIRED_${comp})
+        set(${_NAME}_FOUND FALSE)
+      endif()
+    endif()
+  endforeach()
+endmacro()
+
+################################################################################
+####
+
+if (EXISTS "${PACKAGE_PREFIX_DIR}/include")
+  set(%(prod)s_inc_dir "${PACKAGE_PREFIX_DIR}/include")
+endif()
+if (EXISTS "${PACKAGE_PREFIX_DIR}/lib")
+  set(%(prod)s_lib_dir "${PACKAGE_PREFIX_DIR}/lib")
+endif()
+if (EXISTS "${PACKAGE_PREFIX_DIR}/bin")
+  set(%(prod)s_bin_dir "${PACKAGE_PREFIX_DIR}/bin")
+endif()
+if (EXISTS "${PACKAGE_PREFIX_DIR}/Modules")
+  set(%(prod)s_modules_dir "${PACKAGE_PREFIX_DIR}/Modules")
+endif()
+if (EXISTS "${PACKAGE_PREFIX_DIR}/test")
+  set(%(prod)s_test_dir "${PACKAGE_PREFIX_DIR}/test")
+endif()
+
+# prevent repeated inclusion
+include_guard(GLOBAL)
+if (IS_DIRECTORY "${%(prod)s_modules_dir}")
+  message("adding ${%(prod)s_modules_dir} to CMAKE_MODULE_PATH\n")
+  list(APPEND CMAKE_MODULE_PATH "${%(prod)s_modules_dir}")
+endif()
+
+if (IS_DIRECTORY "${%(prod)s_inc_dir}")
+  include_directories(${%(prod)s_inc_dir})
+endif()
+
+""" % { "prod": pkg.prod})
+        f2 = os.popen("cd %s; find lib -name  '*.so' -print" % pkg.prod_fq_dir, "r")
+        liblist = f2.readlines()
+        f2.close()
+        for lib in liblist:
+            m = re.match("lib/lib%s(.*).(so|dyld)" % pkg.prod, lib)
+            if m:
+                lspec = m.group(1)
+                lib = "%s/%s" % (basedir, lib.strip())
+                f.write('set_and_check(%s%s "%s")\n' % (
+                     pkg.prod.upper(), lspec.upper(), lib))
+        for d in self.depcache.get(pkg.keyval(),[]):
+            f.write("find_package(%s REQUIRED)\n" % d)
+        f.write('message("${CMAKE_CURRENT_LIST_FILE} ends:")\n'
+        f.close()
+           
     @log_call
     def migrate_one(self, pkg):
+
         if pkg in self.already_done:
             return
 
@@ -544,6 +646,7 @@ class ups_to_spack:
             self.make_recipe(pkg)
             self.make_spec(pkg)
             thash = self.reindex_for_hash_and_rename(pkg)
+            self.make_cmake_config(pkg,thash)
             if thash:
                 self.add_cached_hash(pkg, thash)
                 self.convert_table(pkg, thash)
@@ -645,6 +748,8 @@ class ups_to_spack:
         #url = 'https://github.com/SBNSoftware/{0}/archive/v{1}.tar.gz'
         return url.format(self.name, version.underscored)
 
+    def setup_dependent_environment(self, spack_env, run_env, dspec):
+        spack_env.prepend_path('CMAKE_PREFIX_PATH',self.prefix)
 """)
             # include a cxxstd variant if we see a c7 or e19 qualifier...
             if re.search("[ce][0-9]", pkg.quals):
@@ -756,10 +861,10 @@ class ups_to_spack:
         # tag directory as being made by .ups_to_spack
         open("%s/.ups_to_spack" % basedir,"w").close()
 
-        logging.debug("making symlinks in basedir %s from %s" % (basedir,pkg.prod_dir))
+        logging.debug("making symlinks in basedir %s from %s" % (basedir,pkg.prod_fq_dir))
         # link in bin/ lib/ etc. dirs from ups directory so links paths might work
-        if pkg.prod_dir:
-            for d in glob.glob("%s/*" % pkg.prod_dir):
+        if pkg.prod_fq_dir:
+            for d in glob.glob("%s/*" % pkg.prod_fq_dir):
                 if os.path.isdir(d):
                     try:
                         destbase = os.path.basename(d)
@@ -769,6 +874,19 @@ class ups_to_spack:
                     except:
                         logging.exception("do_pdr/symlink")
                         pass
+
+        if pkg.prod_dir:
+            d = "%s/Modules" % pkg.prod_dir
+            if os.path.isdir(d):
+                try:
+                    destbase = os.path.basename(d)
+                    destdir = self.do_pdr(os.path.dirname(d))
+                    logging.debug(" symlink(%s/%s, %s/%s)" % (destdir,destbase, basedir, destbase))
+                    os.symlink("%s/%s" % (destdir,destbase), "%s/%s" % (basedir, destbase))
+                except:
+                    logging.exception("do_pdr/symlink")
+                    pass
+            
 
         tfl = pkg.spack_arch().split("-")
 
