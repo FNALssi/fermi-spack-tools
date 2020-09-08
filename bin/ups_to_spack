@@ -314,7 +314,7 @@ class package:
         )
     def keyval(self):
         return "%s %s -f %s -q '%s'" % (
-            self.prod,
+            self.uprod,
             self.ver,
             self.flav,
             self.quals,
@@ -415,8 +415,11 @@ class package:
                 self.prod_dir = ll[0]
                 self.table_file = ll[1]
         if self.prod_fq_dir == None:
-            f = os.popen(". `ups setup %s`; echo ${%s_FQ_DIR:-${%s_BASE:-$%s_DIR}} " % (
-                 self.keyval(), self.prod.upper(), self.prod.upper(), self.prod.upper()))
+            cmd =". `ups setup %s`; echo ${%s_FQ_DIR:-${%sSYS:-${%s_BASE:-$%s_DIR}}} " % (
+                 self.keyval(), self.uprod.upper(), self.uprod.upper(), 
+                 self.uprod.upper(), self.uprod.upper())
+            logging.debug("getting fq_dir from %s" % cmd)
+            f = os.popen(cmd,"r")
             self.prod_fq_dir = f.read()
             f.close()
             self.prod_fq_dir = self.prod_fq_dir.strip()
@@ -545,6 +548,10 @@ class ups_to_spack:
         # this has to be called after make_spec because
         # make_spec populates self.depcache...
 
+        # some packages we rely on their existing cmake bits...
+        if pkg.prod  in ('root', 'hep-hpc', 'boost'):
+            return
+
         # check if there is one...
         #f = os.popen("find %s -name %sConfig.cmake -print" % (pkg.prod_fq_dir, pkg.prod))
         #l = f.readlines()
@@ -592,6 +599,18 @@ macro(check_required_components _NAME)
   endforeach()
 endmacro()
 
+function(check_ups_version)
+   message("ignoring check_ups_version()")
+   IF(DEFINED ARGV3)
+       message("setting ${ARGV3} TRUE")
+       set(${ARGV3} TRUE PARENT_SCOPE)
+   endif()
+   if(DEFINED ARGV4)
+       message("setting ${ARGV4} TRUE")
+       set(${ARGV4} TRUE PARENT_SCOPE)
+   endif()
+endfunction()
+
 ################################################################################
 ####
 
@@ -633,7 +652,15 @@ endif()
                 lib = "%s/%s" % (basedir, lib.strip())
                 f.write('set_and_check(%s%s "%s")\n' % (
                      pkg.prod.upper(), lspec.upper(), lib))
+
         for d in self.depcache.get(pkg.keyval(),[]):
+            # some package have differently spelled cmake parts...
+            if d == "boost":
+                d = "Boost"
+            if d == "root":
+                d = "ROOT"
+            if d == "hep-hpc":
+               d = "hep_hpc"
             f.write("find_package(%s REQUIRED)\n" % d)
         f.write('message("${CMAKE_CURRENT_LIST_FILE} ends:")\n')
         f.close()
@@ -1280,7 +1307,7 @@ endif()
     # method to handle backquotes in actions
     def backquote(self, cmd):
         import os
-        f = os.popen("cmd","r")
+        f = os.popen(cmd,"r")
         res = f.read()
         f.close()
         return res
@@ -1289,8 +1316,9 @@ endif()
     def env_get(self, env):
         from collections import defaultdict
         res = defaultdict(str)
+        modifications = env.group_by_name()
         res.update(os.environ)
-        for name, actions in env.group_by_name():
+        for name, actions in sorted(modifications.items()):
             for x in actions:
                 x.execute(res)
         return res
@@ -1525,12 +1553,17 @@ proc getenv { x } {
 
                 if d["value"].rfind(':') > len(d["value"])-3:
                    d["value"] = self.clean_colon(d["value"])
+              
+                if d["var"] == "CMAKE_PREFIX_PATH":
+                    pdir = "ap"
+                else:
+                    pdir = "pre"
 
                 if in_action:
-                    recipe_out.write("env.prepend_path('%s',%s)\n" % (d["var"], self.fix_env_vars_python(pkg, d["value"])))
-                    tcl_out.write("prepend-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["argl"][1])))
+                    recipe_out.write("env.%spend_path('%s',%s)\n" % (pdir, d["var"], self.fix_env_vars_python(pkg, d["value"])))
+                    tcl_out.write("%spend-path %s %s\n" % (pdir, d["var"], self.fix_env_vars_tcl(d["argl"][1])))
                     lmod_out.write(
-                        'prepend_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["argl"][1]))
+                        '%spend_path("%s",%s);\n' % (pdir, d["var"], self.fix_env_vars_lua(d["argl"][1]))
                     )
                 continue
             if re.search("(env|path)append", line, flags=re.IGNORECASE):
