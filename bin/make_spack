@@ -158,6 +158,14 @@ do
        spack_release=$2
        shift; shift
        ;;
+    x--minimal)
+       minimal=true
+       shift
+       ;;
+    x--no-buildcache)
+       use_buildcache=false
+       shift
+       ;;
     *)
         echo "unknown option $1"
         shift
