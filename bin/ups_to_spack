@@ -423,6 +423,7 @@ class package:
             self.prod_fq_dir = f.read()
             f.close()
             self.prod_fq_dir = self.prod_fq_dir.strip()
+            logging.debug("got fq_dir %s" % self.prod_fq_dir)
 
     def topbits(self):
         if self.top_quals == None and self.top_flav == None:
@@ -646,12 +647,12 @@ endif()
         liblist = f2.readlines()
         f2.close()
         for lib in liblist:
-            m = re.match("lib/lib%s(.*).(so|dyld)" % pkg.prod, lib)
+            m = re.match("lib/lib(.*).(so|dyld)", lib)
             if m:
                 lspec = m.group(1)
                 lib = "%s/%s" % (basedir, lib.strip())
-                f.write('set_and_check(%s%s "%s")\n' % (
-                     pkg.prod.upper(), lspec.upper(), lib))
+                f.write('set_and_check(%s "%s")\n' % (
+                     lspec.upper(), lib))
 
         for d in self.depcache.get(pkg.keyval(),[]):
             # some package have differently spelled cmake parts...
