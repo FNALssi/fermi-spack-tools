@@ -299,6 +299,8 @@ class package:
         
         if s == "tbb":
             return "intel-tbb"
+        if s in ("gcc","clang"):
+            return "%s-runtime" % s
         if s != None:
             return  s.replace("_","-")
 
@@ -902,6 +904,18 @@ endif()
         # link in bin/ lib/ etc. dirs from ups directory so links paths might work
         if pkg.prod_fq_dir:
             for d in glob.glob("%s/*" % pkg.prod_fq_dir):
+                try:
+                    destbase = os.path.basename(d)
+                    destdir = self.do_pdr(os.path.dirname(d))
+                    logging.debug(" symlink(%s/%s, %s/%s)" % (destdir,destbase, basedir, destbase))
+                    os.symlink("%s/%s" % (destdir,destbase), "%s/%s" % (basedir, destbase))
+                except:
+                    logging.exception("do_pdr/symlink")
+                    pass
+
+        if pkg.prod_dir:
+            for dfmt in ("%s/Modules", "%s/include"):
+                d = dfmt % pkg.prod_dir
                 if os.path.isdir(d):
                     try:
                         destbase = os.path.basename(d)
@@ -911,18 +925,6 @@ endif()
                     except:
                         logging.exception("do_pdr/symlink")
                         pass
-
-        if pkg.prod_dir:
-            d = "%s/Modules" % pkg.prod_dir
-            if os.path.isdir(d):
-                try:
-                    destbase = os.path.basename(d)
-                    destdir = self.do_pdr(os.path.dirname(d))
-                    logging.debug(" symlink(%s/%s, %s/%s)" % (destdir,destbase, basedir, destbase))
-                    os.symlink("%s/%s" % (destdir,destbase), "%s/%s" % (basedir, destbase))
-                except:
-                    logging.exception("do_pdr/symlink")
-                    pass
             
 
         tfl = pkg.spack_arch().split("-")
@@ -1790,9 +1792,6 @@ proc getenv { x } {
                     p = package(
                         depline=line, top_flav=hf[0], top_quals=hf[1], depth=depth
                     )
-                    if p.prod in ('clang','gcc') and depth > 1:
-                        logging.debug("ignoring dependency on compiler %s" % p.prod)
-                        continue
                     logging.debug("pud: pkg: %s" % p)
                     res.append(p)
 
