@@ -1405,7 +1405,7 @@ proc getenv { x } {
             # kluge alert -- we aren't clever enough for some things,
             # so skip them:
             # 1) TRACE has obnoxious alias definitions...
-            if (pkg.prod == "TRACE" and 
+            if (pkg.prod == "trace" and 
                 re.search("addAlias\s*\(", line, flags=re.IGNORECASE)):
                 continue
             # end kluges
