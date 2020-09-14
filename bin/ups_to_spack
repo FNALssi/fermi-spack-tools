@@ -227,6 +227,13 @@ class outfile_python(outfile):
     def depth_check(self, text):
         before = self.depth
         ldepth = self.depth
+        if text.find("def tf_setup(") >= 0:
+            if self.depth != 1:
+                logging.debug("indent wrong at tf_setup method, fixing..")
+            else:
+                logging.debug("indent ok at tf_setup")
+            ldepth = 1
+            self.depth = 1
         if text.find("else:") >= 0:
             self.depth -= 1
             ldepth -= 1
@@ -302,7 +309,7 @@ class package:
         if s in ("gcc","clang"):
             return "%s-runtime" % s
         if s != None:
-            return  s.replace("_","-")
+            return  s.lower().replace("_","-")
 
     def __str__(self):
         return "%s %s -f %s -q '%s' top: -f %s -q '%s' depth %s" % (
@@ -802,7 +809,7 @@ endif()
             recipe_f = None
 
         for line in pkg.dependlines():
-            if re.match("^\\|__[a-z]", line):
+            if re.match("^\\|__[a-zA-Z]", line):
                 dpkg = package(depline=line, top_flav = pkg.top_flav, top_quals=pkg.top_quals)
                 # if we're writing a recipe, add the dependency, to it
                 if recipe_f:
@@ -984,7 +991,7 @@ endif()
             dependlines.reverse()
 
             for line in dependlines:
-                if re.match("^\\|__[a-z]", line):
+                if re.match("^\\|__[a-zA-Z]", line):
                     # it is an immediate dependency
                     logging.debug("immediate dependency: |%s| " % line)
                     dpkg = package(depline=line, top_flav = pkg.top_flav, top_quals = pkg.top_quals)
@@ -1384,6 +1391,12 @@ proc getenv { x } {
 
             logging.debug("processing table file line: %s" % line)
             line = line.strip()
+
+            # sqlite (and others) have stray semicolons after some
+            # table file actions, which confuses things later
+            if line[-2:] == ");":
+                line = line[:-1]
+
             line = self.fix_ups_vars(line, pkg)
 
             # remove comments..
