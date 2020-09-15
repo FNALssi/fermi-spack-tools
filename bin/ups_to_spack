@@ -1318,7 +1318,7 @@ endif()
     def backquote(self, cmd):
         import os
         f = os.popen(cmd,"r")
-        res = f.read().strip("\n")
+        res = f.read().strip("\\n")
         f.close()
         return res
 
