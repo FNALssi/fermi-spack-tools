@@ -1260,7 +1260,7 @@ endif()
 
         if not found:
             f = open(tcl_module_index, "a")
-            f.write("  %s:\n    path: %s\n    use_name: %s" % (thash, tclmodulefile, os.path.basename(tclmodulefile)))
+            f.write("  %s:\n    path: %s\n    use_name: %s\n" % (thash, tclmodulefile, os.path.basename(tclmodulefile)))
             f.close()
 
     @log_call

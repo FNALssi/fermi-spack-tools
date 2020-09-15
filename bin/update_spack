@@ -51,6 +51,7 @@ cat ${pkglist} |
      i) spack find "$spec" || python $SPACK_ROOT/bin/spack buildcache install -a -m "$spec" ;;
      t) cd $SPACK_ROOT/../../.. && tar xzf $spec; spack reindex;;
      u) spack uninstall "$spec";;
+     U) un_ups_to_spack;; 
      esac
      [ $? == 0 ] && echo "$what $spec" >> ${pkglist}.done || echo "$what $spec" >> ${pkglist}.failed
   done
