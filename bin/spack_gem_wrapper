@@ -11,6 +11,10 @@ assert() {
     fi
 }
 
+under_to_dash() {
+   echo "$1" | sed -e 's/_/-/g'
+}
+
 gem_real() {
    gem "$@"
 }
@@ -32,14 +36,14 @@ test_make_repo() {
 }
 
 add_version() {
-    if spack versions ruby-$name | grep "$ver\$" > /dev/null
+    if spack versions ruby-$uname | grep "$ver\$" > /dev/null
     then
         # already have it..
         return
     fi
     (
       echo "/url *=/a"
-      if out=`echo 1 | spack checksum ruby-$name $ver`
+      if out=`echo 1 | spack checksum ruby-$uname $ver`
       then
          echo "$out" |
                     tail -2 | 
@@ -48,11 +52,11 @@ add_version() {
       echo "."
       echo "w"
       echo "q"
-    ) | EDITOR=/bin/ed spack edit -N auto_gems ruby-$name
+    ) | EDITOR=/bin/ed spack edit -N auto_gems ruby-$uname
 }
 
 make_recipe() {
-    if spack list ruby-$name | grep "^ruby-$name\$" > /dev/null
+    if spack list ruby-$uname | grep "^ruby-$uname\$" > /dev/null
     then
         # already have it..
         return
@@ -69,15 +73,16 @@ make_recipe() {
         echo "/url *=/+2,\$d"
         echo "/url *=/a"
         echo "    extends('ruby')"
-	for d in $deps
-	do
-            echo "    depends_on('ruby-$d:', type=('build','run'))"
-	done 
+        for d in $deps
+        do
+            ud=`under_to_dash $d`
+            echo "    depends_on('ruby-$ud:', type=('build','run'))"
+        done 
         echo
         cat <<EOF
 
     def install(self, spec, prefix):
-        gemname = self.name.replace("ruby-","")
+        gemname = '$name'
         gem('install', '{0}-{1}.gem'.format(gemname, self.version))
 
     def setup_dependent_build_environment(self, env, dependent_spec): 
@@ -91,7 +96,7 @@ EOF
         echo "."
         echo "wq"
 
-    ) | EDITOR=/bin/ed spack create -N auto_gems ruby-$name
+    ) | EDITOR=/bin/ed spack create -N auto_gems --template generic --name ruby-$name
 }
 
 test_make_recipe() {
@@ -155,6 +160,7 @@ parse_args() {
 	     shift
 	     ;;
 	x*)  name=$1
+         uname=`under_to_dash $name`
          shift
          ;;
 	esac
@@ -178,7 +184,7 @@ do_dependencies() {
        echo "===> dependency $d"
        dname=`echo $d| sed -e 's/@.*//'`
        dver=`echo $d| sed -e 's/.*@//'`
-       if spack find ruby-$dname@$dver: > /dev/null
+       if spack find ruby-`under_to_dash $dname`@$dver: > /dev/null
        then
            : we already have it
        else
@@ -190,20 +196,20 @@ do_dependencies() {
 get_ver() {
     # get the newest spack-installed pacakge version, or the 
     # default gem version
-    spack find ruby-$name os=fe | grep -v '^[=-]' | head -1 | sed -e 's/.*@//' ||
-    gem list --remote "^${name}\$" | sed -e 's/[^ ]* *(//' -e 's/ .*//'
+    spack find ruby-$uname os=fe | grep -v '^[=-]' | head -1 | sed -e 's/.*@//' ||
+    gem list --remote "${name}" | grep "^$name " | sed -e 's/[^ ]* *(//' -e 's/ .*//'
 }
 
 spack_gem_install() {
     parse_args "$@"
-    if [ $ver == 0 ]
+    if [ $ver == 0 -o "$ver" == "" ]
     then
         ver=`get_ver $name`   
     fi
     deps=`get_dependencies $name $ver`
     make_recipe $name $ver
     add_version $name $ver
-    set : $name $ver
+    set : $uname $ver
     do_dependencies $deps
     spack install ruby-$2@$3
 }
