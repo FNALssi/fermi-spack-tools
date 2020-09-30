@@ -1,0 +1,234 @@
+#!/bin/sh
+
+assert() {
+    if test "$@" 
+    then
+        :
+    else
+        printf "FAIL: assertion:"
+        for a in "$@"; do printf "'$a' "; done
+        printf "\n"
+    fi
+}
+
+gem_real() {
+   gem "$@"
+}
+
+make_repo() {
+    if spack repo list | grep auto_gems > /dev/null 
+    then
+        :
+    else
+        rd="$SPACK_ROOT/var/spack/repos/auto_gems"
+        spack repo create $rd auto_gems
+        spack repo add --scope=site $rd
+    fi
+}
+
+test_make_repo() {
+   make_repo
+   make_repo
+}
+
+add_version() {
+    if spack versions ruby-$name | grep "$ver\$" > /dev/null
+    then
+        # already have it..
+        return
+    fi
+    (
+      echo "/url *=/a"
+      if out=`echo 1 | spack checksum ruby-$name $ver`
+      then
+         echo "$out" |
+                    tail -2 | 
+                    sed -e 's/)/, expand=False)/'
+      fi
+      echo "."
+      echo "w"
+      echo "q"
+    ) | EDITOR=/bin/ed spack edit -N auto_gems ruby-$name
+}
+
+make_recipe() {
+    if spack list ruby-$name | grep "^ruby-$name\$" > /dev/null
+    then
+        # already have it..
+        return
+    fi
+    export deps
+    ( 
+        echo "g/FIXME:/d"
+        echo "/^class/a"
+        echo "    "'"""'"auto-ruby-gem $name"'"""'
+        echo
+        echo "."
+        echo "/homepage *=/s;=.*;= 'https://rubygems.org/gems/$name/';"
+        echo "/url *=/s;=.*;= 'https://rubygems.org/downloads/$name-$ver.gem'"
+        echo "/url *=/+2,\$d"
+        echo "/url *=/a"
+        echo "    extends('ruby')"
+	for d in $deps
+	do
+            echo "    depends_on('ruby-$d:', type=('build','run'))"
+	done 
+        echo
+        cat <<EOF
+
+    def install(self, spec, prefix):
+        gemname = self.name.replace("ruby-","")
+        gem('install', '{0}-{1}.gem'.format(gemname, self.version))
+
+    def setup_dependent_build_environment(self, env, dependent_spec): 
+        env.prepend_path('GEM_PATH', self.prefix)
+
+    def setup_environment(self, spack_env, run_env):
+        run_env.prepend_path('GEM_PATH', self.prefix)
+        spack_env.prepend_path('GEM_PATH', self.prefix)
+EOF
+
+        echo "."
+        echo "wq"
+
+    ) | EDITOR=/bin/ed spack create -N auto_gems ruby-$name
+}
+
+test_make_recipe() {
+    name="fred"
+    ver="1.1"
+    deps="joe@1.1 harry@1.2"
+    make_recipe 
+    cat /scratch/spack/spack/rollout2/NULL/var/spack/repos/auto_gems/packages/ruby-fred/package.py
+    assert -r /scratch/spack/spack/rollout2/NULL/var/spack/repos/auto_gems/packages/ruby-fred/package.py
+    rm -f /scratch/spack/spack/rollout2/NULL/var/spack/repos/auto_gems/packages/ruby-fred/package.py
+}
+test_add_version() {
+    name="json"
+    ver="1.7.7"
+    make_recipe 
+    add_version
+    cat /scratch/spack/spack/rollout2/NULL/var/spack/repos/auto_gems/packages/ruby-json/package.py
+    assert -r /scratch/spack/spack/rollout2/NULL/var/spack/repos/auto_gems/packages/ruby-json/package.py
+    rm -f /scratch/spack/spack/rollout2/NULL/var/spack/repos/auto_gems/packages/ruby-json/package.py
+}
+
+get_dependencies() {
+    export first=true
+    gem_real dependency -rv $ver "/^$name\$/" |
+        grep -v 'development)' |
+        while read depline
+        do
+            if $first
+            then
+                first=false
+                continue
+            fi
+            dname=`echo "$depline"| sed -e 's/ .*//'`
+            dver=` echo "$depline"| sed -e 's/[()><=,~]//g' \
+                                        -e 's/[^ ]* *//' \
+                                        -e 's/ .*//'`
+            if [ "x$dname" != x ]
+            then 
+                printf " $dname@$dver"
+            fi
+        done
+}
+
+test_get_dependencies() {
+   name=json
+   ver=1.7.7
+   deps=`get_dependencies`
+   assert "$deps" == " permutation@0 sdoc@0.3.16"
+}
+
+parse_args() {
+    ver=0
+    while [ $# -gt 0 ]
+    do
+	case x$1 in
+	x--version|x--v)
+	     ver=$2
+	     shift; shift
+	     ;;
+	x--*) gem_args="$gem_args $1"
+	     shift
+	     ;;
+	x*)  name=$1
+         shift
+         ;;
+	esac
+    done
+}
+
+test_parse_args() {
+    parse_args  --version 1.2 fred
+    assert $ver == 1.2
+    assert $name == fred
+    
+    parse_args  --foo --bar --version 1.3 joe
+    assert $ver == 1.3
+    assert $name == joe
+    assert "$gem_args" == " --foo --bar"
+}
+
+do_dependencies() {
+    for d in $deps
+    do
+       echo "===> dependency $d"
+       dname=`echo $d| sed -e 's/@.*//'`
+       dver=`echo $d| sed -e 's/.*@//'`
+       if spack find ruby-$dname@$dver: > /dev/null
+       then
+           : we already have it
+       else
+	       spack_gem_install --version $dver $dname
+       fi
+    done
+}
+
+get_ver() {
+    # get the newest spack-installed pacakge version, or the 
+    # default gem version
+    spack find ruby-$name os=fe | grep -v '^[=-]' | head -1 | sed -e 's/.*@//' ||
+    gem list --remote "^${name}\$" | sed -e 's/[^ ]* *(//' -e 's/ .*//'
+}
+
+spack_gem_install() {
+    parse_args "$@"
+    if [ $ver == 0 ]
+    then
+        ver=`get_ver $name`   
+    fi
+    deps=`get_dependencies $name $ver`
+    make_recipe $name $ver
+    add_version $name $ver
+    set : $name $ver
+    do_dependencies $deps
+    spack install ruby-$2@$3
+}
+
+main() {
+    case "$1" in
+    install)
+        shift
+        make_repo
+        spack_gem_install "$@"
+        ;;
+    *)
+        gem_real "$@"
+        ;;
+    esac
+}
+
+run_unit_tests() {
+test_parse_args
+test_make_repo
+test_get_dependencies
+test_make_recipe
+test_add_version
+}
+
+#run_unit_tests
+
+main "$@"
