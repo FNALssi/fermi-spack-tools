@@ -929,9 +929,10 @@ endif()
                         destdir = self.do_pdr(os.path.dirname(d))
                         logging.debug(" symlink(%s/%s, %s/%s)" % (destdir,destbase, basedir, destbase))
                         os.symlink("%s/%s" % (destdir,destbase), "%s/%s" % (basedir, destbase))
-                    except:
-                        logging.exception("do_pdr/symlink")
+                    except OSError:
                         pass
+                    except:
+                        raise
             
 
         tfl = pkg.spack_arch().split("-")
@@ -1147,7 +1148,11 @@ endif()
         l1 = re.split("[(), ]+", s)
         logging.debug("unpack: list: %s" % repr(l1))
         if len(l1) > 2:
-            return {"var": l1[1].strip(), "value": " ".join(l1[2:]).strip(), "args": " ".join(l1[1:]).strip(), "argl":l1[1:]}
+            res = {"var": l1[1].strip(), "value": " ".join(l1[2:]).strip(), "args": " ".join(l1[1:]).strip(), "argl":l1[1:]}
+            # quotes are optional on the value; just strip theem off if present
+            if res["value"] and res["value"][0]=='"' and res["value"][-1] == '"':
+               res["value"] = res["value"][1:-1]
+            return res
         else:
             return {"var": "", "value": "", "args": ""}
 
@@ -1183,7 +1188,7 @@ endif()
         val = val.replace('"','\\"')
         val = '("%s")' % val
         if val.find("`") >= 0:
-            val = re.sub("`([^`]*)`", '" + self.backquote("\\1") + "', val)
+            val = re.sub("`([^`]*)`", '" + self.backquote("\\1", env) + "', val)
         if val.find("$") >= 0:
             val = re.sub("\\$\\{(\\w+)\\}","%(\\1)s",val)
             val = val + "% self.env_get(env)"
@@ -1315,13 +1320,21 @@ endif()
             """
 
     # method to handle backquotes in actions
-    def backquote(self, cmd):
+    def backquote(self, cmd, env):
         import os
+        cmd = "%s ; %s" % (self.env_sh(env), cmd)
         f = os.popen(cmd,"r")
         res = f.read().strip("\\n")
         f.close()
         return res
 
+    # method to get shell code for env
+    def env_sh(self, env):
+        rl = []
+        for k, v in self.env_get(env):
+            rl.append("%s='%s'" % k, v)
+        return rl.join(";")
+     
     # method to get modified environment so far
     def env_get(self, env):
         from collections import defaultdict
@@ -1696,7 +1709,7 @@ proc getenv { x } {
                          "if {![eval \"catch {exec /bin/sh -c {%s}} results options\"]} {\n" % d["args"].replace('[','\\[').replace(']','\\]').replace('"','\\"').replace('$','\\$')
                     )
                     lmod_out.write('if (!os.execute("%s")) then\n' % d["args"].replace('"','\\"'))
-                    recipe_out.write('if not os.system("%s"):\n' % d["args"].replace('"','\\"'))
+                    recipe_out.write('if not os.system("%%s; %%s" %% (self.env_sh(env),"%s")):\n' % d["args"].replace('"','\\"'))
                     recipe_out.write('pass\n')
                 continue
             if re.search("\\bunless\\s*\\(", line, flags=re.IGNORECASE):
@@ -1841,14 +1854,23 @@ if not os.environ.get("UPS_DIR", None) or not os.environ.get("SPACK_ROOT", None)
     print("Please source a UPS setups.sh and a Spack setup-env.sh before running.")
     sys.exit(1)
 
-
-logging.basicConfig(level=logging.DEBUG)
 pdr = None
 
-#print("check: %s" %  sys.argv[1][:5])
-if sys.argv[1][:6] == "--pdr=" :
-    pdr = sys.argv[1][6:]
-    #print("pdr=%s" % pdr)
+#
+# not using argparse 'cause the argv mostly gets passed to ups
+# just pick off any leading "--" options
+#
+while sys.argv[1][:2] == "--":
+    if sys.argv[1][:6] == "--pdr=" :
+        pdr = sys.argv[1][6:]
+        #print("pdr=%s" % pdr)
+
+    elif sys.argv[1] == "--debug":
+        logging.basicConfig(level=logging.DEBUG)
+
+    else:
+        print("Unknown flag %s" % sys.argv[1])
+
     sys.argv = sys.argv[:1] + sys.argv[2:]
 
 uts = ups_to_spack(pdr=pdr)

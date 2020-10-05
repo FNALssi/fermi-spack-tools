@@ -21,11 +21,11 @@ install_latest() {
     pkg="$1"
     if $use_buildcache
     then 
-        pkg_ver=`spack buildcache list "$pkg $plat" | tail -1`
+        pkg_ver=`spack -k buildcache list "$pkg $plat" | tail -1`
         echo "make_spack: info: latest $pkg is $pkg_ver"
-        spack buildcache install -a -m "$pkg_ver $plat"
+        spack -k -k -k -k -k -k -k -k -k buildcache install -a -m "$pkg_ver $plat"
     else
-        spack install "$pkg $plat"
+        spack -k install "$pkg $plat"
     fi
 }
 
@@ -123,7 +123,7 @@ create_spack() {
             $add_config
             export plat="target=`uname -i` os=`spack arch --operating-system`"
             spack mirror add --scope site fnal $binary_cache
-            spack buildcache keys --install --trust --force
+            spack -k buildcache keys --install --trust --force
             add_recipe_repos
             bootstrap_spack
         else
