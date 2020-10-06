@@ -345,7 +345,7 @@ class package:
 
         self.topbits()
 
-        l1 = re.split("[- +]*", self.top_flav)
+        l1 = re.split("[- +]+", self.top_flav)
         logging.debug("l1: %s" % repr(l1))
         f_os = l1[0]
         f_osrel = l1[1] if len(l1) > 1 else ""
@@ -563,7 +563,7 @@ class ups_to_spack:
             return
 
         # check if there is one...
-        #f = os.popen("find %s -name %sConfig.cmake -print" % (pkg.prod_fq_dir, pkg.prod))
+        #f = os.popen("find %s -name %sConfig.cmake -print 2>/dev/null" % (pkg.prod_fq_dir, pkg.prod))
         #l = f.readlines()
         #f.close()
         #logging.debug("checking for Config.cmake: got %s" % repr(l))
@@ -652,7 +652,7 @@ if (IS_DIRECTORY "${%(prod)s_inc_dir}")
 endif()
 
 """ % { "prod": pkg.prod})
-        f2 = os.popen("cd %s; find lib -name  '*.so' -print" % pkg.prod_fq_dir, "r")
+        f2 = os.popen("cd %s; find lib -name  '*.so' -print 2>/dev/null" % pkg.prod_fq_dir, "r")
         liblist = f2.readlines()
         f2.close()
         for lib in liblist:
@@ -1557,6 +1557,8 @@ proc getenv { x } {
                         d['var'] = "_DIR"
                     if d['value'] == "":
                         d['value'] = self.do_pdr(pkg.prod_dir)
+                    else:
+                        d['value'] = "%s/%s" % (self.do_pdr(pkg.prod_dir),d['value'])
 
                     recipe_out.write("env.set('%s%s',%s)\n" % (pkg.prod.upper().replace('-','_'),d["var"], self.fix_env_vars_python(pkg, d["value"])))
                     tcl_out.write("set ::env(%s%s) %s\n" % (pkg.prod.upper().replace('-','_'),d["var"], self.fix_env_vars_tcl(d["value"])))
@@ -1831,7 +1833,7 @@ proc getenv { x } {
         ''' de-duplicate sorted list '''
         r2 = []
         len_r = len(res)
-        for i in xrange(0,len_r-1):
+        for i in range(0,len_r-1):
             if res[i] != res[i+1]:
                 r2.append(res[i])
 
