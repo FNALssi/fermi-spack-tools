@@ -23,7 +23,7 @@ install_latest() {
     then 
         pkg_ver=`spack -k buildcache list "$pkg $plat" | tail -1`
         echo "make_spack: info: latest $pkg is $pkg_ver"
-        spack -k -k -k -k -k -k -k -k -k buildcache install -a -m "$pkg_ver $plat"
+        spack -k buildcache install -a -m "$pkg_ver $plat"
     else
         spack -k install "$pkg $plat"
     fi

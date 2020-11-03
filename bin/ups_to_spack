@@ -65,7 +65,7 @@ def spack_reindex():
 
 def ups_depend(prod, ver, flav, qual, hosttype=''):
     """ run ups depend, return list of output lines """
-    return ups_x("depend", prod, ver, flav, qual, hosttype)
+    return ups_x("depend -B", prod, ver, flav, qual, hosttype)
 
 def canon_quals(qual):
     ll = qual.split(":")
@@ -652,7 +652,7 @@ if (IS_DIRECTORY "${%(prod)s_inc_dir}")
 endif()
 
 """ % { "prod": pkg.prod})
-        f2 = os.popen("cd %s; find lib -name  '*.so' -print 2>/dev/null" % pkg.prod_fq_dir, "r")
+        f2 = os.popen("test -d '%s' && cd '%s' && find lib -name  '*.so' -print 2>/dev/null" % (pkg.prod_fq_dir, pkg.prod_fq_dir), "r")
         liblist = f2.readlines()
         f2.close()
         for lib in liblist:
@@ -792,10 +792,6 @@ endif()
         #url = 'https://github.com/SBNSoftware/{0}/archive/v{1}.tar.gz'
         return url.format(self.name, version.underscored)
 
-    def setup_dependent_environment(self, spack_env, run_env, dspec):
-        spack_env.prepend_path('CMAKE_PREFIX_PATH',self.prefix)
-        if hasattr(self, 'tf_setup'):
-            self.tf_setup(spack_env)
 """)
             # include a cxxstd variant if we see a c7 or e19 qualifier...
             if re.search("[ce][0-9]", pkg.quals):
@@ -1318,22 +1314,19 @@ endif()
         recipe_out.depth = 1
         recipe_out.raw_write(
             """
-
     # method to handle backquotes in actions
     def backquote(self, cmd, env):
         import os
-        cmd = "%s ; %s" % (self.env_sh(env), cmd)
+        self.env_update(env)
         f = os.popen(cmd,"r")
         res = f.read().strip("\\n")
         f.close()
         return res
 
-    # method to get shell code for env
-    def env_sh(self, env):
-        rl = []
-        for k, v in self.env_get(env):
-            rl.append("%s='%s'" % k, v)
-        return rl.join(";")
+    # update our environment from env
+    def env_update(self, env):
+        os.environ.update(self.env_get(env))
+        return True
      
     # method to get modified environment so far
     def env_get(self, env):
@@ -1341,6 +1334,9 @@ endif()
         res = defaultdict(str)
         modifications = env.group_by_name()
         res.update(os.environ)
+        for name, actions in sorted(modifications.items()):
+            if name.find("PATH") >= 0:
+                env.prune_duplicate_paths(name)
         for name, actions in sorted(modifications.items()):
             for x in actions:
                 x.execute(res)
@@ -1591,7 +1587,7 @@ proc getenv { x } {
                     pdir = "pre"
 
                 if in_action:
-                    recipe_out.write("env.%spend_path('%s',%s)\n" % (pdir, d["var"], self.fix_env_vars_python(pkg, d["value"])))
+                    recipe_out.write("env.%spend_path('%s', %s)\n" % (pdir, d["var"], self.fix_env_vars_python(pkg, d["value"])))
                     tcl_out.write("%spend-path %s %s\n" % (pdir, d["var"], self.fix_env_vars_tcl(d["argl"][1])))
                     lmod_out.write(
                         '%spend_path("%s",%s);\n' % (pdir, d["var"], self.fix_env_vars_lua(d["argl"][1]))
@@ -1669,7 +1665,7 @@ proc getenv { x } {
                     if d["envvar"]:
                         if d["envvar"] == "PATH":
                             continue
-                        recipe_out.write('env.set("%s", self.backquote(%s))\n' % (d["envvar"], self.fix_env_vars_python(pkg, d["cmd"]).strip()))
+                        recipe_out.write('env.set("%s", self.backquote(%s, env))\n' % (d["envvar"], self.fix_env_vars_python(pkg, d["cmd"]).strip()))
                         tcl_out.write(
                             'set ::env(%s) [eval "exec /bin/sh -c {" %s "}"]\n' % (d["envvar"], self.fix_env_vars_tcl(d["cmd"]))
                         )
@@ -1680,7 +1676,7 @@ proc getenv { x } {
                             'setenv("%s",backquote(%s));\n' % ( d["envvar"], self.fix_env_vars_lua(d["cmd"]))
                         )
                     else:
-                        recipe_out.write("self.backquote(%s)\n" % self.fix_env_vars_python(pkg, d["cmd"]))
+                        recipe_out.write("self.backquote(%s, env)\n" % self.fix_env_vars_python(pkg, d["cmd"]))
                         tcl_out.write('eval "exec /bin/sh -c {" %s "}"\n' % self.fix_env_vars_tcl(d["cmd"]))
                         lmod_out.write('os.execute(%s);\n' % self.fix_env_vars_lua(d["cmd"]))
                     continue
@@ -1711,7 +1707,7 @@ proc getenv { x } {
                          "if {![eval \"catch {exec /bin/sh -c {%s}} results options\"]} {\n" % d["args"].replace('[','\\[').replace(']','\\]').replace('"','\\"').replace('$','\\$')
                     )
                     lmod_out.write('if (!os.execute("%s")) then\n' % d["args"].replace('"','\\"'))
-                    recipe_out.write('if not os.system("%%s; %%s" %% (self.env_sh(env),"%s")):\n' % d["args"].replace('"','\\"'))
+                    recipe_out.write('if self.env_update(env) and not os.system("%s"):\n' % d["args"].replace('"','\\"'))
                     recipe_out.write('pass\n')
                 continue
             if re.search("\\bunless\\s*\\(", line, flags=re.IGNORECASE):
@@ -1751,9 +1747,12 @@ proc getenv { x } {
         recipe_out.raw_write("\n\n")
         recipe_out.raw_write("    def setup_run_environment(self, env):\n")
         recipe_out.raw_write("        self.tf_setup(env)\n")
+        recipe_out.raw_write("        env.prepend_path('CMAKE_PREFIX_PATH',self.prefix)\n")
         recipe_out.raw_write("\n\n")
         recipe_out.raw_write("    def setup_dependent_build_environment(self, env, dep):\n")
         recipe_out.raw_write("        self.tf_setup(env)\n")
+        recipe_out.raw_write("        env.prepend_path('CMAKE_PREFIX_PATH',self.prefix)\n")
+     
         tcl_out.raw_write("\nsetup\n")
         lmod_out.raw_write("\nsetup();\n")
 
