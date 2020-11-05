@@ -1319,29 +1319,42 @@ endif()
         import os
         self.env_update(env)
         f = os.popen(cmd,"r")
-        res = f.read().strip("\\n")
+        res = f.read().strip("\n")
         f.close()
+        self.env_restore()
+        return res
+
+    def system(self, cmd, env):
+        self.env_update(env)
+        res = os.system(cmd)
+        self.env_restore()
         return res
 
     # update our environment from env
     def env_update(self, env):
+        self._env_save = os.environ.copy()
         os.environ.update(self.env_get(env))
         return True
-     
+
+    def env_restore(self):
+        os.environ.clear()    
+        os.environ.update(self._env_save)
+        return True
+
     # method to get modified environment so far
     def env_get(self, env):
-        from collections import defaultdict
+        from collections import defaultdict, OrderedDict
         res = defaultdict(str)
         modifications = env.group_by_name()
         res.update(os.environ)
-        for name, actions in sorted(modifications.items()):
+        for x in env:
+            x.execute(res)
+        # de-dup any *PATH* variables
+        for name in res:
             if name.find("PATH") >= 0:
-                env.prune_duplicate_paths(name)
-        for name, actions in sorted(modifications.items()):
-            for x in actions:
-                x.execute(res)
+                res[name] = ":".join(list(OrderedDict.fromkeys(res[name].split(":"))))
         return res
-
+                
             """)
         # we're already in a class
 
@@ -1707,7 +1720,7 @@ proc getenv { x } {
                          "if {![eval \"catch {exec /bin/sh -c {%s}} results options\"]} {\n" % d["args"].replace('[','\\[').replace(']','\\]').replace('"','\\"').replace('$','\\$')
                     )
                     lmod_out.write('if (!os.execute("%s")) then\n' % d["args"].replace('"','\\"'))
-                    recipe_out.write('if self.env_update(env) and not os.system("%s"):\n' % d["args"].replace('"','\\"'))
+                    recipe_out.write('if not self.system("%s", env):\n' % d["args"].replace('"','\\"'))
                     recipe_out.write('pass\n')
                 continue
             if re.search("\\bunless\\s*\\(", line, flags=re.IGNORECASE):
@@ -1722,7 +1735,7 @@ proc getenv { x } {
                         "if {[catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"].strip())
                     )
                     lmod_out.write('if (os.execute(%s)) then\n' % self.fix_env_vars_lua(d["args"]))
-                    recipe_out.write('if not not os.system(%s)):\n' % self.fix_env_vars_python(pkg, d["args"]))
+                    recipe_out.write('if self.system(%s)):\n' % self.fix_env_vars_python(pkg, d["args"]))
                 continue
             if re.search("\\bend\\b", line, flags=re.IGNORECASE):
                 if in_action:
