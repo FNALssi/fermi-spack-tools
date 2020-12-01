@@ -33,9 +33,7 @@ jemalloc
 libbsd
 libdrm
 libedit
-libedit
 libevent
-libffi
 libffi
 libice
 libiconv

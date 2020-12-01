@@ -3,6 +3,24 @@
 # make a sub-spack repository
 # ...but make it unified layout...
 
+unified=true
+spack_release=rollout2
+while echo x$1 | grep x-- > /dev/null
+do
+    case "x$1" in
+    x--spack_release)
+       spack_release=$2
+       shift; shift
+       ;;
+    *)
+        echo "unknown option $1"
+        shift
+        ;;
+    esac
+done
+
+echo "spack_release is $spack_release"
+
 if [ "$1" == "-t" ]
 then
    unified=false
@@ -29,9 +47,6 @@ x/*) ;;
 x*)  spackbindir="$PWD/$spackbindir"
 esac
 
-
-spack_release=rollout2
-
 # assume unified layout...
 if $unified
 then
@@ -45,16 +60,16 @@ else
 fi
 install_tcl_path=$src/share/spack/modules
 
-SPACK_ROOTb=`basename $dst`
-SPACK_ROOTb=`dirname $dst`
+SPACK_ROOTb=`basename $SPACK_ROOT`
+SPACK_ROOTd=`dirname $SPACK_ROOT`
 
-mkdir -p $SPACK_ROOTb
+mkdir -p $SPACK_ROOTd
 export SPACK_ROOT
 
-test -d $SPACK_ROOTb || mkdir -p $SPACK_ROOTb
+test -d $SPACK_ROOTd || mkdir -p $SPACK_ROOTd
 
-cd $SPACK_ROOTb
-git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-spack $SPACK_ROOT
+cd $SPACK_ROOTd
+git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-spack $SPACK_ROOTb
 cd $SPACK_ROOT
 git checkout $spack_release
 
@@ -78,6 +93,12 @@ EOF
 
 echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $dst/setup-env.sh
 echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $dst/setup-env.csh
+
+os=`spack arch --operating-system`
+
+# copy compilers and packages
+[ -r  $src/etc/spack/compilers.yaml ] && cp $src/etc/spack/compilers.yaml $SPACK_ROOT/etc/spack/compilers.yaml
+[ -r  $src/etc/spack/$os/packages.yaml ] && cp $src/etc/spack/$os/packages.yaml $SPACK_ROOT/etc/spack/$os/packages.yaml
 
 # now clone package repos..
 

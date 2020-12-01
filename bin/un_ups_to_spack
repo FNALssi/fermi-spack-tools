@@ -1,5 +1,11 @@
 #!/bin/sh
 
+if [ x$SPACK_ROOT = x ]
+then
+    echo "This script requires \$SPACK_ROOT to be set , please source a"
+    echo "spack setup-env.sh script first."
+    exit 1
+fi
 cd $SPACK_ROOT/../../..
 
 #clean out opt/ directories:
