@@ -1515,8 +1515,8 @@ proc getenv { x } {
                 continue
             if re.search("dodefaults\s*\(", line, flags=re.IGNORECASE):
                 if in_action:
-                    recipe_out.write("env.set('%s_DIR' %s)\n" %(pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir)))
-                    recipe_out.write("env.set('%s_FQ_DIR' %s)\n" %(pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir)))
+                    recipe_out.write("env.set('%s_DIR', 'v%s'% self.version.underscored)\n" %(pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir).replace(pkg.vers,'%s')))
+                    recipe_out.write("env.set('%s_FQ_DIR', 'v%s' % self.version.underscored))\n" %(pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir).replace(pkg.vers,'%s')))
                     # note that setenv in the tcl module recipes doesn't set
                     # the environment in tcl, it just generates the code
                     # to set it; since ups actions defer evaluating $var
