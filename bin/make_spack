@@ -174,7 +174,6 @@ do
     esac
 done
 
-
 if [ "x$1" = "x-p" ]
 then
     echo "make_spack: INFO: Setting up for plain spack..."
@@ -227,6 +226,7 @@ else
     echo "  -u fermi 'unified' layout"
     echo "  -t fermi 'traditional' layout"
     echo "  -p plain spack default layout"
+    echo "  -m minimal setup"
     exit 1
 fi
 
