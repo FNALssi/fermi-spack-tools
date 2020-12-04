@@ -1,6 +1,7 @@
 #!/bin/sh
 
-spackbindir=`echo $0 | sed -e 's;make_spack;;' `
+set -x
+spackbindir=`echo $0 | sed -e 's;ups_deps_to_spec;;' `
 case x$spackbindir in
 x/*) ;;
 x*)  spackbindir="$PWD/$spackbindir"
@@ -16,7 +17,7 @@ ups depend "$@" |
     do 
         case "$p" in
         cetbuildtools) p=cetmodules;  v=2.05.02;;
-        range)         p=range-v3;    v=`echo $v| sed -e 's/^3\.//'`;;
+        range)         p=range-v3;    v=`echo $v| sed -e 's/^v3_//'`;;
         cmake)         v=3.19.0;;
         esac
         dp=`echo $p | tr '[A-Z]' '[a-z]'| sed -e 's/_/-/g'`
