@@ -1319,7 +1319,7 @@ endif()
         import os
         self.env_update(env)
         f = os.popen(cmd,"r")
-        res = f.read().strip("\n")
+        res = f.read().strip("\\n")
         f.close()
         self.env_restore()
         return res

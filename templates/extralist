@@ -1,0 +1,63 @@
+art: cxxstd=17
+artdaq-core: cxxstd=17
+art-root-io: cxxstd=17
+boost: cxxstd=17
+canvas: cxxstd=17
+canvas-root-io: cxxstd=17
+cetlib: cxxstd=17
+cetlib-except: cxxstd=17
+clhep: cxxstd=17
+cppgsl: cxxstd=17
+cppunit: cxxstd=17
+cry: cxxstd=17
+dk2nudata: cxxstd=17
+dk2nugenie: cxxstd=17
+eigen: cppflags=-std=c++17
+fftw:~mpi~openmp precision=float,double,long_double,quad
+fhicl-cpp: cxxstd=17
+gallery: cxxstd=17
+geant4@10.03.p03  cxxstd=17
+genie: cxxstd=17
+gsl: cppflags=-std=c++17
+hep-concurrency: cxxstd=17
+icarus_signal_processing: cxxstd=17
+icaruscode: cxxstd=17
+dunetpc: cxxstd=17
+ifbeam: cxxstd=17 cxxflags=-Wno-catch-value
+ifdh-art: cxxstd=17
+ifdhc: cxxstd=17
+intel-tbb: cxxstd=17 ~tm
+jsoncpp: cxxstd=17
+jsonnet: cxxstd=17
+larana: cxxstd=17
+larcorealg: cxxstd=17
+larcore: cxxstd=17
+larcoreobj: cxxstd=17
+lardataalg: cxxstd=17
+lardata: cxxstd=17
+lardataobj: cxxstd=17
+lareventdisplay@08_12_13 cxxstd=17
+larevt: cxxstd=17
+larexamples: cxxstd=17
+larpandoracontent: cxxstd=17
+larpandora: cxxstd=17
+larreco: cxxstd=17
+larsim: cxxstd=17
+larsoft: cxxstd=17
+larsoftobj: cxxstd=17
+lhapdf: cxxstd=17
+libxml2:+python
+log4cpp: cxxstd=17
+marley: cxxstd=17
+messagefacility: cxxstd=17 
+mysql@5.5.62+client_only cxxstd=17
+nucondb: cxxstd=17 cxxflags=-Wno-catch-value
+nusimdata: cxxstd=17
+nutools: cxxstd=17
+pandora: cxxstd=17
+postgresql:+client_only+python+perl+threadsafe+gssapi cflags=-I/usr/include/mit-krb5 ldflags=-L/usr/lib/x86_64-linux-gnu/mit-krb5
+python:+shared~libxml2~readline
+range-v3: -doc cxxstd=17
+root: ~root7+davix+fits+fortran+mysql+sqlite+postgres+python+ssl+xrootd+fftw+pythia6+tmva+vmc cxxstd=17
+xerces-c: cxxstd=17
+xrootd: cxxstd=17
