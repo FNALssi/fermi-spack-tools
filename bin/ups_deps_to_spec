@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -x
+#set -x
 spackbindir=`echo $0 | sed -e 's;ups_deps_to_spec;;' `
 case x$spackbindir in
 x/*) ;;
