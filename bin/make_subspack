@@ -6,7 +6,7 @@
 unified=true
 #spack_release=rollout
 #spack_release=rollout2
-spack_relase=v0.16.0.fermi
+spack_release=v0.16.0.fermi
 while echo x$1 | grep x-- > /dev/null
 do
     case "x$1" in
