@@ -104,18 +104,18 @@ test_make_recipe() {
     ver="1.1"
     deps="joe@1.1 harry@1.2"
     make_recipe 
-    cat /scratch/spack/spack/rollout2/NULL/var/spack/repos/auto_gems/packages/ruby-fred/package.py
-    assert -r /scratch/spack/spack/rollout2/NULL/var/spack/repos/auto_gems/packages/ruby-fred/package.py
-    rm -f /scratch/spack/spack/rollout2/NULL/var/spack/repos/auto_gems/packages/ruby-fred/package.py
+    cat $SPACK_ROOT/var/spack/repos/auto_gems/packages/ruby-fred/package.py
+    assert -r $SPACK_ROOT/var/spack/repos/auto_gems/packages/ruby-fred/package.py
+    rm -f $SPACK_ROOT/var/spack/repos/auto_gems/packages/ruby-fred/package.py
 }
 test_add_version() {
     name="json"
     ver="1.7.7"
     make_recipe 
     add_version
-    cat /scratch/spack/spack/rollout2/NULL/var/spack/repos/auto_gems/packages/ruby-json/package.py
-    assert -r /scratch/spack/spack/rollout2/NULL/var/spack/repos/auto_gems/packages/ruby-json/package.py
-    rm -f /scratch/spack/spack/rollout2/NULL/var/spack/repos/auto_gems/packages/ruby-json/package.py
+    cat $SPACK_ROOT/var/spack/repos/auto_gems/packages/ruby-json/package.py
+    assert -r $SPACK_ROOT/var/spack/repos/auto_gems/packages/ruby-json/package.py
+    rm -f $SPACK_ROOT/var/spack/repos/auto_gems/packages/ruby-json/package.py
 }
 
 get_dependencies() {
