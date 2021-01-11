@@ -125,7 +125,12 @@ create_spack() {
             spack mirror add --scope site fnal $binary_cache
             spack -k buildcache keys --install --trust --force
             add_recipe_repos
-            bootstrap_spack
+            if $upgrading
+            then
+                spack reindex
+            else
+                bootstrap_spack
+            fi
         else
             echo "echo make_spack: ERROR: Unable to git clone $spack_repo as $b" >&2
             echo "FAILED"
@@ -151,9 +156,14 @@ spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
 spack_release=rollout2
 use_buildcache=true
 minimal=false
+upgrading=false
 while echo x$1 | grep x-- > /dev/null
 do
     case "x$1" in
+    x--upgrade)
+       upgrading=true
+       shift
+       ;;
     x--spack_release)
        spack_release=$2
        shift; shift
@@ -189,6 +199,7 @@ then
 elif [ "x$1" = "x-t" ]
 then
     echo "make_spack: INFO: setting up for traditional layout under $2"
+    do_setup_env=true
     dir=`make_absolute "$2"`
     mkdir -p "$dir" 
     if [ ! -d "$dir" -o ! -w "$dir" ]
@@ -198,13 +209,12 @@ then
         exit 1
     fi
     export SPACK_ROOT=$dir/prd/spack/$spack_release/NULL
-    echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $dir/setup-env.sh
-    echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $dir/setup-env.csh
     export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
 elif [ "x$1" = "x-u"  ]
 then
-    dir=`make_absolute "$2"`
     echo "make_spack: INFO: setting up for unified layout under $dir"
+    do_setup_env=true
+    dir=`make_absolute "$2"`
     mkdir -p "$dir" 
     if [ ! -d "$dir" -o ! -w "$dir" ]
     then
@@ -213,8 +223,6 @@ then
         exit 1
     fi
     export SPACK_ROOT=$dir/spack/$spack_release/NULL
-    echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $dir/setup-env.sh
-    echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $dir/setup-env.csh
     export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
 else
     echo "Usage: $0 [options] -[utp] /base/directory"
@@ -232,3 +240,12 @@ fi
 
 export PATH=$SPACK_ROOT/bin:$PATH
 create_spack
+
+# save setup-env creation/update till the end so if we're upgrading and it
+# dies, we don't change it until the end.
+
+if $do_setup_env
+then
+    echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $dir/setup-env.sh
+    echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $dir/setup-env.csh
+fi
