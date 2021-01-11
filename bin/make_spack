@@ -219,6 +219,7 @@ then
 else
     echo "Usage: $0 [options] -[utp] /base/directory"
     echo " options:"
+    echo "  --upgrade"
     echo "  --no-buildcache"
     echo "  --spack_release ver"
     echo "  --minimal"
