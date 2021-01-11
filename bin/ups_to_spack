@@ -65,7 +65,11 @@ def spack_reindex():
 
 def ups_depend(prod, ver, flav, qual, hosttype=''):
     """ run ups depend, return list of output lines """
-    return ups_x("depend -B", prod, ver, flav, qual, hosttype)
+    r1 = ups_x("depend -B", prod, ver, flav, qual, hosttype)
+    if not r1:
+        print("re-running.. without -B")
+        r1 = ups_x("depend", prod, ver, flav, qual, hosttype)
+    return r1
 
 def canon_quals(qual):
     ll = qual.split(":")
@@ -1099,10 +1103,13 @@ endif()
     def use_spack_for_hash(self, pkg):
         import spack.spec
  
-        specfile = self.get_specfile(pkg)
-        st = open(specfile, "r")
-        sp = spack.spec.Spec.from_yaml(st)
-        return sp.dag_hash()
+        try:
+            specfile = self.get_specfile(pkg)
+            st = open(specfile, "r")
+            sp = spack.spec.Spec.from_yaml(st)
+            return sp.dag_hash()
+        except:
+            return "deadbeef"
         
     def reindex_for_hash_and_rename(self, pkg):
         #idir, thash = spack_reindex()
@@ -1515,8 +1522,8 @@ proc getenv { x } {
                 continue
             if re.search("dodefaults\s*\(", line, flags=re.IGNORECASE):
                 if in_action:
-                    recipe_out.write("env.set('%s_DIR' %s)\n" %(pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir)))
-                    recipe_out.write("env.set('%s_FQ_DIR' %s)\n" %(pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir)))
+                    recipe_out.write("env.set('%s_DIR', '%s'%%{'ver':'v'+self.version.underscored))\n" % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir).replace(pkg.ver,'%(ver)s')))
+                    recipe_out.write("env.set('%s_FQ_DIR', '%s'%%{'ver':'v'+self.version.underscored))\n" % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir).replace(pkg.ver,'%(ver)s')))
                     # note that setenv in the tcl module recipes doesn't set
                     # the environment in tcl, it just generates the code
                     # to set it; since ups actions defer evaluating $var
