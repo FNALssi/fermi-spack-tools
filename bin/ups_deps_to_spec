@@ -1,0 +1,35 @@
+#!/bin/sh
+
+#set -x
+spackbindir=`echo $0 | sed -e 's;ups_deps_to_spec;;' `
+case x$spackbindir in
+x/*) ;;
+x*)  spackbindir="$PWD/$spackbindir"
+esac
+
+extralist="$spackbindir/../templates/extralist"
+
+ups depend "$@" | 
+    sed -e 's/^[ |_]*//' | 
+    (
+    first=true
+    while read p v rest 
+    do 
+        case "$p" in
+        cetbuildtools) p=cetmodules;  v=2.05.02;;
+        range)         p=range-v3;    v=`echo $v| sed -e 's/^v3_//'`;;
+        cmake)         v=3.19.0;;
+        esac
+        dp=`echo $p | tr '[A-Z]' '[a-z]'| sed -e 's/_/-/g'`
+        dv=`echo $v | sed -e 's/^v//' -e 's/_/./g'`
+        extra=`grep "^$dp:" $extralist | sed -e "s/^$dp://"`
+        if $first
+        then
+           echo "$dp@$dv %gcc@8.2.0 $extra"
+           first=false
+        else
+           echo "  ^$dp@$dv $extra"
+        fi
+    done
+    )
+
