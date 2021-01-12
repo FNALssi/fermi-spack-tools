@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+
+# we want to use the ruamel.yaml package from spack
+sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
+sys.path.insert(1, "%s/lib/spack" % os.environ["SPACK_ROOT"])
+
+import ruamel.yaml
+from spack.architecture import sys_type
+
+def get_compiler():
+    f = os.popen("spack compiler list", "r")
+    for line in f:
+        comp = line
+    f.close()
+    return comp.strip()
+
+def make_repo_if_needed( name ):
+    f = os.popen("spack repo list","r")
+    for line in f:
+        if line.find(name+" ") == 0:
+             f.close()
+             return
+    f.close()
+    rd="%s/var/spack/repos/%s" % (os.environ["SPACK_ROOT"], name)
+    os.system("spack repo create %s %s" % (rd, name))
+    os.system("spack repo add --scope=site %s" % rd)
+    return rd
+
+
+def make_recipe_if_needed( namespace, name, pathvar='IGNORE'):
+    rd = make_repo_if_needed(namespace)
+
+    if os.path.exists( "%s/packages/%s/package.py" % (rd, name)):
+         return
+
+    f = os.popen("EDITOR=/bin/ed spack create -N %s --template generic --name %s" % (namespace, name), "w")
+    dict = {
+       'name': name, 
+       'NAME': name.upper(), 
+       'PATHVAR' : pathvar
+    }
+    f.write("""
+g/FIXME:/d
+/^class/a
+    '''declare-simple %(name)s locally declared bundle of files you do not really build'''
+.
+/homepage *=/s;=.*;= 'https://nowhere.org/nosuch/';
+/url *=/s;=.*;= 'https://nowhere.org/nosuch'
+/url *=/+2,\$d
+a
+
+    def install(self, spec, prefix):
+        raise NotImplementedError
+
+    def setup_environment(self, spack_env, run_env):
+        run_env.set('%(NAME)s_DIR', self.prefix)
+        run_env.prepend_path('%(PATHVAR)s', self.prefix)
+        spack_env.set('%(NAME)s_DIR', self.prefix)
+        spack_env.prepend_path('%(PATHVAR)s', self.prefix)
+.
+wq
+""" % dict)
+    f.close()
+
+
+def make_spec(name, version):
+
+    curdir = os.getcwd()
+    specfile = "%s/.spack/spec.yaml" % curdir
+    try:
+       os.mkdir(".spack")
+    except:
+       pass
+
+    platform = sys_type()
+    tfl = platform.split("-")
+
+    namespace = "local"
+    make_recipe_if_needed(namespace, name)
+    compiler = get_compiler()
+    compiler_l = compiler.split("@")
+
+    spec = {
+        "spec": [
+            {
+                name: {
+                    "version": version,
+                    "arch": {
+                        "platform": tfl[0],
+                        "platform_os": tfl[1],
+                        "target": tfl[2],
+                    },
+                    "compiler": {
+                        "name": spack_comp[0],
+                        "version": spack_comp[1],
+                    },
+                    "namespace": namespace,
+                    "parameters": {},
+                }
+            }
+        ]
+    }
+
+    sf = open(specfile, "w")
+    sf.write(ruamel.yaml.dump(spec, default_style="1"))
+    sf.close()
+
+    properdir = "%s/../../../%s/%s/%s-%s-%s" % (os.environ[SPACK_ROOT], name, version, plat, compiler, hash)
+
+    st = open(specfile, "r")
+    sp = spack.spec.Spec.from_yaml(st)
+    hash = sp.dag_hash()
+    
+    os.makedirs(os.path.dirname(properdir))
+    os.rename(curdir, properdir)
+    os.system("spack reindex")
+
+make_spec(sys.argv[1], sys.argv[2])

@@ -186,6 +186,12 @@ do
     esac
 done
 
+
+case "$spack_release" in
+rollout*) extra="";;
+*)        extra=".new";;
+esac
+
 if [ "x$1" = "x-p" ]
 then
     echo "make_spack: INFO: Setting up for plain spack..."
@@ -200,7 +206,7 @@ then
     add_config=:
 elif [ "x$1" = "x-t" ]
 then
-    echo "make_spack: INFO: setting up for traditional layout under $2"
+    echo "make_spack: INFO: setting up for traditional ups layout under $2"
     do_setup_env=true
     dir=`make_absolute "$2"`
     mkdir -p "$dir" 
@@ -211,7 +217,7 @@ then
         exit 1
     fi
     export SPACK_ROOT=$dir/prd/spack/$spack_release/NULL
-    export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
+    export add_config="cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml"
 elif [ "x$1" = "x-u"  ]
 then
     echo "make_spack: INFO: setting up for unified layout under $dir"
@@ -225,7 +231,7 @@ then
         exit 1
     fi
     export SPACK_ROOT=$dir/spack/$spack_release/NULL
-    export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
+    export add_config="cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml"
 else
     echo "Usage: $0 [options] -[utp] /base/directory"
     echo " options:"
