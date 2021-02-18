@@ -111,17 +111,14 @@ create_spack() {
     mkdir -p $d
     if cd $d
     then 
-        git clone $spack_repo $b
-        ln -s $b current
+        case "$spack_root" in
+        *github.com*) args="--depth 4" ;;
+        *) args="";;
+        esac
+        git clone $args  -b $spack_release $spack_repo $b
+
         if cd $b
         then 
-            git checkout $spack_release
-            if [ $? != 0 ]
-            then
-                echo "make_spack: ERROR: Unable to git checkout $spack_relase from $spack_repo" >&2
-                echo "FAILED"
-                exit 1
-            fi
             echo "make_spack: INFO: running: $add_config"
             $add_config
             export plat="target=`uname -i` os=`spack arch --operating-system`"
@@ -155,7 +152,9 @@ make_absolute() {
    esac
 }
 
-spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
+#spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
+spack_repo=https://github.com/marcmengel/spack.git
+
 #spack_release=rollout
 #spack_release=rollout2
 spack_release=v0.16.0.fermi

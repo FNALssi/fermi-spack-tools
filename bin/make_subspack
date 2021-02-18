@@ -3,7 +3,10 @@
 # make a sub-spack repository
 # ...but make it unified layout...
 
-unified=true
+
+#spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
+spack_repo=https://github.com/marcmengel/spack.git
+
 #spack_release=rollout
 #spack_release=rollout2
 spack_release=v0.16.0.fermi
@@ -71,9 +74,12 @@ export SPACK_ROOT
 test -d $SPACK_ROOTd || mkdir -p $SPACK_ROOTd
 
 cd $SPACK_ROOTd
-git clone https://cdcvs.fnal.gov/projects/spack-infrastructure-spack $SPACK_ROOTb
+case "$spack_root" in
+*github.com*) args="--depth 4" ;;
+*) args="";;
+esac
+git clone $args -b $spack_release $spack_repo $SPACK_ROOTb
 cd $SPACK_ROOT
-git checkout $spack_release
 
 echo "installing config.yaml..."
 if $unified
