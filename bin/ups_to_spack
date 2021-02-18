@@ -8,6 +8,8 @@ import os.path
 import logging
 import glob
 import traceback
+import select
+import subprocess
 
 # we want to use the ruamel.yaml package from spack
 sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
@@ -76,6 +78,9 @@ def canon_quals(qual):
     ll.sort()
     return ":".join(ll)
 
+def raise_timeout(signum, frame):
+    raise (Exception("timeout"))
+
 def ups_x(what, prod, ver, flav, qual, hosttype=''):
     """ run ups what, return list of output lines """
 
@@ -108,9 +113,23 @@ def ups_x(what, prod, ver, flav, qual, hosttype=''):
     )
 
     logging.debug("ups_x: cmd: %s" % cmd)
-    f = os.popen(cmd, "r")
-    res = f.readlines()
-    f.close()
+    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE )
+
+    # if we don't get a result in 30 seconds, fail...
+    # example: dependency cycle with ups depend -B ...
+    sr = select.select([p.stdout],[],[p.stdout],30)
+
+    logging.debug("select returns: %s" % repr(sr))
+
+    if not p.stdout in sr[0]:
+        p.terminate()
+        p.stdout.close()
+        logging.error("Timeout on command: %s" % cmd)
+        return []
+
+    res = p.stdout.readlines()
+    p.stdout.close()
+
     return res
 
 
@@ -135,7 +154,7 @@ class outfile:
             logging.debug("outfile.__init__: append for %s..." % fname)
             if not os.path.exists(fname):
                 self.skip = True
-                return
+                sreturn
             # this sort of breaks the wall, but we share the recipe
             # file for  multiple instances, so check if we've already
             # done this one...
@@ -854,6 +873,10 @@ endif()
         # find our install path...
         install_tree = self.get_spack_config('install_tree').strip(' "')
         install_path_scheme = self.get_spack_config('install_path_scheme').strip(' "')
+        if (install_tree == ''):
+            install_tree = self.get_spack_config('root').strip(' "')
+            install_path_scheme = self.get_spack_config('all').strip(' "')
+
         basedir_fmt = "%s/%s" % (install_tree, install_path_scheme)
 
         #convert to %(name)s ...
@@ -1087,7 +1110,7 @@ endif()
                                 "name": dpkg.spack_comp(0),
                                 "version": dpkg.spack_comp(1),
                             },
-                            "dependencies": self.depcache.get(dpkg.keyval(),{}),
+                            "dependencies": self.depcache.get(dpkg.keyval(),{}).copy(),
                         }
                     }
                 )
@@ -1108,7 +1131,9 @@ endif()
             st = open(specfile, "r")
             sp = spack.spec.Spec.from_yaml(st)
             return sp.dag_hash()
-        except:
+        except Exception as e1:
+            print("Got exception: %s drying to get hash for %s\n" %(e1, pkg))
+            traceback.print_stack()
             return "deadbeef"
         
     def reindex_for_hash_and_rename(self, pkg):

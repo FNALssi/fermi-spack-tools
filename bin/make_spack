@@ -4,7 +4,6 @@
 # where to git clone spack from, and what branch/release
 #
 
-
 spackbindir=`echo $0 | sed -e 's;make_spack;;' `
 case x$spackbindir in
 x/*) ;;
@@ -80,13 +79,16 @@ find_compilers() {
 bootstrap_spack() {
     bootstrap_patchelf
     find_compilers
-    install_latest environment-modules
+    if echo $spack_release | grep rollout > /dev/null
+    then
+        install_latest environment-modules
+        install_latest lmod
+    fi
     if $minimal
     then
         :
     else
-	install_latest lmod
-	install_latest py-machotools
+        install_latest py-machotools
     fi
     make_packages_yaml $SPACK_ROOT
 }
