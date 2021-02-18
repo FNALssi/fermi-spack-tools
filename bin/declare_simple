@@ -8,6 +8,7 @@ sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
 sys.path.insert(1, "%s/lib/spack" % os.environ["SPACK_ROOT"])
 
 import ruamel.yaml
+import spack.spec
 from spack.architecture import sys_type
 
 def get_compiler():
@@ -94,8 +95,8 @@ def make_spec(name, version):
                         "target": tfl[2],
                     },
                     "compiler": {
-                        "name": spack_comp[0],
-                        "version": spack_comp[1],
+                        "name": compiler_l[0],
+                        "version": compiler_l[1],
                     },
                     "namespace": namespace,
                     "parameters": {},
@@ -108,11 +109,11 @@ def make_spec(name, version):
     sf.write(ruamel.yaml.dump(spec, default_style="1"))
     sf.close()
 
-    properdir = "%s/../../../%s/%s/%s-%s-%s" % (os.environ[SPACK_ROOT], name, version, plat, compiler, hash)
-
     st = open(specfile, "r")
     sp = spack.spec.Spec.from_yaml(st)
-    hash = sp.dag_hash()
+    hashstr = sp.dag_hash()
+
+    properdir = "%s/../../../%s/%s/%s-%s-%s" % (os.environ['SPACK_ROOT'], name, version, platform, compiler.replace('@','-'), hashstr)
     
     os.makedirs(os.path.dirname(properdir))
     os.rename(curdir, properdir)
