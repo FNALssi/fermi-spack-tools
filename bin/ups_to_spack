@@ -709,9 +709,9 @@ endif()
         # could have been done by a previous run...
         thash = self.get_cached_hash(pkg)
 
+        self.make_spec(pkg, not thash)
         if not thash:
             self.make_recipe(pkg)
-            self.make_spec(pkg)
             thash = self.reindex_for_hash_and_rename(pkg)
             self.make_cmake_config(pkg,thash)
             if thash:
@@ -906,7 +906,7 @@ endif()
         return specfile
 
     @log_call
-    def make_spec(self, pkg):
+    def make_spec(self, pkg, writeflag = True):
         """ 
            make the .spack/spec.yaml file and possibly a minimal recipe for 
            a given ups product.  This involves going through the ups dependencies
@@ -932,30 +932,31 @@ endif()
 
         logging.debug("making symlinks in basedir %s from %s" % (basedir,pkg.prod_fq_dir))
         # link in bin/ lib/ etc. dirs from ups directory so links paths might work
-        if pkg.prod_fq_dir:
-            for d in glob.glob("%s/*" % pkg.prod_fq_dir):
-                try:
-                    destbase = os.path.basename(d)
-                    destdir = self.do_pdr(os.path.dirname(d))
-                    logging.debug(" symlink(%s/%s, %s/%s)" % (destdir,destbase, basedir, destbase))
-                    os.symlink("%s/%s" % (destdir,destbase), "%s/%s" % (basedir, destbase))
-                except:
-                    logging.exception("do_pdr/symlink")
-                    pass
-
-        if pkg.prod_dir:
-            for dfmt in ("%s/Modules", "%s/include"):
-                d = dfmt % pkg.prod_dir
-                if os.path.isdir(d):
+        if writeflag:
+            if pkg.prod_fq_dir:
+                for d in glob.glob("%s/*" % pkg.prod_fq_dir):
                     try:
                         destbase = os.path.basename(d)
                         destdir = self.do_pdr(os.path.dirname(d))
                         logging.debug(" symlink(%s/%s, %s/%s)" % (destdir,destbase, basedir, destbase))
                         os.symlink("%s/%s" % (destdir,destbase), "%s/%s" % (basedir, destbase))
-                    except OSError:
-                        pass
                     except:
-                        raise
+                        logging.exception("do_pdr/symlink")
+                        pass
+
+            if pkg.prod_dir:
+                for dfmt in ("%s/Modules", "%s/include"):
+                    d = dfmt % pkg.prod_dir
+                    if os.path.isdir(d):
+                        try:
+                            destbase = os.path.basename(d)
+                            destdir = self.do_pdr(os.path.dirname(d))
+                            logging.debug(" symlink(%s/%s, %s/%s)" % (destdir,destbase, basedir, destbase))
+                            os.symlink("%s/%s" % (destdir,destbase), "%s/%s" % (basedir, destbase))
+                        except OSError:
+                            pass
+                        except:
+                            raise
             
 
         tfl = pkg.spack_arch().split("-")
@@ -1118,10 +1119,11 @@ endif()
             specl.reverse()
             spec["spec"] = spec["spec"] + specl
 
-        logging.debug("writing specfile %s" % specfile)
-        sf = open(specfile, "w")
-        sf.write(ruamel.yaml.dump(spec, default_style="1"))
-        sf.close()
+        if writeflag:
+            logging.debug("writing specfile %s" % specfile)
+            sf = open(specfile, "w")
+            sf.write(ruamel.yaml.dump(spec, default_style="1"))
+            sf.close()
 
     def use_spack_for_hash(self, pkg):
         import spack.spec
