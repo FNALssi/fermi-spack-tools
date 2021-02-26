@@ -14,7 +14,8 @@ import subprocess
 # we want to use the ruamel.yaml package from spack
 sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
 sys.path.insert(1, "%s/lib/spack" % os.environ["SPACK_ROOT"])
-import ruamel.yaml
+import ruamel.yaml as yaml
+from spack.spec import Spec
 
 
 def log_call(f):
@@ -64,6 +65,45 @@ def spack_reindex():
     f.close()
     return "", ""
 
+known_cycle_deps = {}
+
+def filter_cycles(deplines):
+    global known_cycle_deps
+    res=[]
+    d=['','','','','','','','','','','','','','','']
+    for line in deplines:
+        m = re.match("(^[|_ ]*)([^ ]*)", line)
+        depth = len(m.group(1))/3
+        name = m.group(2)
+        d[depth] = name
+        cycle = False
+        for i in xrange(depth):
+            if d[i+ 1] ==  known_cycle_deps.get(d[i],None):
+                logging.error("remembered cycle: (%s ->  %s) %s " % (d[i], d[i+1],  repr(d[:depth+1])))
+                cycle=True
+
+        for i in xrange(depth):
+           if d[i] ==  name and not cycle:
+                logging.error("dropping cycle: " + repr(d[:depth+1]))
+                cycle = True
+                # so there are two candidates for the edge to drop to lose the cycle
+                # the d[i-1]->d[i] and d[depth-1]->d[depth]
+                # how do we pick?  well if we already have one then we shouldn't add
+                # the other, and otherwise remember the later one because it
+                # removes the least dependencies(?)
+                if known_cycle_deps.get(d[depth-1],None) == d[depth]:
+                    pass  # already known
+                elif known_cycle_deps.get(d[i-1],None) == d[i]:
+                    pass  # already known
+                else:
+                    # remember the later one?
+                    known_cycle_deps[d[depth-1]] = d[depth]
+
+        if not cycle:
+            res.append(line)
+
+    print("Known cycle deps:", known_cycle_deps)
+    return res
 
 def ups_depend(prod, ver, flav, qual, hosttype=''):
     """ run ups depend, return list of output lines """
@@ -71,15 +111,12 @@ def ups_depend(prod, ver, flav, qual, hosttype=''):
     if not r1:
         print("re-running.. without -B")
         r1 = ups_x("depend", prod, ver, flav, qual, hosttype)
-    return r1
+    return filter_cycles(r1)
 
 def canon_quals(qual):
     ll = qual.split(":")
     ll.sort()
     return ":".join(ll)
-
-def raise_timeout(signum, frame):
-    raise (Exception("timeout"))
 
 def ups_x(what, prod, ver, flav, qual, hosttype=''):
     """ run ups what, return list of output lines """
@@ -336,7 +373,7 @@ class package:
 
     def __str__(self):
         return "%s %s -f %s -q '%s' top: -f %s -q '%s' depth %s" % (
-            self.prod,
+            self.uprod,
             self.ver,
             self.flav,
             self.quals,
@@ -508,6 +545,8 @@ class package:
 class ups_to_spack:
     def __init__(self, pdr=None):
         self.depcache = {}
+        self.made_spec = set()
+        self.made_spec_write = set()
         self.already_done = set()
         self.pkglist = None
         if pdr:
@@ -530,13 +569,23 @@ class ups_to_spack:
 
     @log_call
     def get_cached_hash(self, pkg):
+        dhash = self.get_cached_hash(pkg)
+        if not dhash:
+            # try to make it recursively...
+            logging.debug("Trying recursive make_spec call on %s" % dpkg)
+            self.make_spec(dpkg, True)
+            dhash = self.get_cached_hash(dpkg)
+        return dhash
+
+    @log_call
+    def get_cached_hash_once(self, pkg):
         pkg.topbits()
         sp_arch = pkg.spack_arch()
         thash = None
         if os.access(self.cache_file, os.R_OK):
             cf = open(self.cache_file, "r")
             pattern = ":".join(
-                [pkg.prod, pkg.ver, pkg.top_flav, pkg.top_quals, sp_arch]
+                [pkg.uprod, pkg.ver, pkg.flav, pkg.quals, sp_arch]
             )
 
             logging.debug("get_cached_hash: looking for: '%s'" % pattern)
@@ -562,10 +611,10 @@ class ups_to_spack:
         cf.write(
             ":".join(
                 [
-                    pkg.prod,
+                    pkg.uprod,
                     pkg.ver,
-                    pkg.top_flav,
-                    pkg.top_quals,
+                    pkg.flav,
+                    pkg.quals,
                     pkg.spack_arch(),
                     thash,
                 ]
@@ -917,6 +966,18 @@ endif()
            from a dictionary
         """
 
+        if (not  writeflag and pkg.prod in self.made_spec) or (writeflag and pkg.prod in self.made_spec_write):
+           logging.debug("Returning: already made")
+           return
+        else:
+           logging.debug("make_spec:  made_spec %s made_spec_write %s" %
+                          (repr(self.made_spec), repr( self.made_spec_write)))
+
+        if writeflag:
+            self.made_spec_write.add(pkg.prod) 
+        else:
+            self.made_spec.add(pkg.prod) 
+
         # make sure our package is all filled out
         pkg.topbits()
         pkg.prodbits()
@@ -1032,14 +1093,19 @@ endif()
                     dhash = self.get_cached_hash(dpkg)
 
                     if not dhash:
-                        # try unqualified...
-                        logging.debug("retry without quals")
-                        dpkg.top_quals=""
+                        # check for unqualified
+                        save = dpkg.quals
+                        dpkg.quals = ''
                         dhash = self.get_cached_hash(dpkg)
+                        dpkg.quals = save
+                 
 
                     if not dhash:
-                        logging.debug("skipping dependency %s -- no hash" % dpkg)
-                        continue
+                        if dpkg.prod in self.made_spec_write:
+                            logging.debug("Cyclic dependency, not adding %s to %s" % (dpkg.prod, pkg.prod))
+                            continue  
+                        else:
+                            raise Exception("cannot add dependency %s -- no hash" % dpkg)
 
                     spec["spec"][0][pkg.prod]["dependencies"][dpkg.prod] = {
                         "hash": dhash,
@@ -1048,11 +1114,17 @@ endif()
 
             self.depcache[pkg.keyval()] = spec["spec"][0][pkg.prod]["dependencies"]
             specl = []
+            done_already = set()
+            done_already.add(pkg.prod)
             for line in dependlines:
 
                 logging.debug("general dependency: |%s| " % line)
 
                 dpkg = package(depline=line, top_flav = pkg.top_flav, top_quals=pkg.top_quals)
+                # suppress duplicates
+                if dpkg.prod in done_already:
+                    continue
+                done_already.add(dpkg.prod)
 
                 #
                 # again dependencies should have already been migrated, so this should just
@@ -1122,7 +1194,7 @@ endif()
         if writeflag:
             logging.debug("writing specfile %s" % specfile)
             sf = open(specfile, "w")
-            sf.write(ruamel.yaml.dump(spec, default_style="1"))
+            sf.write(yaml.dump(spec, default_style="1"))
             sf.close()
 
     def use_spack_for_hash(self, pkg):
@@ -1131,12 +1203,14 @@ endif()
         try:
             specfile = self.get_specfile(pkg)
             st = open(specfile, "r")
-            sp = spack.spec.Spec.from_yaml(st)
+            # sp = spack.spec.Spec.from_yaml(st)
+            data = yaml.load(st)
+            sp =  Spec.from_dict(data)
             return sp.dag_hash()
         except Exception as e1:
-            print("Got exception: %s drying to get hash for %s\n" %(e1, pkg))
+            print("Got exception: %s trying to get hash for specfile %s package  %s \n" %(e1, specfile,  pkg))
             traceback.print_stack()
-            return "deadbeef"
+            raise
         
     def reindex_for_hash_and_rename(self, pkg):
         #idir, thash = spack_reindex()
@@ -1924,5 +1998,4 @@ while sys.argv[1][:2] == "--":
 uts = ups_to_spack(pdr=pdr)
 
 uts.migrate_all(sys.argv[1:])
-
 os.system('spack reindex')
