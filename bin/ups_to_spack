@@ -79,12 +79,12 @@ def filter_cycles(deplines):
         cycle = False
         for i in xrange(depth):
             if d[i+ 1] ==  known_cycle_deps.get(d[i],None):
-                logging.error("remembered cycle: (%s ->  %s) %s " % (d[i], d[i+1],  repr(d[:depth+1])))
+                logging.debug("remembered cycle: (%s ->  %s) %s " % (d[i], d[i+1],  repr(d[:depth+1])))
                 cycle=True
 
         for i in xrange(depth):
            if d[i] ==  name and not cycle:
-                logging.error("dropping cycle: " + repr(d[:depth+1]))
+                logging.debug("dropping cycle: " + repr(d[:depth+1]))
                 cycle = True
                 # so there are two candidates for the edge to drop to lose the cycle
                 # the d[i-1]->d[i] and d[depth-1]->d[depth]
@@ -102,14 +102,13 @@ def filter_cycles(deplines):
         if not cycle:
             res.append(line)
 
-    print("Known cycle deps:", known_cycle_deps)
     return res
 
 def ups_depend(prod, ver, flav, qual, hosttype=''):
     """ run ups depend, return list of output lines """
     r1 = ups_x("depend -B", prod, ver, flav, qual, hosttype)
     if not r1:
-        print("re-running.. without -B")
+        logging.debug("re-running.. without -B")
         r1 = ups_x("depend", prod, ver, flav, qual, hosttype)
     return filter_cycles(r1)
 
@@ -505,7 +504,6 @@ class package:
         if self.ver:
             self.dotver = self.ver.replace("v", "").replace("b", "").replace("_", ".")
 
-    @log_call
     def spack_comp(self, splitpart = -1):
         self.topbits()
         res = "gcc-4.1.1"  # sl5 compiler by default??
@@ -570,11 +568,18 @@ class ups_to_spack:
     @log_call
     def get_cached_hash(self, pkg):
         dhash = self.get_cached_hash_once(pkg)
+
+        if not dhash:
+            try:
+                dhash = self.use_spack_for_hash(pkg)
+            except:
+                pass
+
         if not dhash:
             # try to make it recursively...
             logging.debug("Trying recursive make_spec call on %s" % pkg)
-            self.make_spec(pkg, True)
-            dhash = self.get_cached_hash_once(pkg)
+            dhash = self.migrate_one(pkg)
+
         return dhash
 
     @log_call
@@ -649,6 +654,9 @@ class ups_to_spack:
         cfName = "%s/%s%sConfig.cmake" % (basedir,pkg.prod[0].upper(), pkg.prod[1:])
         cfNAME = "%s/%sConfig.cmake" % (basedir,pkg.prod.upper())
         logging.debug("Writing: %s" % cfname )
+        d = os.path.dirname(cfname)
+        if not os.path.exists(d):
+            os.makedirs(d)
         f = open(cfname, "w")
         try:
             os.link(cfname, cfName)
@@ -750,26 +758,28 @@ endif()
     @log_call
     def migrate_one(self, pkg):
 
-        if pkg in self.already_done:
-            return
+        if repr(pkg) in self.already_done:
+            return self.use_spack_for_hash(pkg)
 
-        self.already_done.add(pkg)
+        self.already_done.add(repr(pkg))
 
         # could have been done by a previous run...
-        thash = self.get_cached_hash(pkg)
+        thash = self.get_cached_hash_once(pkg)
 
-        self.make_spec(pkg, not thash)
+        nhash = self.make_spec(pkg, not thash)
         if not thash:
             self.make_recipe(pkg)
-            thash = self.reindex_for_hash_and_rename(pkg)
+            thash = self.reindex_for_hash_and_rename(pkg, nhash)
             self.make_cmake_config(pkg,thash)
             if thash:
                 self.add_cached_hash(pkg, thash)
                 self.convert_table(pkg, thash)
             else:
-                logging.info("Warning: unable to get hash for pkg %s" % pkg)
+                logging.debug("Warning: unable to get hash for pkg %s" % pkg)
         else:
             logging.debug("already done: %s" % pkg)
+
+        return thash
 
     @remember
     def get_repo_list(self):
@@ -1197,6 +1207,9 @@ endif()
             sf.write(yaml.dump(spec, default_style="1"))
             sf.close()
 
+        sp =  Spec.from_dict(spec)
+        return sp.dag_hash()
+
     def use_spack_for_hash(self, pkg):
         import spack.spec
  
@@ -1209,12 +1222,17 @@ endif()
             return sp.dag_hash()
         except Exception as e1:
             print("Got exception: %s trying to get hash for specfile %s package  %s \n" %(e1, specfile,  pkg))
-            traceback.print_stack()
-            raise
+            # traceback.print_stack()
+            # raise
+            return None
         
-    def reindex_for_hash_and_rename(self, pkg):
+    def reindex_for_hash_and_rename(self, pkg, nhash=None):
         #idir, thash = spack_reindex()
-        thash = self.use_spack_for_hash(pkg)
+
+        if nhash:
+            thash = nhash
+        else:
+            thash = self.use_spack_for_hash(pkg)
 
         basedir = self.get_basedir(pkg)
 
@@ -1234,7 +1252,7 @@ endif()
                 logging.debug("renaming to %s" % dest)
                 os.rename(basedir, dest)
         else:
-            logging.error("Error: unable to get hash for %s -- skipping" % pkg)
+            logging.debug("Warning: unable to get hash for %s -- skipping" % pkg)
             os.system("rm -rf %s" % basedir)
           
 
@@ -1968,6 +1986,7 @@ proc getenv { x } {
         self.packages = self.parsed_ups_dependencies(pkgl)
         logging.debug("migrate_all: packages: %s" % repr(self.packages))
         for pkg in self.packages:
+            logging.debug("migrating: %s" % pkg)
             self.migrate_one(pkg)
 
 
