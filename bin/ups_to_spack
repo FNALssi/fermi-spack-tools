@@ -569,12 +569,12 @@ class ups_to_spack:
 
     @log_call
     def get_cached_hash(self, pkg):
-        dhash = self.get_cached_hash(pkg)
+        dhash = self.get_cached_hash_once(pkg)
         if not dhash:
             # try to make it recursively...
-            logging.debug("Trying recursive make_spec call on %s" % dpkg)
-            self.make_spec(dpkg, True)
-            dhash = self.get_cached_hash(dpkg)
+            logging.debug("Trying recursive make_spec call on %s" % pkg)
+            self.make_spec(pkg, True)
+            dhash = self.get_cached_hash_once(pkg)
         return dhash
 
     @log_call
