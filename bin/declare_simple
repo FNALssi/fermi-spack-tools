@@ -40,7 +40,7 @@ def make_recipe_if_needed( namespace, name, pathvar='IGNORE'):
     f = os.popen("EDITOR=/bin/ed spack create -N %s --template generic --name %s" % (namespace, name), "w")
     dict = {
        'name': name, 
-       'NAME': name.upper(), 
+       'NAME': name.upper().replace('-','_'), 
        'PATHVAR' : pathvar
     }
     f.write("""
@@ -115,7 +115,8 @@ def make_spec(name, version):
 
     properdir = "%s/../../../%s/%s/%s-%s-%s" % (os.environ['SPACK_ROOT'], name, version, platform, compiler.replace('@','-'), hashstr)
     
-    os.makedirs(os.path.dirname(properdir))
+    if not os.path.exists(os.path.dirname(properdir)):
+        os.makedirs(os.path.dirname(properdir))
     os.rename(curdir, properdir)
     os.system("spack reindex")
 
