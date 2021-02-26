@@ -1189,6 +1189,8 @@ endif()
             return "''"
         val = val.strip(' ')
         val = val.replace('"','\\"')
+        val = val.replace('\\\\"','\\"')
+
         val = '("%s")' % val
         if val.find("`") >= 0:
             val = re.sub("`([^`]*)`", '" + self.backquote("\\1", env) + "', val)
@@ -1198,8 +1200,8 @@ endif()
         val = val.replace(pkg.dotver,'"+str(self.spec.version)+"')
         val = val.replace(pkg.ver,'v"+str(self.spec.version.underscored)+"')
         val = val.replace(pkg.prod,'"+self.spec.name+"')
-        val = val.replace('+""','')
-        val = val.replace('""+','')
+        val = val.replace('+""+','+')
+        val = val.replace('+""+','+')
         logging.debug("val %s pkg %s" % (val,pkg))
         return val
 
@@ -1522,8 +1524,8 @@ proc getenv { x } {
                 continue
             if re.search("dodefaults\s*\(", line, flags=re.IGNORECASE):
                 if in_action:
-                    recipe_out.write("env.set('%s_DIR', '%s'%%{'ver':'v'+self.version.underscored))\n" % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir).replace(pkg.ver,'%(ver)s')))
-                    recipe_out.write("env.set('%s_FQ_DIR', '%s'%%{'ver':'v'+self.version.underscored))\n" % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir).replace(pkg.ver,'%(ver)s')))
+                    recipe_out.write("env.set('%s_DIR', '%s'%%{'ver':'v'+self.version.underscored})\n" % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir).replace(pkg.ver,'%(ver)s')))
+                    recipe_out.write("env.set('%s_FQ_DIR', '%s'%%{'ver':'v'+self.version.underscored})\n" % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir).replace(pkg.ver,'%(ver)s')))
                     # note that setenv in the tcl module recipes doesn't set
                     # the environment in tcl, it just generates the code
                     # to set it; since ups actions defer evaluating $var
