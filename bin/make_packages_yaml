@@ -178,9 +178,17 @@ do
     cprefix=`ls -d /cvmfs/fermilab.opensciencegrid.org/packages/common/$lp/$v/*-$os-x86_64-* 2>/dev/null | head -1`
     if echo $lp | egrep "$force_system" > /dev/null
     then
-        echo "    paths:"           >&3
-        echo "      $lp@$v$opts$comp os=$os: /usr"    >&3
-
+        # use the right external syntax based on spack version in path
+        case $SPACK_ROOT in
+        *rollout*)
+            echo "    paths:"           >&3
+            echo "      $lp@$v$opts$comp os=$os: /usr"    >&3
+            ;;
+        *)
+            echo "    externals:" >&3
+            echo "    - spec: lp@$v$opts$comp os=$os" >&3
+            echo "      prefix: /usr" >&3
+        esac
         echo "    buildable: False"           >&3
 
         # there isnt a curl-devel, but there is a libcurl-devel
@@ -192,9 +200,18 @@ do
     elif [ -d "$cprefix" ]
     then   
         # if we have it in cvmfs, use that one
-        echo "    paths:"           >&3
-        echo "      $lp@$v$opts$comp os=$os: $cprefix"    >&3
-        echo "    buildable: False"           >&3
+        case $SPACK_ROOT in
+        *rollout*)
+            echo "    paths:"           >&3
+            echo "      $lp@$v$opts$comp os=$os: $cprefix"    >&3
+            ;;
+        *)
+            echo "    externals:" >&3
+            echo "    - spec: lp@$v$opts$comp os=$os" >&3
+            echo "      prefix: $cprefix" >&3
+            ;;
+        esac
+        echo "    buildable: False" >&3
     fi
 done
 

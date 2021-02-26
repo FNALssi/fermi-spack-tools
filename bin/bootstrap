@@ -3,7 +3,8 @@
 # pull down spack-infrastructure
 # use it to install
 dest=${1:-$PWD}
-ver=${2:-v1_5}
+ver=${2:-v1_8}
+spackver=${3:-v0.16.0.fermi}
 
 mkdir -p $dest/spack-infrastructure/$ver
 cd $dest
@@ -11,4 +12,5 @@ cd $dest
 git clone https://cdcvs.fnal.gov/projects/spack-infrastructure spack-infrastructure/$ver/NULL/
 PATH=$dest/spack-infrastructure/$ver/NULL/bin:$PATH
 make_spack -u $dest
+(cd $dest/spack-infrastructure/$ver/NULL && declare_simple spack-infrastructure $ver)
 

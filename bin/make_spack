@@ -4,7 +4,6 @@
 # where to git clone spack from, and what branch/release
 #
 
-
 spackbindir=`echo $0 | sed -e 's;make_spack;;' `
 case x$spackbindir in
 x/*) ;;
@@ -21,9 +20,10 @@ install_latest() {
     pkg="$1"
     if $use_buildcache
     then 
-        pkg_ver=`spack -k buildcache list "$pkg $plat" | tail -1`
-        echo "make_spack: info: latest $pkg is $pkg_ver"
-        spack -k buildcache install -a -m "$pkg_ver $plat"
+        hash_pkg_ver=`spack -k buildcache list --long --allarch "$pkg $plat" | tail -1`
+        echo "make_spack: info: latest $pkg is $hash_pkg_ver"
+        hash=`echo $hash_pkg_ver | sed -e 's/ /.*//'`
+        spack -k buildcache install -o -a -m "/$hash"
     else
         spack -k install "$pkg $plat"
     fi
@@ -80,13 +80,16 @@ find_compilers() {
 bootstrap_spack() {
     bootstrap_patchelf
     find_compilers
-    install_latest environment-modules
+    if echo $spack_release | grep rollout > /dev/null
+    then
+        install_latest environment-modules
+        install_latest lmod
+    fi
     if $minimal
     then
         :
     else
-	install_latest lmod
-	install_latest py-machotools
+        install_latest py-machotools
     fi
     make_packages_yaml $SPACK_ROOT
 }
@@ -108,17 +111,14 @@ create_spack() {
     mkdir -p $d
     if cd $d
     then 
-        git clone $spack_repo $b
-        ln -s $b current
+        case "$spack_root" in
+        *github.com*) args="--depth 4" ;;
+        *) args="";;
+        esac
+        git clone $args  -b $spack_release $spack_repo $b
+
         if cd $b
         then 
-            git checkout $spack_release
-            if [ $? != 0 ]
-            then
-                echo "make_spack: ERROR: Unable to git checkout $spack_relase from $spack_repo" >&2
-                echo "FAILED"
-                exit 1
-            fi
             echo "make_spack: INFO: running: $add_config"
             $add_config
             export plat="target=`uname -i` os=`spack arch --operating-system`"
@@ -152,7 +152,9 @@ make_absolute() {
    esac
 }
 
-spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
+#spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
+spack_repo=https://github.com/marcmengel/spack.git
+
 #spack_release=rollout
 #spack_release=rollout2
 spack_release=v0.16.0.fermi
@@ -186,6 +188,12 @@ do
     esac
 done
 
+
+case "$spack_release" in
+rollout*) extra="";;
+*)        extra=".new";;
+esac
+
 if [ "x$1" = "x-p" ]
 then
     echo "make_spack: INFO: Setting up for plain spack..."
@@ -200,7 +208,7 @@ then
     add_config=:
 elif [ "x$1" = "x-t" ]
 then
-    echo "make_spack: INFO: setting up for traditional layout under $2"
+    echo "make_spack: INFO: setting up for traditional ups layout under $2"
     do_setup_env=true
     dir=`make_absolute "$2"`
     mkdir -p "$dir" 
@@ -211,7 +219,7 @@ then
         exit 1
     fi
     export SPACK_ROOT=$dir/prd/spack/$spack_release/NULL
-    export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
+    export add_config="cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml"
 elif [ "x$1" = "x-u"  ]
 then
     echo "make_spack: INFO: setting up for unified layout under $dir"
@@ -225,10 +233,11 @@ then
         exit 1
     fi
     export SPACK_ROOT=$dir/spack/$spack_release/NULL
-    export add_config="cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml"
+    export add_config="cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml"
 else
     echo "Usage: $0 [options] -[utp] /base/directory"
     echo " options:"
+    echo "  --upgrade"
     echo "  --no-buildcache"
     echo "  --spack_release ver"
     echo "  --minimal"
