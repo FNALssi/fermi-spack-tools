@@ -10,7 +10,10 @@ mkdir -p $dest/spack-infrastructure/$ver
 cd $dest
 
 git clone https://cdcvs.fnal.gov/projects/spack-infrastructure spack-infrastructure/$ver/NULL/
+
 PATH=$dest/spack-infrastructure/$ver/NULL/bin:$PATH
+
 make_spack -u $dest
+
 (cd $dest/spack-infrastructure/$ver/NULL && declare_simple spack-infrastructure $ver)
 
