@@ -1221,9 +1221,7 @@ endif()
             sp =  Spec.from_dict(data)
             return sp.dag_hash()
         except Exception as e1:
-            print("Got exception: %s trying to get hash for specfile %s package  %s \n" %(e1, specfile,  pkg))
-            # traceback.print_stack()
-            # raise
+            logging.debug("Got exception: %s trying to get hash for specfile %s package  %s \n" %(e1, specfile,  pkg))
             return None
         
     def reindex_for_hash_and_rename(self, pkg, nhash=None):
