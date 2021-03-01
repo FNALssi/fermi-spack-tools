@@ -32,6 +32,11 @@ def make_repo_if_needed( name ):
 
 
 def make_recipe_if_needed( namespace, name, pathvar='IGNORE'):
+
+    res = os.system('spack info %s > /dev/null 2>/dev/null');
+    if res == 0:
+         return
+
     rd = make_repo_if_needed(namespace)
 
     if os.path.exists( "%s/packages/%s/package.py" % (rd, name)):
@@ -80,7 +85,7 @@ def make_spec(name, version):
     tfl = platform.split("-")
 
     namespace = "local"
-    make_recipe_if_needed(namespace, name)
+    make_recipe_if_needed(namespace, name, 'PATH')
     compiler = get_compiler()
     compiler_l = compiler.split("@")
 
