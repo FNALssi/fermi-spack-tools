@@ -1370,6 +1370,9 @@ endif()
             tclbase
         )
 
+        if not os.path.exists(os.path.dirname(tcl_module_index)):
+            os.makedirs(os.path.dirname(tcl_module_index))
+
         if not os.path.exists(tcl_module_index):
             f = open(tcl_module_index, "w")  
             f.write("module_index:\n")
