@@ -15,5 +15,7 @@ PATH=$dest/spack-infrastructure/$ver/NULL/bin:$PATH
 
 make_spack --minimal -u $dest
 
+source $dest/setup-env.sh
+
 cd $dest/spack-infrastructure/$ver/NULL && bin/declare_simple spack-infrastructure $ver
 
