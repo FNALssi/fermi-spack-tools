@@ -182,11 +182,11 @@ do
         case $SPACK_ROOT in
         *rollout*)
             echo "    paths:"           >&3
-            echo "      $lp@$v$opts$comp os=$os: /usr"    >&3
+            echo "      ${lp}@$v$opts$comp os=$os: /usr"    >&3
             ;;
         *)
             echo "    externals:" >&3
-            echo "    - spec: lp@$v$opts$comp os=$os" >&3
+            echo "    - spec: ${lp}@$v$opts$comp os=$os" >&3
             echo "      prefix: /usr" >&3
         esac
         echo "    buildable: False"           >&3
@@ -207,7 +207,7 @@ do
             ;;
         *)
             echo "    externals:" >&3
-            echo "    - spec: lp@$v$opts$comp os=$os" >&3
+            echo "    - spec: ${lp}@$v$opts$comp os=$os" >&3
             echo "      prefix: $cprefix" >&3
             ;;
         esac
