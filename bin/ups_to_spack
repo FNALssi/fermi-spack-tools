@@ -13,6 +13,7 @@ import subprocess
 
 # we want to use the ruamel.yaml package from spack
 sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
+sys.path.insert(1, "%s/lib/spack/external/py2" % os.environ["SPACK_ROOT"])
 sys.path.insert(1, "%s/lib/spack" % os.environ["SPACK_ROOT"])
 import ruamel.yaml as yaml
 from spack.spec import Spec
@@ -1203,6 +1204,8 @@ endif()
 
         if writeflag:
             logging.debug("writing specfile %s" % specfile)
+            if not os.path.exists(os.path.dirname(specfile)):
+                os.makedirs(os.path.dirname(specfile))
             sf = open(specfile, "w")
             sf.write(yaml.dump(spec, default_style="1"))
             sf.close()
