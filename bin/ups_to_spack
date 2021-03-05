@@ -1221,7 +1221,7 @@ endif()
             st = open(specfile, "r")
             # sp = spack.spec.Spec.from_yaml(st)
             data = yaml.load(st)
-            sp =  Spec.from_dict(data)
+            sp = Spec.from_dict(data)
             return sp.dag_hash()
         except Exception as e1:
             logging.debug("Got exception: %s trying to get hash for specfile %s package  %s \n" %(e1, specfile,  pkg))
@@ -1249,11 +1249,11 @@ endif()
                     )
                 )
                 os.system("rm -rf %s" % basedir)
-            else:
-                logging.debug("renaming to %s" % dest)
-                os.rename(basedir, dest)
+
+            logging.debug("renaming to %s" % dest)
+            os.rename(basedir, dest)
         else:
-            logging.debug("Warning: unable to get hash for %s -- skipping" % pkg)
+            logging.debug("Warning: unable to get hash in reindex_for_hash_and_rename for %s -- skipping" % pkg)
             os.system("rm -rf %s" % basedir)
           
 
