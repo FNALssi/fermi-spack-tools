@@ -220,6 +220,10 @@ then
         exit 1
     fi
     export SPACK_ROOT=$dir/prd/spack/$spack_release/NULL
+
+    rm -f $dir/prd/spack/current
+    ln -s $dir/prd/spack/$spack_release $dir/prd/spack/current
+
     export add_config="cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml"
 elif [ "x$1" = "x-u"  ]
 then
@@ -234,6 +238,10 @@ then
         exit 1
     fi
     export SPACK_ROOT=$dir/spack/$spack_release/NULL
+
+    rm -f $dir/spack/current
+    ln -s $dir/spack/$spack_release $dir/spack/current
+
     export add_config="cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml"
 else
     echo "Usage: $0 [options] -[utp] /base/directory"

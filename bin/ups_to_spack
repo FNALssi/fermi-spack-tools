@@ -13,6 +13,7 @@ import subprocess
 
 # we want to use the ruamel.yaml package from spack
 sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
+sys.path.insert(1, "%s/lib/spack/external/py2" % os.environ["SPACK_ROOT"])
 sys.path.insert(1, "%s/lib/spack" % os.environ["SPACK_ROOT"])
 import ruamel.yaml as yaml
 from spack.spec import Spec
@@ -502,7 +503,7 @@ class package:
             raise AssertionError("Should not have a NULL top flavor!")
 
         if self.ver:
-            self.dotver = self.ver.replace("v", "").replace("b", "").replace("_", ".")
+            self.dotver = (ver[1:] if ver[0] in "bv" else ver).replace("_", ".")
 
     def spack_comp(self, splitpart = -1):
         self.topbits()
@@ -546,6 +547,7 @@ class ups_to_spack:
         self.made_spec = set()
         self.made_spec_write = set()
         self.already_done = set()
+        self.known_hashes = {}
         self.pkglist = None
         if pdr:
             ll = pdr.split("/")
@@ -566,7 +568,11 @@ class ups_to_spack:
         self.cache_file = os.environ["SPACK_ROOT"] + "/var/ups_to_spack.cache"
 
     @log_call
-    def get_cached_hash(self, pkg):
+    def get_cached_hash(self, pkg, allow_recurse = False):
+
+        if pkg.keyval() in self.known_hashes:
+            return self.known_hashes[pkg.keyval()]
+
         dhash = self.get_cached_hash_once(pkg)
 
         if not dhash:
@@ -575,10 +581,10 @@ class ups_to_spack:
             except:
                 pass
 
-        if not dhash:
+        if not dhash and allow_recurse:
             # try to make it recursively...
-            logging.debug("Trying recursive make_spec call on %s" % pkg)
-            dhash = self.migrate_one(pkg)
+            logging.debug("DANGER: Trying recursive make_spec call on %s" % pkg)
+            dhash = self.migrate_one(pkg, recurseflag=True)
 
         return dhash
 
@@ -756,30 +762,37 @@ endif()
         f.close()
            
     @log_call
-    def migrate_one(self, pkg):
+    def migrate_one(self, pkg, recurseflag = False):
 
-        if repr(pkg) in self.already_done:
+        if pkg.keyval() in self.already_done:
+            logging.debug("migrate_one: already done (by us): %s" % pkg)
+            logging.debug("already done: %s " % self.already_done)
             return self.use_spack_for_hash(pkg)
 
-        self.already_done.add(repr(pkg))
+        self.already_done.add(pkg.keyval())
 
         # could have been done by a previous run...
         thash = self.get_cached_hash_once(pkg)
+        logging.debug("get_cached_hash_one returns %s for %s" % (thash, pkg))
 
-        nhash = self.make_spec(pkg, not thash)
-        if not thash:
-            self.make_recipe(pkg)
-            thash = self.reindex_for_hash_and_rename(pkg, nhash)
-            self.make_cmake_config(pkg,thash)
-            if thash:
-                self.add_cached_hash(pkg, thash)
-                self.convert_table(pkg, thash)
-            else:
-                logging.debug("Warning: unable to get hash for pkg %s" % pkg)
+        if thash:
+            nhash = thash
         else:
-            logging.debug("already done: %s" % pkg)
+            nhash = self.make_spec(pkg)
 
-        return thash
+        if nhash:
+            self.known_hashes[pkg.keyval()] = nhash
+
+        if not thash:
+            self.add_cached_hash(pkg, nhash)
+            self.make_recipe(pkg)
+            self.reindex_for_hash_and_rename(pkg, nhash)
+            self.convert_table(pkg, nhash)
+            self.make_cmake_config(pkg, nhash)
+        else:
+            logging.debug("already done (elsewhere): %s" % pkg)
+
+        return nhash
 
     @remember
     def get_repo_list(self):
@@ -861,6 +874,11 @@ endif()
 
             if not os.access(uts_recipedir, os.R_OK):
                 os.makedirs(uts_recipedir)
+
+            if (os.path.exists(uts_recipedir + "/package.py")):
+                logging.debug("found existing recipe file for %s " % pkg)
+                return
+
             recipe_f = open(uts_recipedir + "/package.py", "w")
             recipe_f.write("# fake recipe from ups_to_spack\n")
             recipe_f.write(
@@ -890,7 +908,7 @@ endif()
             if re.match("^\\|__[a-zA-Z]", line):
                 dpkg = package(depline=line, top_flav = pkg.top_flav, top_quals=pkg.top_quals)
                 # if we're writing a recipe, add the dependency, to it
-                if recipe_f:
+                if recipe_f and  known_cycle_deps.get(pkg.prod) != dpkg.prod:
                     recipe_f.write(
                         "    depends_on('%s', type=('build','run'))\n" % dpkg.prod
                     )
@@ -965,7 +983,7 @@ endif()
         return specfile
 
     @log_call
-    def make_spec(self, pkg, writeflag = True):
+    def make_spec(self, pkg):
         """ 
            make the .spack/spec.yaml file and possibly a minimal recipe for 
            a given ups product.  This involves going through the ups dependencies
@@ -975,18 +993,6 @@ endif()
            We're using the yaml library from spack to write the .yaml file
            from a dictionary
         """
-
-        if (not  writeflag and pkg.prod in self.made_spec) or (writeflag and pkg.prod in self.made_spec_write):
-           logging.debug("Returning: already made")
-           return
-        else:
-           logging.debug("make_spec:  made_spec %s made_spec_write %s" %
-                          (repr(self.made_spec), repr( self.made_spec_write)))
-
-        if writeflag:
-            self.made_spec_write.add(pkg.prod) 
-        else:
-            self.made_spec.add(pkg.prod) 
 
         # make sure our package is all filled out
         pkg.topbits()
@@ -1003,32 +1009,31 @@ endif()
 
         logging.debug("making symlinks in basedir %s from %s" % (basedir,pkg.prod_fq_dir))
         # link in bin/ lib/ etc. dirs from ups directory so links paths might work
-        if writeflag:
-            if pkg.prod_fq_dir:
-                for d in glob.glob("%s/*" % pkg.prod_fq_dir):
+        if pkg.prod_fq_dir:
+            for d in glob.glob("%s/*" % pkg.prod_fq_dir):
+                try:
+                    destbase = os.path.basename(d)
+                    destdir = self.do_pdr(os.path.dirname(d))
+                    logging.debug(" symlink(%s/%s, %s/%s)" % (destdir,destbase, basedir, destbase))
+                    os.symlink("%s/%s" % (destdir,destbase), "%s/%s" % (basedir, destbase))
+                except:
+                    logging.exception("do_pdr/symlink")
+                    pass
+
+        if pkg.prod_dir:
+            for dfmt in ("%s/Modules", "%s/include"):
+                d = dfmt % pkg.prod_dir
+                if os.path.isdir(d):
                     try:
                         destbase = os.path.basename(d)
                         destdir = self.do_pdr(os.path.dirname(d))
                         logging.debug(" symlink(%s/%s, %s/%s)" % (destdir,destbase, basedir, destbase))
                         os.symlink("%s/%s" % (destdir,destbase), "%s/%s" % (basedir, destbase))
-                    except:
-                        logging.exception("do_pdr/symlink")
+                    except OSError:
                         pass
-
-            if pkg.prod_dir:
-                for dfmt in ("%s/Modules", "%s/include"):
-                    d = dfmt % pkg.prod_dir
-                    if os.path.isdir(d):
-                        try:
-                            destbase = os.path.basename(d)
-                            destdir = self.do_pdr(os.path.dirname(d))
-                            logging.debug(" symlink(%s/%s, %s/%s)" % (destdir,destbase, basedir, destbase))
-                            os.symlink("%s/%s" % (destdir,destbase), "%s/%s" % (basedir, destbase))
-                        except OSError:
-                            pass
-                        except:
-                            raise
-            
+                    except:
+                        raise
+        
 
         tfl = pkg.spack_arch().split("-")
 
@@ -1099,23 +1104,21 @@ endif()
                         continue
 
                     # get the hash for dependency
-                    # -- it should have been converted already, so we pass lookup_only..
-                    dhash = self.get_cached_hash(dpkg)
+
+                    dhash = self.get_cached_hash(dpkg, True)
 
                     if not dhash:
                         # check for unqualified
+                        logging.debug("no hash? checking for unqualified...")
                         save = dpkg.quals
                         dpkg.quals = ''
-                        dhash = self.get_cached_hash(dpkg)
+                        dhash = self.get_cached_hash(dpkg, True)
                         dpkg.quals = save
                  
 
                     if not dhash:
-                        if dpkg.prod in self.made_spec_write:
-                            logging.debug("Cyclic dependency, not adding %s to %s" % (dpkg.prod, pkg.prod))
-                            continue  
-                        else:
-                            raise Exception("cannot add dependency %s -- no hash" % dpkg)
+                        print("known_hashess: %s" % self.known_hashes)
+                        raise Exception("cannot add dependency %s -- no entry for |%s|" %(dpkg, dpkg.keyval()))
 
                     spec["spec"][0][pkg.prod]["dependencies"][dpkg.prod] = {
                         "hash": dhash,
@@ -1131,22 +1134,25 @@ endif()
                 logging.debug("general dependency: |%s| " % line)
 
                 dpkg = package(depline=line, top_flav = pkg.top_flav, top_quals=pkg.top_quals)
-                # suppress duplicates
-                if dpkg.prod in done_already:
-                    continue
-                done_already.add(dpkg.prod)
 
+
+                # suppress duplicates
+                if dpkg.keyval() in done_already:
+                    continue
+                done_already.add(dpkg.keyval())
+
+                dpkg.topbits()
                 #
                 # again dependencies should have already been migrated, so this should just
                 # lookup the hash for the dependency.
                 #
-                dhash = self.get_cached_hash(dpkg)
+                dhash = self.get_cached_hash(dpkg, False)
 
                 if not dhash:
                     # try unqualified...
                     logging.debug("retry without quals")
                     dpkg.top_quals=""
-                    dhash = self.get_cached_hash(dpkg)
+                    dhash = self.get_cached_hash(dpkg, False)
 
                 if not dhash:
                     logging.debug(
@@ -1201,11 +1207,12 @@ endif()
             specl.reverse()
             spec["spec"] = spec["spec"] + specl
 
-        if writeflag:
-            logging.debug("writing specfile %s" % specfile)
-            sf = open(specfile, "w")
-            sf.write(yaml.dump(spec, default_style="1"))
-            sf.close()
+        logging.debug("writing specfile %s" % specfile)
+        if not os.path.exists(os.path.dirname(specfile)):
+            os.makedirs(os.path.dirname(specfile))
+        sf = open(specfile, "w")
+        sf.write(yaml.dump(spec, default_style="1"))
+        sf.close()
 
         sp =  Spec.from_dict(spec)
         return sp.dag_hash()
@@ -1218,10 +1225,13 @@ endif()
             st = open(specfile, "r")
             # sp = spack.spec.Spec.from_yaml(st)
             data = yaml.load(st)
-            sp =  Spec.from_dict(data)
+            sp = Spec.from_dict(data)
             return sp.dag_hash()
         except Exception as e1:
             logging.debug("Got exception: %s trying to get hash for specfile %s package  %s \n" %(e1, specfile,  pkg))
+            dn = os.path.dirname(os.path.dirname(os.path.dirname(specfile)))
+            print("look at: ls %s" % dn)
+            os.system("ls %s" % dn)
             return None
         
     def reindex_for_hash_and_rename(self, pkg, nhash=None):
@@ -1229,12 +1239,17 @@ endif()
 
         if nhash:
             thash = nhash
+        elif pkg.keyval() in  self.known_hashes:
+            thash = self.known_hashes[pkg.keyval()]
         else:
             thash = self.use_spack_for_hash(pkg)
+    
+        if pkg.uprod == 'gcc' and pkg.quals == 'prof':
+            raise Exception("wtf")
 
         basedir = self.get_basedir(pkg)
 
-        if thash:
+        if thash and os.path.exists(basedir):
 
             dest = self.get_basedir(pkg, thash)
 
@@ -1245,13 +1260,20 @@ endif()
                         [pkg.prod, pkg.ver, pkg.flav, pkg.quals, pkg.spack_arch(), thash]
                     )
                 )
+                # note: we assume the new basedir one is a remake
+                # of an *already completed* one in destdir; so we
+                # clean out the basedir and return
                 os.system("rm -rf %s" % basedir)
-            else:
-                logging.debug("renaming to %s" % dest)
-                os.rename(basedir, dest)
+                return
+
+            if not os.path.exists(os.path.dirname(dest)):
+               os.makedirs(os.path.dirname(dest))
+
+            logging.debug("renaming '%s' to '%s'" % (basedir, dest))
+            sys.stderr.flush()
+            os.rename(basedir, dest)
         else:
-            logging.debug("Warning: unable to get hash for %s -- skipping" % pkg)
-            os.system("rm -rf %s" % basedir)
+            raise Exception("Exception: unable to get hash in reindex_for_hash_and_rename for %s -- skipping" % pkg)
           
 
         # now if we re-run spack_reindex, we shouldn't see any errors...
@@ -1395,6 +1417,7 @@ endif()
 
     @log_call
     def convert_table(self, pkg, thash):
+        global known_cycle_deps
 
         tclbase = os.environ["SPACK_ROOT"] + "/share/spack/modules"
         lmodbase = os.environ["SPACK_ROOT"] + "/share/spack/lmod"
@@ -1756,7 +1779,7 @@ proc getenv { x } {
             if re.search("addAlias\s*\(", line, flags=re.IGNORECASE):
                 if in_action:
                     d = self.unpack(line)
-                    recipe_out.write("env.add_alias('%s',%s)\n" % (d["var"], self.fix_env_vars_python(pkg, d["value"])))
+                    recipe_out.write("#env.add_alias('%s',%s)\n" % (d["var"], self.fix_env_vars_python(pkg, d["value"])))
                     tcl_out.write("set-alias %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
                     lmod_out.write(
                         'set_alias("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
@@ -1765,6 +1788,11 @@ proc getenv { x } {
 
             if re.search("setup(required|optional)\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
+
+                if (known_cycle_deps.get(pkg.prod) == d["args"][0]):
+                    # ignore dependencies leading to cycles from earlier
+                    continue
+
                 cdep = self.convert_dependency(d["args"], pkg.top_flav, pkg.top_quals)
                 if in_action and cdep:
                     # punting on dependencies for python; use spack load -r
@@ -1910,6 +1938,7 @@ proc getenv { x } {
                 return pkg.ver
         return None
 
+    @log_call
     def convert_dependency(self, setupargs, def_flav, def_qual):
         setupargs = setupargs.strip()
         lsa = setupargs.split(" ")
@@ -1920,11 +1949,20 @@ proc getenv { x } {
         else:
             logging.debug("version %s" % lsa[1])
             ver = lsa[1]
+        quals = ''
+        if len(lsa) > 2:
+            last = ""
+            for k in lsa[2:]:
+                if last == '-q':
+                   quals = k
+                last = k
+                   
         if ver == None:
             # didn't find a version, dependency on nonexistent package...
             return None
-        dpkg = package(prod=prod, ver=ver, flav=def_flav, quals=def_qual)
-        dhash = self.get_cached_hash(dpkg)
+        dpkg = package(prod=prod, ver=ver, flav=def_flav, quals=quals)
+        dpkg.topbits()
+        dhash = self.get_cached_hash_once(dpkg)
         if dhash:
             return "%s-%s-%s-%s" % (dpkg.prod, dpkg.dotver, dpkg.spack_comp(), dhash[:7])
         else:
@@ -1964,9 +2002,12 @@ proc getenv { x } {
                     logging.debug("pud: pkg: %s" % p)
                     res.append(p)
 
-        res.sort(key=lambda x: "%2d:%s" % (99-x.depth,":".join((x.prod, x.ver, x.quals,x.top_flav,x.top_quals))))
-
-        res = self.list_uniq(res)
+        
+        res.reverse()
+ 
+        # was trying this, which now seems excessive and wasn't working...
+        #res.sort(key=lambda x: "%2d:%s" % (99-x.depth,":".join((x.prod, x.ver, x.quals,x.top_flav,x.top_quals))))
+        #res = self.list_uniq(res)
 
         return res
 
