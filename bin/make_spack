@@ -21,9 +21,10 @@ install_latest() {
     pkg="$1"
     if $use_buildcache
     then 
-        pkg_ver=`spack -k buildcache list "$pkg $plat" | tail -1`
-        echo "make_spack: info: latest $pkg is $pkg_ver"
-        spack -k buildcache install -a -m "$pkg_ver $plat"
+        pkg_hash=`spack -k buildcache list --long --allarch "$pkg $plat" | tail -1 | sed -e 's/ .*//'`
+
+        echo "make_spack: info: latest $pkg hash is $pkg_hash"
+        spack -k buildcache install -o -a -m /$pkg_hash
     else
         spack -k install "$pkg $plat"
     fi

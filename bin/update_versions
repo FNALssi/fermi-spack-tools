@@ -1,0 +1,74 @@
+#!/bin/bash
+
+if [ "x$1" = "x" -o "x$1" = "x--help" ]
+then
+    echo Usage: $0 spec_options_file >&2
+    exit 1
+fi
+
+cat $1 | 
+   sed -e '/^$/d' -e 's/^[ ^]*//' -e 's/[ ~+].*//' -e 's/@/ /' |
+   while read p v
+   do
+       if [ "x$v" = "x" -o "x$p" = "x" ] 
+       then
+           continue
+       fi
+       if spack info $p | grep $v  > /dev/null
+       then
+           echo $p has $v already
+       else
+           echo $p needs $v
+           #
+           # get a sample version line to see how they are getting files
+           # and to maybe rewrite into a new version line
+           #
+           sample_line=`EDITOR=cat spack edit $p | grep ' version(' | tail -1`
+
+           echo "sample line: $sample_line"
+
+           case "x$sample_line" in
+           x*git=*)
+                echo "making new git line"
+                #
+                # make a new git version line with the same format but new
+                # version, including underscored versions
+                #
+                oldver=`echo "$sample_line" | sed -e "s/[^']*'\([^']*\)'.*/\\1/"`
+                oldver_re=`echo $oldver  | sed -e 's/\./\\\\./g'`
+                oldver_u=`echo "$oldver" | sed -e 's/\./_/g'`
+                newver_u=`echo "$v"      | sed -e 's/\./_/g'`
+                new_line=`echo "$sample_line" | 
+                     sed -e "s/$oldver_re/$v/g" -e "s/$oldver_u/$newver_u/g"`
+                #
+                # insert it into the recipe
+                #
+                (
+                    echo '/url *=/a'
+                    echo "$new_line"
+                    echo "."
+                    echo "w"
+                    echo "q"
+                ) | EDITOR=/bin/ed spack edit $p
+                ;;
+           x*md5=*|x*sha256=*)
+                echo "adding spack checksum line"
+                # get a new line with spack checksum, and insert it
+                # into the recipe
+                (
+                    echo '/url *=/a'
+                    if out=`echo 1 | spack checksum $p $v`
+                    then
+                        echo "$out" | tail -2
+                    fi 
+                    echo "."
+                    echo "w"
+                    echo "q"
+                ) | EDITOR=/bin/ed spack edit $p
+                ;;
+           *)
+                echo "don't know how to update $p"
+                ;;
+           esac
+       fi
+   done

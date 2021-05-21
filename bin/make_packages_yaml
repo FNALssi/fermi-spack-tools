@@ -178,10 +178,16 @@ do
     cprefix=`ls -d /cvmfs/fermilab.opensciencegrid.org/packages/common/$lp/$v/*-$os-x86_64-* 2>/dev/null | head -1`
     if echo $lp | egrep "$force_system" > /dev/null
     then
-        echo "    paths:"           >&3
-        echo "      $lp@$v$opts$comp os=$os: /usr"    >&3
+        echo "    externals:"           >&3
+        echo "      spec: $lp@$v$opts$comp os=$os" >&3
+        echo "      prefix: /usr"    >&3
 
         echo "    buildable: False"           >&3
+
+    externals:
+    - spec: gettext@0.19.8.1~libxml2%gcc@4.8.5 os=scientific7
+      prefix: /usr
+
 
         # there isnt a curl-devel, but there is a libcurl-devel
         p=`echo $p | sed  -e s/curl/libcurl/`
@@ -192,8 +198,9 @@ do
     elif [ -d "$cprefix" ]
     then   
         # if we have it in cvmfs, use that one
-        echo "    paths:"           >&3
-        echo "      $lp@$v$opts$comp os=$os: $cprefix"    >&3
+        echo "    externals:"           >&3
+        echo "      spec: $lp@$v$opts$comp os=$os" >&3 
+        echo "      prefix: $cprefix"    >&3
         echo "    buildable: False"           >&3
     fi
 done
