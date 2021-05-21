@@ -8,6 +8,7 @@ sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
 sys.path.insert(1, "%s/lib/spack" % os.environ["SPACK_ROOT"])
 
 import ruamel.yaml
+import spack.spec
 from spack.architecture import sys_type
 
 def get_compiler():
@@ -31,6 +32,11 @@ def make_repo_if_needed( name ):
 
 
 def make_recipe_if_needed( namespace, name, pathvar='IGNORE'):
+
+    res = os.system('spack info %s > /dev/null 2>/dev/null');
+    if res == 0:
+         return
+
     rd = make_repo_if_needed(namespace)
 
     if os.path.exists( "%s/packages/%s/package.py" % (rd, name)):
@@ -39,7 +45,7 @@ def make_recipe_if_needed( namespace, name, pathvar='IGNORE'):
     f = os.popen("EDITOR=/bin/ed spack create -N %s --template generic --name %s" % (namespace, name), "w")
     dict = {
        'name': name, 
-       'NAME': name.upper(), 
+       'NAME': name.upper().replace('-','_'), 
        'PATHVAR' : pathvar
     }
     f.write("""
@@ -79,7 +85,7 @@ def make_spec(name, version):
     tfl = platform.split("-")
 
     namespace = "local"
-    make_recipe_if_needed(namespace, name)
+    make_recipe_if_needed(namespace, name, 'PATH')
     compiler = get_compiler()
     compiler_l = compiler.split("@")
 
@@ -94,8 +100,8 @@ def make_spec(name, version):
                         "target": tfl[2],
                     },
                     "compiler": {
-                        "name": spack_comp[0],
-                        "version": spack_comp[1],
+                        "name": compiler_l[0],
+                        "version": compiler_l[1],
                     },
                     "namespace": namespace,
                     "parameters": {},
@@ -108,13 +114,14 @@ def make_spec(name, version):
     sf.write(ruamel.yaml.dump(spec, default_style="1"))
     sf.close()
 
-    properdir = "%s/../../../%s/%s/%s-%s-%s" % (os.environ[SPACK_ROOT], name, version, plat, compiler, hash)
-
     st = open(specfile, "r")
     sp = spack.spec.Spec.from_yaml(st)
-    hash = sp.dag_hash()
+    hashstr = sp.dag_hash()
+
+    properdir = "%s/../../../%s/%s/%s-%s-%s" % (os.environ['SPACK_ROOT'], name, version, platform, compiler.replace('@','-'), hashstr)
     
-    os.makedirs(os.path.dirname(properdir))
+    if not os.path.exists(os.path.dirname(properdir)):
+        os.makedirs(os.path.dirname(properdir))
     os.rename(curdir, properdir)
     os.system("spack reindex")
 

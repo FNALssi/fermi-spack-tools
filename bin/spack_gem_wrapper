@@ -214,12 +214,99 @@ spack_gem_install() {
     spack install ruby-$2@$3
 }
 
+fix_ver() {
+    # fix up a version from a Gemfile
+    case "x$1" in
+    'x"~>') : tilda greater case; echo $2;; # just pick that one
+    'x">=') : greater equal case; echo ;;   # default is latest so empty
+    'x"<')  : less than case ;    echo $2;; # just pick that one
+    *)      : default case;       echo $1;;
+    esac | sed -e 's/[",]//g'
+}
+
+fix_name() {
+   echo $1 | sed -e 's/^"//' -e 's/",$//'
+}
+process_gemfile() {
+    if [ ! -r $1 ]
+    then
+        echo "Skipping nonexistent Gemfile $1"
+        return
+    fi
+    local cmd a1 a2 rest groupwhen args inglob globpat tag
+    inglob=false
+    while read cmd a1 a2 rest
+    do
+        case $cmd in
+        gem)
+           : gem case
+           name=`fix_name $a1`
+           ver=`fix_ver $a2 $rest`
+           args="$name"
+           if [ "x$ver" != "x" ]
+           then
+               args="$args --version $ver"
+           fi
+           spack_gem_install $args
+           echo "    depends_on('ruby-$name'$groupwhen)"
+           ;;
+
+        group)
+           : group case
+           a1=`echo $a1 | sed -e 's/://'`
+           echo "    variant('$a1')"
+           groupwhen=", when='$a1'"
+           ;;
+
+        end)
+           : end case
+           groupwhen=""
+           globpat=""
+           inglob=false
+           ;;
+
+        eval_gemfile)
+                         
+           : eval_gemfile case
+           if [ "$a1" = "$globtag" ] && $inglob
+           then
+               # deferred loop handling, see Dir.glob case below...
+               eval "for i in $globpat; do process_gemfile $i; done "
+           else
+               if [ "$a1" = "gemfile_local" ]
+               then
+                       a1=Gemfile.local
+               fi
+               process_gemfile $a1
+           fi
+           ;;
+
+        Dir.glob)
+           : Dir.glob case
+           # handle this loop top line
+           # Dir.glob File.expand_path("../plugins/*/{Gemfile,PluginGemfile}", __FILE__) do |file|
+           #   eval_gemfile file
+           # end
+           tag=`echo $rest | sed -e 's/|//g'`
+           globpat=`echo $a1 | sed -e 's/",.*//' -e 's/.*"//'`
+           inglob=true
+           ;;
+
+        esac
+    done < $1
+}
+
 main() {
     case "$1" in
     install)
         shift
         make_repo
         spack_gem_install "$@"
+        ;;
+    bundler)
+        shift
+        make_repo
+        process_gemfile Gemfile
         ;;
     *)
         gem_real "$@"
