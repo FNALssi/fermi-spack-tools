@@ -182,14 +182,19 @@ do
         case $SPACK_ROOT in
         *rollout*)
             echo "    paths:"           >&3
-            echo "      $lp@$v$opts$comp os=$os: /usr"    >&3
+            echo "      ${lp}@$v$opts$comp os=$os: /usr"    >&3
             ;;
         *)
             echo "    externals:" >&3
-            echo "    - spec: lp@$v$opts$comp os=$os" >&3
+            echo "    - spec: ${lp}@$v$opts$comp os=$os" >&3
             echo "      prefix: /usr" >&3
         esac
         echo "    buildable: False"           >&3
+
+    externals:
+    - spec: gettext@0.19.8.1~libxml2%gcc@4.8.5 os=scientific7
+      prefix: /usr
+
 
         # there isnt a curl-devel, but there is a libcurl-devel
         p=`echo $p | sed  -e s/curl/libcurl/`
@@ -207,7 +212,7 @@ do
             ;;
         *)
             echo "    externals:" >&3
-            echo "    - spec: lp@$v$opts$comp os=$os" >&3
+            echo "    - spec: ${lp}@$v$opts$comp os=$os" >&3
             echo "      prefix: $cprefix" >&3
             ;;
         esac

@@ -1,8 +1,5 @@
 #!/bin/bash
 
-#
-# where to git clone spack from, and what branch/release
-#
 
 spackbindir=`echo $0 | sed -e 's;make_spack;;' `
 case x$spackbindir in
@@ -152,15 +149,19 @@ make_absolute() {
    esac
 }
 
+#
+# where to git clone spack from, and what branch/release
+#
 #spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
 spack_repo=https://github.com/marcmengel/spack.git
 
 #spack_release=rollout
 #spack_release=rollout2
-spack_release=v0.16.0.fermi
+spack_release=v0.16.1.fermi
 use_buildcache=true
 minimal=false
 upgrading=false
+
 while echo x$1 | grep x-- > /dev/null
 do
     case "x$1" in
@@ -219,6 +220,10 @@ then
         exit 1
     fi
     export SPACK_ROOT=$dir/prd/spack/$spack_release/NULL
+
+    rm -f $dir/prd/spack/current
+    ln -s $dir/prd/spack/$spack_release $dir/prd/spack/current
+
     export add_config="cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml"
 elif [ "x$1" = "x-u"  ]
 then
@@ -233,6 +238,10 @@ then
         exit 1
     fi
     export SPACK_ROOT=$dir/spack/$spack_release/NULL
+
+    rm -f $dir/spack/current
+    ln -s $dir/spack/$spack_release $dir/spack/current
+
     export add_config="cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml"
 else
     echo "Usage: $0 [options] -[utp] /base/directory"
