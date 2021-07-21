@@ -15,7 +15,6 @@ case "${pkglist}" in
 *) usage "$@"; exit 1;;
 esac
 
-
 spackbindir=`echo $0 | sed -e 's;update_spack;;'`
 
 export PATH=$SPACK_ROOT/bin:$spackbindir:$PATH
@@ -48,7 +47,7 @@ cat ${pkglist} |
   do
      echo "doing: $what $spec"
      case $what in
-     i) spack find "$spec" || python $SPACK_ROOT/bin/spack buildcache install -a -m "$spec" ;;
+     i) spack find "$spec" || python $SPACK_ROOT/bin/spack buildcache install -a -o -m "$spec" ;;
      t) cd $SPACK_ROOT/../../.. && tar xzf $spec; spack reindex;;
      u) spack uninstall "$spec";;
      U) un_ups_to_spack;; 
