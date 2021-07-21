@@ -503,7 +503,7 @@ class package:
             raise AssertionError("Should not have a NULL top flavor!")
 
         if self.ver:
-            self.dotver = (ver[1:] if ver[0] in "bv" else ver).replace("_", ".")
+            self.dotver = (self.ver[1:] if self.ver[0] in "bv" else self.ver).replace("_", ".")
 
     def spack_comp(self, splitpart = -1):
         self.topbits()
