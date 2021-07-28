@@ -26,6 +26,11 @@ done
 
 echo "spack_release is $spack_release"
 
+case "$spack_release" in
+rollout*) extra="";;
+*)        extra=".new";;
+esac
+
 if [ "$1" == "-t" ]
 then
    unified=false
@@ -84,9 +89,9 @@ cd $SPACK_ROOT
 echo "installing config.yaml..."
 if $unified
 then
-cp $spackbindir/../templates/config.yaml.unified $SPACK_ROOT/etc/spack/config.yaml
+cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml
 else
-cp $spackbindir/../templates/config.yaml.traditional $SPACK_ROOT/etc/spack/config.yaml
+cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml
 fi
 
 echo "installing upstreams.yaml..."
