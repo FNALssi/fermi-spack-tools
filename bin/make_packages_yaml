@@ -144,6 +144,8 @@ cat <<EOF >&3
       gl: [mesa]
       glx: [mesa]
       glu: [mesa-glu]
+      uuid: [unix-linux-uuid, libuuid]
+      tbb: [intel-tbb-oneapi, intel-tbb]
 EOF
 
 # don't put the compiler tag in, we may not want to build
