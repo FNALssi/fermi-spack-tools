@@ -9,7 +9,23 @@ sys.path.insert(1, "%s/lib/spack" % os.environ["SPACK_ROOT"])
 
 import ruamel.yaml
 import spack.spec
-from spack.architecture import sys_type
+
+try:
+    from spack.architecture import sys_type
+    def get_tuple():
+        platform = sys_type()
+        tfl = platform.split("-")
+        return tfl
+except:
+    import spack.platforms
+    def get_tuple():
+        host_platform = spack.platforms.host()
+        host_os = host_platform.operating_system('default_os')
+        host_target = host_platform.target('default_target')
+        return (str(host_platform), str(host_os), str(host_target))
+
+
+print("sys_type: %s" % repr(get_tuple()))
 
 def get_compiler():
     f = os.popen("spack compiler list", "r")
@@ -81,8 +97,7 @@ def make_spec(name, version):
     except:
        pass
 
-    platform = sys_type()
-    tfl = platform.split("-")
+    tfl = get_tuple()
 
     namespace = "local"
     make_recipe_if_needed(namespace, name, 'PATH')

@@ -1,0 +1,5 @@
+modules:
+  ups:
+    roots:
+      ups_table: $spack/../../..
+      ups_version: $spack/../../..

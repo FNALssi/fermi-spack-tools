@@ -221,10 +221,8 @@ then
     fi
     export SPACK_ROOT=$dir/prd/spack/$spack_release/NULL
 
-    rm -f $dir/prd/spack/current
-    ln -s $dir/prd/spack/$spack_release $dir/prd/spack/current
-
     export add_config="cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml"
+    add_config="$add_config; cp $spackbindir/../templates/modules.yaml.unified $SPACK_ROOT/etc/spack/modules.yaml"
 elif [ "x$1" = "x-u"  ]
 then
     echo "make_spack: INFO: setting up for unified layout under $dir"
@@ -239,10 +237,8 @@ then
     fi
     export SPACK_ROOT=$dir/spack/$spack_release/NULL
 
-    rm -f $dir/spack/current
-    ln -s $dir/spack/$spack_release $dir/spack/current
-
     export add_config="cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml"
+    add_config="$add_config; cp $spackbindir/../templates/modules.yaml.unified $SPACK_ROOT/etc/spack/modules.yaml"
 else
     echo "Usage: $0 [options] -[utp] /base/directory"
     echo " options:"
@@ -260,6 +256,9 @@ fi
 
 export PATH=$SPACK_ROOT/bin:$PATH
 create_spack
+
+rm -f $dir/spack/current
+ln -s $dir/spack/$spack_release $dir/spack/current
 
 # save setup-env creation/update till the end so if we're upgrading and it
 # dies, we don't change it until the end.
