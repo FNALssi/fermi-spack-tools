@@ -39,6 +39,11 @@ install_latest() {
 #
 
 bootstrap_patchelf() {
+
+    #
+    # under 0.17 we need patchelf to bootstrap clingo etc, so we just 
+    # snag the binary and then install it "properly"...
+    #
     pf=$SPACK_ROOT/etc/packages.yaml
     if [ -r $pf ] 
     then
@@ -51,11 +56,16 @@ packages:
     paths:
       patchelf@0.00:
 EOF
-    mkdir /tmp/.pth$$
-    PATH="/tmp/.pth$$:$PATH"
-    echo ":" > /tmp/.pth$$/patchelf
-    chmod +x /tmp/.pth$$/patchelf
+    pdir=/tmp/pth$$
+    export pdir
+    mkdir $pdir
+    PATH="$pdir:$PATH"
+    wget https://spack-cache-1.fnal.gov/binaries/bootstrap/patchelf.linux-scientific7-x86_64
+    mv patchelf.linux-scientific7-x86_64 $pdir/patchelf
 
+    chmod +x $pdir/patchelf
+
+    spack spec patchelf
     install_latest patchelf
 
     rm $pf
@@ -64,7 +74,7 @@ EOF
     then
        mv $pf.bak$$ $pf 
     fi
-    rm -rf /tmp/.pth$$
+    rm -rf $pdir
 
     patchelf_dir=`spack find --paths patchelf | tail -1 | sed -e 's/.* //'`
     PATH="$patchelf_dir/bin:$PATH"
@@ -157,7 +167,7 @@ spack_repo=https://github.com/marcmengel/spack.git
 
 #spack_release=rollout
 #spack_release=rollout2
-spack_release=v0.16.1.fermi
+spack_release=v0.17.1.fermi
 use_buildcache=true
 minimal=false
 upgrading=false
