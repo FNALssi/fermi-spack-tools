@@ -73,6 +73,8 @@ install_tcl_path=$src/share/spack/modules
 SPACK_ROOTb=`basename $SPACK_ROOT`
 SPACK_ROOTd=`dirname $SPACK_ROOT`
 
+binary_cache=https://spack-cache-1.fnal.gov/binaries/
+
 mkdir -p $SPACK_ROOTd
 export SPACK_ROOT
 
@@ -132,4 +134,10 @@ echo "adding package repos..."
         fi
     done
 )
+
+echo "Adding buildcache $binary_cache"
+spack mirror add --scope site fnal $binary_cache
+spack buildcache update-index  -d $binary_cache
+spack -k buildcache keys --install --trust --force
+
 echo "done."
