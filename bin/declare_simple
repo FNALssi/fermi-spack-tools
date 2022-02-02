@@ -98,6 +98,7 @@ def make_spec(name, version):
        pass
 
     tfl = get_tuple()
+    platform = '-'.join(tfl)
 
     namespace = "local"
     make_recipe_if_needed(namespace, name, 'PATH')
