@@ -9,6 +9,8 @@ sys.path.insert(1, "%s/lib/spack" % os.environ["SPACK_ROOT"])
 
 import ruamel.yaml
 import spack.spec
+import spack.store
+import spack.hooks
 
 try:
     from spack.architecture import sys_type
@@ -49,7 +51,7 @@ def make_repo_if_needed( name ):
 
 def make_recipe_if_needed( namespace, name, pathvar='IGNORE'):
 
-    res = os.system('spack info %s > /dev/null 2>/dev/null');
+    res = os.system('spack info %s > /dev/null 2>/dev/null' % name);
     if res == 0:
          return
 
@@ -139,6 +141,10 @@ def make_spec(name, version):
     if not os.path.exists(os.path.dirname(properdir)):
         os.makedirs(os.path.dirname(properdir))
     os.rename(curdir, properdir)
-    os.system("spack reindex")
+
+    spack.hooks.post_install(spec)
+    spack.store.db.add(sp, None, explicit=True)
+
+    #os.system("spack reindex")
 
 make_spec(sys.argv[1], sys.argv[2])
