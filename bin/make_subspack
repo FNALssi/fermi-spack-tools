@@ -4,7 +4,7 @@
 # ...but make it unified layout...
 
 #spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
-spack_repo=https://github.com/marcmengel/spack.git
+spack_repo=https://github.com/FNALssi/spack.git
 
 #spack_release=rollout
 #spack_release=rollout2

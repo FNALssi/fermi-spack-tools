@@ -7,7 +7,7 @@ set +e
 mkdir supercalifragilisticexpialidocious_padding
 cd    supercalifragilisticexpialidocious_padding
 pwd
-git clone https://github.com/marcmengel/spack.git spack
+git clone https://github.com/FNALssi/spack.git spack
 cd spack 
 git checkout rollout
 set +x

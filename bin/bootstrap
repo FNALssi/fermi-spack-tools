@@ -3,8 +3,8 @@
 # pull down spack-infrastructure
 # use it to install
 dest=${1:-$PWD}
-ver=${2:-v2_16_01_01}
-spackver=${3:-v0.16.1.fermi}
+ver=${2:-v2_17_01_01}
+spackver=${3:-v0.17.1.fermi}
 
 mkdir -p $dest/spack-infrastructure/$ver
 cd $dest
