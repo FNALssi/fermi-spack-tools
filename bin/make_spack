@@ -44,18 +44,7 @@ bootstrap_patchelf() {
     # under 0.17 we need patchelf to bootstrap clingo etc, so we just 
     # snag the binary and then install it "properly"...
     #
-    pf=$SPACK_ROOT/etc/packages.yaml
-    if [ -r $pf ] 
-    then
-       mv $pf $pf.bak$$
-    fi
 
-cat > $pf <<EOF
-packages:
-  patchelf:
-    paths:
-      patchelf@0.00:
-EOF
     pdir=/tmp/pth$$
     export pdir
     mkdir $pdir
@@ -65,15 +54,9 @@ EOF
 
     chmod +x $pdir/patchelf
 
-    spack spec patchelf
+    spack -d spec zlib
     install_latest patchelf
 
-    rm $pf
-
-    if [ -r $pf.bak$$ ] 
-    then
-       mv $pf.bak$$ $pf 
-    fi
     rm -rf $pdir
 
     patchelf_dir=`spack find --paths patchelf | tail -1 | sed -e 's/.* //'`
@@ -127,9 +110,10 @@ create_spack() {
         if cd $b
         then 
             echo "make_spack: INFO: running: $add_config"
-            $add_config
+            eval "$add_config"
             export plat="target=`uname -i` os=`spack arch --operating-system`"
             spack mirror add --scope site fnal $binary_cache
+            spack buildcache update-index  -d $binary_cache
             spack -k buildcache keys --install --trust --force
             add_recipe_repos
             if $upgrading
