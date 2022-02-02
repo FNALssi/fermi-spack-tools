@@ -61,7 +61,8 @@ if $unified
 then
     install_tree_path=$src
     SPACK_ROOT="$dst/spack/$spack_release/NULL/"
-    src="$src/spack/$spack_release/NULL/"
+    src=`ls -d $src/spack/*/NULL/ | tail -1`
+    echo "src=$src"
 else
     install_tree_path=$src/prd
     SPACK_ROOT="$dst/prd/spack/$spack_release/NULL/"
@@ -117,10 +118,10 @@ mkdir $SPACK_ROOT/etc/spack/$os
 # now clone package repos..
 
 echo "adding package repos..."
-source $dst/setup-env.sh
 
 ( SPACK_ROOT=$src $src/bin/spack repo list ) | (
     
+    source $dst/setup-env.sh
     read header
     while read name path
     do
