@@ -10,6 +10,7 @@ import glob
 import traceback
 import select
 import subprocess
+import json
 
 # we want to use the ruamel.yaml package from spack
 sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
@@ -1214,6 +1215,9 @@ endif()
         sf.write(yaml.dump(spec, default_style="1"))
         sf.close()
 
+        sp =  Spec.from_dict(spec)
+        hashstr = sp.dag_hash()
+
         # add spec to index directly -- 
         # NOTE: should do some sort of locking here
         #
@@ -1229,8 +1233,7 @@ endif()
         json.dump(db,dbf)
         dbf.close()
 
-        sp =  Spec.from_dict(spec)
-        return sp.dag_hash()
+        return hashstr 
 
     def use_spack_for_hash(self, pkg):
         import spack.spec
