@@ -28,8 +28,6 @@ except:
         return (str(host_platform), str(host_os), str(host_target))
 
 
-print("sys_type: %s" % repr(get_tuple()))
-
 def get_compiler():
     f = os.popen("spack compiler list", "r")
     for line in f:
