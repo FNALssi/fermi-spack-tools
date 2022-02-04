@@ -143,7 +143,9 @@ def make_spec(name, version):
         os.makedirs(os.path.dirname(properdir))
     os.rename(curdir, properdir)
 
-    # add spec to index directly
+    # add spec to index directly -- 
+    # NOTE: should do some sort of locking here
+    #
     dbpath = "%s/../../../.spack-db/index.json" % os.environ['SPACK_ROOT']
     dbf = open(dbpath, 'r')
     db = json.load(dbf)
