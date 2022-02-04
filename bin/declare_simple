@@ -2,6 +2,7 @@
 
 import os
 import sys
+import json
 
 # we want to use the ruamel.yaml package from spack
 sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
@@ -142,9 +143,19 @@ def make_spec(name, version):
         os.makedirs(os.path.dirname(properdir))
     os.rename(curdir, properdir)
 
-    spack.hooks.post_install(spec)
-    spack.store.db.add(sp, None, explicit=True)
+    # add spec to index directly
+    dbpath = "%s/../../../.spack-db/index.json" % os.environ['SPACK_ROOT']
+    dbf = open(dbpath, 'r')
+    db = json.load(dbf)
+    dbf.close()
+    # need to not have a list at that layer unlike spec.yaml...
+    if (isinstance(spec['spec'], list)):
+        spec['spec'] = spec['spec'][0]
+    db['database']['installs'][hashstr] = spec
+    dbf = open(dbpath, 'w')
+    json.dump(db,dbf)
+    dbf.close()
 
-    #os.system("spack reindex")
+    os.system("spack reindex")
 
 make_spec(sys.argv[1], sys.argv[2])
