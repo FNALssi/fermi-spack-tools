@@ -28,6 +28,11 @@ except:
         return (str(host_platform), str(host_os), str(host_target))
 
 
+def run_command(s):
+    print("--> running: %s" % s)
+    os.system(s)
+
+
 def get_compiler():
     f = os.popen("spack compiler list", "r")
     for line in f:
@@ -43,14 +48,14 @@ def make_repo_if_needed( name ):
              return
     f.close()
     rd="%s/var/spack/repos/%s" % (os.environ["SPACK_ROOT"], name)
-    os.system("spack repo create %s %s" % (rd, name))
-    os.system("spack repo add --scope=site %s" % rd)
+    run_command("spack repo create %s %s" % (rd, name))
+    run_command("spack repo add --scope=site %s" % rd)
     return rd
 
 
 def make_recipe_if_needed( namespace, name, pathvar='IGNORE'):
 
-    res = os.system('spack info %s > /dev/null 2>/dev/null' % name);
+    res = run_command('spack info %s > /dev/null 2>/dev/null' % name);
     if res == 0:
          return
 
@@ -156,6 +161,6 @@ def make_spec(name, version):
     json.dump(db,dbf)
     dbf.close()
 
-    os.system("spack reindex")
+    run_command("spack reindex")
 
 make_spec(sys.argv[1], sys.argv[2])

@@ -149,9 +149,7 @@ make_absolute() {
 #spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
 spack_repo=https://github.com/FNALssi/spack.git
 
-#spack_release=rollout
-#spack_release=rollout2
-spack_release=v0.17.1.fermi
+spack_release=v0.18.0.fermi
 use_buildcache=true
 minimal=false
 upgrading=false

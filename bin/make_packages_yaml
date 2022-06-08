@@ -111,7 +111,7 @@ getv2() {
   then
       x=`grep $1 $dir/templates/default_versions | sed -e 's/.*@//'`
   fi
-  echo $x
+  echo $x | sed -e 's/ .*//'
 }
 
 mkdir -p `dirname $dst`
