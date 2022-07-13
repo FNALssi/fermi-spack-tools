@@ -64,6 +64,7 @@ bootstrap_patchelf() {
 }
 
 find_compilers() {
+   source $SPACK_ROOT/share/spack/setup-env.sh
    spack compiler find --scope=site
 }
 

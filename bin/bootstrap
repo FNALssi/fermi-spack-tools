@@ -17,5 +17,7 @@ make_spack --spack_release $spackver --minimal -u $dest
 
 source $dest/setup-env.sh
 
+spack compiler find --scope=site
+
 cd $dest/spack-infrastructure/$ver/NULL && bin/declare_simple spack-infrastructure $ver
 
