@@ -18,7 +18,7 @@ force_system='^(bdftopf|bzip2|damageproto|diffutils|expat|findutils|font-util|gd
 
 no_devel='^(diffutils|findutils|pkg-config|pkgconfig|tar)$'
 
-force_x86_64='^(asciidoc|autoconf|autogen|automake|binutils|bison|bzip2|cmake|conv|curl|davix|diffutils|environment-modules|expat|findutils|flex|font-util|fontconfig|font-util|ftgl|hwloc|libfontenc|libxfont|mkfontdir|mkfontscale|freeglut|freetype|gdb|gdbm|gettext|git|gl2ps|glew|gmake|gawk|help2man|icu4c|jemalloc|libbsd|libdrm|libedit|libevent|libffi|libice|libiconv|libjpeg|libjpeg-turbo|libgcrypt|libpciaccess|libpng|libpthread-stubs|libsigsegv|libsm|libtool|libunistring|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxft|libxi|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|libyaml|lua|lz4|m4|matplotlib|mesa|mesa-glu|mpich|mysql|nasm|ncurses|openblas|openssl|patchelf|pcre|pcre2|perl|perl-data-dumper|pkgconf|pkg-config|readline|sqlite|swig|tar|tcl|texinfo|texlive|tk|unuran|unzip|util-macros|xextproto|xproto|xxhash|xz|zlib|zstd)$'
+force_x86_64="(*proto|asciidoc|autoconf|autogen|automake|binutils|bison|bzip2|cmake|conv|curl|damageproto|davix|diffutils|environment-modules|expat|findutils|fixesproto|flex|font-util|fontconfig|font-util|libfontenc|libxfont|mkfontdir|mkfontscale|freeglut|freetype|gdb|gdbm|gettext|git|gl2ps|glew|gmake|help2man|icu4c|jemalloc|libbsd|libdrm|libedit|libevent|libffi|libice|libiconv|libjpeg|libjpeg-turbo|libgcrypt|libpciaccess|libpng|libpthread-stubs|libsigsegv|libsm|libtool|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxft|libxi|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|libyaml|lua|lz4|m4|matplotlib|mesa|mesa-glu|mpich|mysql|nasm|ncurses|openblas|openssl|patchelf|pcre|pcre2|perl|pkgconf|pkg-config|readline|sqlite|swig|tar|tcl|texinfo|texlive|tk|unzip|util-macros|xxhash|xz|zlib)"
 
 teeit="cat"
 #debugging
@@ -314,8 +314,8 @@ do
     if [ "x$v" = x ]
     then
         # not found...
-        echo "Notice: no version found for Spack package $lp"
-        echo "Need to install rpm: $p"
+        echo "Notice: no version found for package $p"
+        echo "Need to install rpm: $p$dv"
         continue
     fi
 
