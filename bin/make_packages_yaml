@@ -161,9 +161,9 @@ cat <<EOF >&3
       rpc:
         - libc
       uuid:
-        - unix-linux-uuid, libuuid
+        - libuuid
       tbb:
-        - intel-oneapi-tbb, intel-tbb
+        - intel-tbb
 EOF
 
 # don't put the compiler tag in, we may not want to build
