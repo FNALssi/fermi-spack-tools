@@ -8,6 +8,7 @@ bison:bison:bison-devel
 bzip2:bzip2:bzip2-devel
 cmake:cmake:cmake
 libcurl:curl:libcurl-devel
+xorg-x11-proto-devel:damageproto:xorg-x11-proto-devel
 davix:davix:davix-devel
 diffutils:diffutils:diffutils
 expat:expat:expat-devel
@@ -17,6 +18,11 @@ fontconfig:fontconfig:fontconfig-devel
 freeglut:freeglut:freeglut-devel
 freetype:freetype:freetype-devel
 ftgl:ftgl:ftgl-devel
+xorg-x11-font-utils:font-util:xorg-x11-font-utils
+freeglut:freeglut:freeglut-devel
+freetype:freetype:freetype-devel
+ftgl:ftgl:ftgl-devel
+gawk:gawk:gawk
 gdb:gdb:gdb
 gdbm:gdbm:gdbm-devel
 gettext:gettext:gettext-devel
@@ -27,12 +33,13 @@ glibc:glibc:glibc-devel
 gperf:gperf:gperf
 gsl:gsl:gsl-devel
 help2man:help2man:help2man
+hwloc:hwloc:hwloc-devel
 krb5-libs:krb5:krb5-devel
 libicu:icu4c:libicu-devel
 jemalloc:jemalloc:jemalloc-devel
 libarchive:libarchive:libarchive-devel
-libbsd:berkeley-db:libbsd-devel
 libdb:berkeley-db:libdb-devel
+glibc:libc:glibc-devel
 libdb:libdb:libdb-devel
 libdrm:libdrm:libdrm-devel
 libedit:libedit:libedit-devel
@@ -48,11 +55,14 @@ libsigsegv:libsigsegv:libsigsegv-devel
 libSM:libsm:libSM-devel
 libtool:libtool:libtool
 libuuid:libuuid:libuuid-devel
+libtool:libtool:libtool-ltdl-devel
+libunistring:libunistring:libunistring-devel
 libuuid:libuuid:libuuid-devel
 libX11:libx11:libX11-devel
 libXau:libxau:libXau-devel
 libxcb:libxcb:libxcb-devel
 libXdmcp:libxdmcp:libXdmcp-devel
+libXext:libxext:libXext-devel
 libXft:libxft:libXft-devel
 libXi:libxi:libXi-devel
 libxml2:libxml2:libxml2-devel
@@ -90,7 +100,6 @@ pkgconfig:pkgconf:pkgconfig
 pkgconf-pkg-config:pkg-config:pkgconf-pkg-config
 python-matplotlib:py-matplotlib:python-matplotlib
 python:python:python-devel
-python-setuptools:py-setuptools:python-setuptools
 readline:readline:readline-devel
 rhash:rhash:rhash-devel
 sqlite:sqlite:sqlite-devel
