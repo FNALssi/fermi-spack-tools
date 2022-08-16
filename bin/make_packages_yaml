@@ -13,6 +13,10 @@ optf=$dir/templates/package_opts
 dst=$1/etc/spack/packages.yaml
 
 # packages to make not buildable...
+<<<<<<< HEAD
+=======
+force_system="(*proto|bdftopf|bzip2|diffutils|expat|findutils|font-util|gdbm|gettext|libbsd|libc|libdrm|libffi|libfontenc|libgcrypt|libice|libjpeg-turbo|libpciaccess|libpthread-stubs|libseigsegv|libsm|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|lbixxf86vm|lz4|mesa|mesa-glu|ncurses|openssl|openssh|pcre|pcre2|pkgconf|pkg-config|tar|tcl|texlive|tk|unzip|util-macros|xproxymanagementprotocol|xrandr|xtrans|xz|zlib)"
+>>>>>>> more make_packages_yaml tweaks
 
 force_system='^(bdftopf|bzip2|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|glew|libbsd|libc|libdrm|libffi|libfontenc|libgcrypt|libice|libjpeg-turbo|libpciaccess|libpthread-stubs|libseigsegv|libsm|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libuuid|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|lbixxf86vm|lz4|mesa|mesa-glu|ncurses|openssl|openssh|pcre|pcre2|pkgconf|pkg-config|tar|tcl|texlive|tk|unzip|util-macros|xextproto|xproxymanagementprotocol|xrandr|xtrans|xz|zlib)$'
 
@@ -249,6 +253,7 @@ cat <<EOF >&3
         - libunwind
       uuid:
         - libuuid
+<<<<<<< HEAD
       xxd:
         - xxd-standalone
       yacc:
@@ -259,6 +264,12 @@ cat <<EOF >&3
     buildable: false
   util-macros:
     buildable: false
+=======
+      tbb:
+        - intel-tbb
+  libiconv:
+    buildable: false
+>>>>>>> more make_packages_yaml tweaks
 EOF
 
 # don't put the compiler tag in, we may not want to build
@@ -280,6 +291,7 @@ do
     *)
            lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/' -e 's/pkgconfig/pkgconf/' -e 's/glibc/libc/' -e 's/libdb/berkeley-db/'`
            dv="$lp"'-devel'
+<<<<<<< HEAD
     esac
 
     # if its a wildcarded rpm name, look for it
@@ -305,6 +317,12 @@ do
 
     # some packages aren't on SL7 but are on SL8...
     if [ "$os" = "scientific7" -a "$dv" = "z3-devel" ]
+=======
+    esac
+
+    # some packages aren't on SL7 but are on SL8...
+    if [ "$os" = "scientific7" -a \( "$dv" = "z3-devel" -o "$lp" = "pkg-config" \) ]
+>>>>>>> more make_packages_yaml tweaks
     then
         continue
     fi
@@ -314,18 +332,28 @@ do
     if [ "x$v" = x ]
     then
         # not found...
+<<<<<<< HEAD
         echo "Notice: no version found for Spack package $lp"
         echo "Need to install rpm: $p"
+=======
+        echo "Notice: no version found for package $p"
+        echo "Need to install rpm: $lp"
+>>>>>>> more make_packages_yaml tweaks
         continue
     fi
 
     # check for installed devel rpm, otherwise warn
+<<<<<<< HEAD
     if ! { rpm -q "$dv" || echo "$p" | egrep "$no_devel"; } > /dev/null
     then
       echo "Notice: no devel headers/libraries found for package $p"
       echo "Need to install rpm: $dv"
       continue
     fi
+=======
+    rpm -q "$dv"  > /dev/null || 
+        echo "Need to install rpm: $dv"
+>>>>>>> more make_packages_yaml tweaks
 
     echo "  $lp:"               >&3
     if echo $lp | egrep "$force_x86_64" > /dev/null
