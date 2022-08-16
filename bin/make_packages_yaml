@@ -13,7 +13,7 @@ optf=$dir/templates/package_opts
 dst=$1/etc/spack/packages.yaml
 
 # packages to make not buildable...
-force_system="(*proto|bdftopf|bzip2|diffutils|expat|findutils|font-util|gdbm|gettext|libbsd|libc|libdrm|libffi|libfontenc|libgcrypt|libice|libjpeg-turbo|libpciaccess|libpthread-stubs|libseigsegv|libsm|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|lbixxf86vm|lz4|mesa|mesa-glu|ncurses|openssl|pcre|pcre2|pkgconf|pkg-config|tar|tcl|texlive|tk|unzip|util-macros|xproxymanagementprotocol|xrandr|xtrans|xz|zlib)"
+force_system="(*proto|bdftopf|bzip2|diffutils|expat|findutils|font-util|gdbm|gettext|libbsd|libc|libdrm|libffi|libfontenc|libgcrypt|libice|libjpeg-turbo|libpciaccess|libpthread-stubs|libseigsegv|libsm|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|lbixxf86vm|lz4|mesa|mesa-glu|ncurses|openssl|openssh|pcre|pcre2|pkgconf|pkg-config|tar|tcl|texlive|tk|unzip|util-macros|xproxymanagementprotocol|xrandr|xtrans|xz|zlib)"
 
 no_devel='(diffutils|findutils|pkg-config|pkgconfig|tar)'
 
@@ -164,6 +164,8 @@ cat <<EOF >&3
         - libuuid
       tbb:
         - intel-tbb
+  libiconv:
+    buildable: false
 EOF
 
 # don't put the compiler tag in, we may not want to build
@@ -177,29 +179,35 @@ EOF
 for p in `cat $src`
 do
     case $p in
-    *:*:*) lp=$(echo $p | sed -e 's/.*:\(.*\):.*/\1/')
+    *:*:*) 
            dv=$(echo $p | sed -e 's/.*:.*:\(.*\)/\1/') 
+           lp=$(echo $p | sed -e 's/.*:\(.*\):.*/\1/')
             p=$(echo $p | sed -e 's/\(.*\):.*:.*/\1/') 
            ;;
     *)
            lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/' -e 's/pkgconfig/pkgconf/' -e 's/glibc/libc/' -e 's/libdb/berkeley-db/'`
-           dv='-devel'
+           dv="$lp"'-devel'
     esac
+
+    # some packages aren't on SL7 but are on SL8...
+    if [ "$os" = "scientific7" -a \( "$dv" = "z3-devel" -o "$lp" = "pkg-config" \) ]
+    then
+        continue
+    fi
+
     # find local version if any...
     v=`getv2 $p`
     if [ "x$v" = x ]
     then
         # not found...
         echo "Notice: no version found for package $p"
-        echo "Need to install rpm: $p$dv"
+        echo "Need to install rpm: $lp"
         continue
     fi
 
     # check for installed devel rpm, otherwise warn
-    # there isnt a curl-devel, but there is a libcurl-devel
-    p=`echo $p | sed  -e s/curl/libcurl/`
-    rpm -q "$p$dv"  > /dev/null || 
-        echo "Need to install rpm: $p$dv"
+    rpm -q "$dv"  > /dev/null || 
+        echo "Need to install rpm: $dv"
 
     echo "  $lp:"               >&3
     if echo $lp | egrep "$force_x86_64" > /dev/null
