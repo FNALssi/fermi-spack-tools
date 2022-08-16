@@ -261,6 +261,8 @@ cat <<EOF >&3
     buildable: false
         - intel-oneapi-tbb, intel-tbb
         - intel-tbb
+  libiconv:
+    buildable: false
 EOF
 
 # don't put the compiler tag in, we may not want to build
