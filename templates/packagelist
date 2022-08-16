@@ -8,35 +8,56 @@ bison:bison:bison-devel
 bzip2:bzip2:bzip2-devel
 cmake:cmake:cmake
 libcurl:curl:libcurl-devel
+<<<<<<< HEAD
 xorg-x11-proto-devel:damageproto:xorg-x11-proto-devel
+=======
+>>>>>>> more make_packages_yaml tweaks
 davix:davix:davix-devel
 diffutils:diffutils:diffutils
 expat:expat:expat-devel
 findutils:findutils:findutils
 flex:flex:flex-devel
 fontconfig:fontconfig:fontconfig-devel
+<<<<<<< HEAD
 xorg-x11-font-utils:font-util:xorg-x11-font-utils
 freeglut:freeglut:freeglut-devel
 freetype:freetype:freetype-devel
 ftgl:ftgl:ftgl-devel
 gawk:gawk:gawk
+=======
+freeglut:freeglut:freeglut-devel
+freetype:freetype:freetype-devel
+ftgl:ftgl:ftgl-devel
+>>>>>>> more make_packages_yaml tweaks
 gdb:gdb:gdb
 gdbm:gdbm:gdbm-devel
 gettext:gettext:gettext-devel
 git:git:git
 gl2ps:gl2ps:gl2ps-devel
 glew:glew:glew-devel
+<<<<<<< HEAD
 gperf:gperf:gperf
 groff-base:groff:groff-base
 gsl:gsl:gsl-devel
 help2man:help2man:help2man
 hwloc:hwloc:hwloc-devel
+=======
+glibc:glibc:glibc-devel
+gperf:gperf:gperf
+gsl:gsl:gsl-devel
+help2man:help2man:help2man
+>>>>>>> more make_packages_yaml tweaks
 krb5-libs:krb5:krb5-devel
 libicu:icu4c:libicu-devel
 jemalloc:jemalloc:jemalloc-devel
 libarchive:libarchive:libarchive-devel
+<<<<<<< HEAD
 libdb:berkeley-db:libdb-devel
 glibc:libc:glibc-devel
+=======
+libbsd:berkeley-db:libbsd-devel
+libdb:berkeley-db:libdb-devel
+>>>>>>> more make_packages_yaml tweaks
 libdb:libdb:libdb-devel
 libdrm:libdrm:libdrm-devel
 libedit:libedit:libedit-devel
@@ -50,14 +71,22 @@ libpciaccess:libpciaccess:libpciaccess-devel
 libpng:libpng:libpng-devel
 libsigsegv:libsigsegv:libsigsegv-devel
 libSM:libsm:libSM-devel
+<<<<<<< HEAD
 libtool:libtool:libtool-ltdl-devel
 libunistring:libunistring:libunistring-devel
+=======
+libtool:libtool:libtool
+libuuid:libuuid:libuuid-devel
+>>>>>>> more make_packages_yaml tweaks
 libuuid:libuuid:libuuid-devel
 libX11:libx11:libX11-devel
 libXau:libxau:libXau-devel
 libxcb:libxcb:libxcb-devel
 libXdmcp:libxdmcp:libXdmcp-devel
+<<<<<<< HEAD
 libXext:libxext:libXext-devel
+=======
+>>>>>>> more make_packages_yaml tweaks
 libXft:libxft:libXft-devel
 libXi:libxi:libXi-devel
 libxml2:libxml2:libxml2-devel
@@ -96,7 +125,6 @@ perl:perl:perl-devel
 pkgconfig:pkg-config:pkgconfig
 pkgconf-pkg-config:pkg-config:pkgconf-pkg-config
 python:python:python-devel
-python.*-setuptools:py-setuptools:python.*-setuptools
 readline:readline:readline-devel
 rhash:rhash:rhash-devel
 sqlite:sqlite:sqlite-devel
