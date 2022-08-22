@@ -13,16 +13,11 @@ optf=$dir/templates/package_opts
 dst=$1/etc/spack/packages.yaml
 
 # packages to make not buildable...
-<<<<<<< HEAD
-=======
-force_system="(*proto|bdftopf|bzip2|diffutils|expat|findutils|font-util|gdbm|gettext|libbsd|libc|libdrm|libffi|libfontenc|libgcrypt|libice|libjpeg-turbo|libpciaccess|libpthread-stubs|libseigsegv|libsm|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|lbixxf86vm|lz4|mesa|mesa-glu|ncurses|openssl|openssh|pcre|pcre2|pkgconf|pkg-config|tar|tcl|texlive|tk|unzip|util-macros|xproxymanagementprotocol|xrandr|xtrans|xz|zlib)"
->>>>>>> more make_packages_yaml tweaks
-
 force_system='^(bdftopf|bzip2|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|glew|libbsd|libc|libdrm|libffi|libfontenc|libgcrypt|libice|libjpeg-turbo|libpciaccess|libpthread-stubs|libseigsegv|libsm|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libuuid|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|lbixxf86vm|lz4|mesa|mesa-glu|ncurses|openssl|openssh|pcre|pcre2|pkgconf|pkg-config|tar|tcl|texlive|tk|unzip|util-macros|xextproto|xproxymanagementprotocol|xrandr|xtrans|xz|zlib)$'
 
 no_devel='^(diffutils|findutils|pkg-config|pkgconfig|tar)$'
 
-force_x86_64="(*proto|asciidoc|autoconf|autogen|automake|binutils|bison|bzip2|cmake|conv|curl|damageproto|davix|diffutils|environment-modules|expat|findutils|fixesproto|flex|font-util|fontconfig|font-util|libfontenc|libxfont|mkfontdir|mkfontscale|freeglut|freetype|gdb|gdbm|gettext|git|gl2ps|glew|gmake|help2man|icu4c|jemalloc|libbsd|libdrm|libedit|libevent|libffi|libice|libiconv|libjpeg|libjpeg-turbo|libgcrypt|libpciaccess|libpng|libpthread-stubs|libsigsegv|libsm|libtool|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxft|libxi|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|libyaml|lua|lz4|m4|matplotlib|mesa|mesa-glu|mpich|mysql|nasm|ncurses|openblas|openssl|patchelf|pcre|pcre2|perl|pkgconf|pkg-config|readline|sqlite|swig|tar|tcl|texinfo|texlive|tk|unzip|util-macros|xxhash|xz|zlib)"
+force_x86_64="(.*proto|asciidoc|autoconf|autogen|automake|binutils|bison|bzip2|cmake|conv|curl|damageproto|davix|diffutils|environment-modules|expat|findutils|fixesproto|flex|font-util|fontconfig|font-util|libfontenc|libxfont|mkfontdir|mkfontscale|freeglut|freetype|gdb|gdbm|gettext|git|gl2ps|glew|gmake|help2man|icu4c|jemalloc|libbsd|libdrm|libedit|libevent|libffi|libice|libiconv|libjpeg|libjpeg-turbo|libgcrypt|libpciaccess|libpng|libpthread-stubs|libsigsegv|libsm|libtool|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxft|libxi|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|libyaml|lua|lz4|m4|matplotlib|mesa|mesa-glu|mpich|mysql|nasm|ncurses|openblas|openssl|patchelf|pcre|pcre2|perl|pkgconf|pkg-config|readline|sqlite|swig|tar|tcl|texinfo|texlive|tk|unzip|util-macros|xxhash|xz|zlib)"
 
 teeit="cat"
 #debugging
