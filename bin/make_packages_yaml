@@ -13,14 +13,12 @@ optf=$dir/templates/package_opts
 dst=$1/etc/spack/packages.yaml
 
 # packages to make not buildable...
-<<<<<<< HEAD
-=======
-force_system="(*proto|bdftopf|bzip2|diffutils|expat|findutils|font-util|gdbm|gettext|libbsd|libc|libdrm|libffi|libfontenc|libgcrypt|libice|libjpeg-turbo|libpciaccess|libpthread-stubs|libseigsegv|libsm|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|lbixxf86vm|lz4|mesa|mesa-glu|ncurses|openssl|openssh|pcre|pcre2|pkgconf|pkg-config|tar|tcl|texlive|tk|unzip|util-macros|xproxymanagementprotocol|xrandr|xtrans|xz|zlib)"
->>>>>>> more make_packages_yaml tweaks
 
 force_system='^(bdftopf|bzip2|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|glew|libbsd|libc|libdrm|libffi|libfontenc|libgcrypt|libice|libjpeg-turbo|libpciaccess|libpthread-stubs|libseigsegv|libsm|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libuuid|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|lbixxf86vm|lz4|mesa|mesa-glu|ncurses|openssl|openssh|pcre|pcre2|pkgconf|pkg-config|tar|tcl|texlive|tk|unzip|util-macros|xextproto|xproxymanagementprotocol|xrandr|xtrans|xz|zlib)$'
 
 no_devel='^(diffutils|findutils|pkg-config|pkgconfig|tar)$'
+
+force_x86_64="(.*proto|asciidoc|autoconf|autogen|automake|binutils|bison|bzip2|cmake|conv|curl|damageproto|davix|diffutils|environment-modules|expat|findutils|fixesproto|flex|font-util|fontconfig|font-util|libfontenc|libxfont|mkfontdir|mkfontscale|freeglut|freetype|gdb|gdbm|gettext|git|gl2ps|glew|gmake|help2man|icu4c|jemalloc|libbsd|libdrm|libedit|libevent|libffi|libice|libiconv|libjpeg|libjpeg-turbo|libgcrypt|libpciaccess|libpng|libpthread-stubs|libsigsegv|libsm|libtool|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxft|libxi|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|libyaml|lua|lz4|m4|matplotlib|mesa|mesa-glu|mpich|mysql|nasm|ncurses|openblas|openssl|patchelf|pcre|pcre2|perl|pkgconf|pkg-config|readline|sqlite|swig|tar|tcl|texinfo|texlive|tk|unzip|util-macros|xxhash|xz|zlib)"
 
 force_x86_64='^(asciidoc|autoconf|autogen|automake|binutils|bison|bzip2|cmake|conv|curl|davix|diffutils|environment-modules|expat|findutils|flex|font-util|fontconfig|font-util|ftgl|hwloc|libfontenc|libxfont|mkfontdir|mkfontscale|freeglut|freetype|gdb|gdbm|gettext|git|gl2ps|glew|gmake|gawk|help2man|icu4c|jemalloc|libbsd|libdrm|libedit|libevent|libffi|libice|libiconv|libjpeg|libjpeg-turbo|libgcrypt|libpciaccess|libpng|libpthread-stubs|libsigsegv|libsm|libtool|libunistring|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxft|libxi|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|libyaml|lua|lz4|m4|matplotlib|mesa|mesa-glu|mpich|mysql|nasm|ncurses|openblas|openssl|patchelf|pcre|pcre2|perl|perl-data-dumper|pkgconf|pkg-config|readline|sqlite|swig|tar|tcl|texinfo|texlive|tk|unuran|unzip|util-macros|xextproto|xproto|xxhash|xz|zlib|zstd)$'
 
@@ -253,7 +251,6 @@ cat <<EOF >&3
         - libunwind
       uuid:
         - libuuid
-<<<<<<< HEAD
       xxd:
         - xxd-standalone
       yacc:
@@ -264,12 +261,6 @@ cat <<EOF >&3
     buildable: false
   util-macros:
     buildable: false
-=======
-      tbb:
-        - intel-tbb
-  libiconv:
-    buildable: false
->>>>>>> more make_packages_yaml tweaks
 EOF
 
 # don't put the compiler tag in, we may not want to build
@@ -291,7 +282,6 @@ do
     *)
            lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/' -e 's/pkgconfig/pkgconf/' -e 's/glibc/libc/' -e 's/libdb/berkeley-db/'`
            dv="$lp"'-devel'
-<<<<<<< HEAD
     esac
 
     # if its a wildcarded rpm name, look for it
@@ -317,12 +307,6 @@ do
 
     # some packages aren't on SL7 but are on SL8...
     if [ "$os" = "scientific7" -a "$dv" = "z3-devel" ]
-=======
-    esac
-
-    # some packages aren't on SL7 but are on SL8...
-    if [ "$os" = "scientific7" -a \( "$dv" = "z3-devel" -o "$lp" = "pkg-config" \) ]
->>>>>>> more make_packages_yaml tweaks
     then
         continue
     fi
@@ -332,28 +316,18 @@ do
     if [ "x$v" = x ]
     then
         # not found...
-<<<<<<< HEAD
         echo "Notice: no version found for Spack package $lp"
         echo "Need to install rpm: $p"
-=======
-        echo "Notice: no version found for package $p"
-        echo "Need to install rpm: $lp"
->>>>>>> more make_packages_yaml tweaks
         continue
     fi
 
     # check for installed devel rpm, otherwise warn
-<<<<<<< HEAD
     if ! { rpm -q "$dv" || echo "$p" | egrep "$no_devel"; } > /dev/null
     then
       echo "Notice: no devel headers/libraries found for package $p"
       echo "Need to install rpm: $dv"
       continue
     fi
-=======
-    rpm -q "$dv"  > /dev/null || 
-        echo "Need to install rpm: $dv"
->>>>>>> more make_packages_yaml tweaks
 
     echo "  $lp:"               >&3
     if echo $lp | egrep "$force_x86_64" > /dev/null
