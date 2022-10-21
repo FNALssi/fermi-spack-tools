@@ -9,7 +9,7 @@ spackver=${3:-v0.18.0.fermi}
 mkdir -p $dest/spack-infrastructure/$ver
 cd $dest
 
-git clone https://github.com/FNALssi/spack-infrastructure.git spack-infrastructure/$ver/NULL/
+git clone -b $ver https://github.com/FNALssi/spack-infrastructure.git spack-infrastructure/$ver/NULL/
 
 PATH=$dest/spack-infrastructure/$ver/NULL/bin:$PATH
 
