@@ -64,7 +64,7 @@ def make_recipe_if_needed( namespace, name, pathvar='IGNORE'):
     if os.path.exists( "%s/packages/%s/package.py" % (rd, name)):
          return
 
-    f = os.popen("EDITOR=/bin/ed spack create -N %s --template generic --name %s" % (namespace, name), "w")
+    f = os.popen("unset VISUAL; EDITOR=/bin/ed spack create -N %s --template generic --name %s" % (namespace, name), "w")
     dict = {
        'name': name, 
        'NAME': name.upper().replace('-','_'), 
