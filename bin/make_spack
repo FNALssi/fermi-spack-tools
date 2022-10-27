@@ -250,14 +250,15 @@ fi
 export PATH=$SPACK_ROOT/bin:$PATH
 create_spack
 
-rm -f $dir/spack/current
-ln -s $dir/spack/$spack_release $dir/spack/current
+if [ -n "$dir" ]; then
+  rm -f $dir/spack/current
+  ln -s $dir/spack/$spack_release $dir/spack/current
+fi
 
 # save setup-env creation/update till the end so if we're upgrading and it
 # dies, we don't change it until the end.
 
-if $do_setup_env
-then
+if [ -n "$do_setup_env" ]; then
     echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $dir/setup-env.sh
     echo "export SPACK_DISABLE_LOCAL_CONFIG=true" >> $dir/setup-env.sh
     echo "export SPACK_USER_CACHE_PATH=$dir/tmp" >> $dir/setup-env.sh
