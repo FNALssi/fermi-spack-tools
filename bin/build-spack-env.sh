@@ -109,6 +109,8 @@ while (( $# )); do
     --no-ups) ups_opt=-p;;
     --spack-config-file=*) spack_config_files+=("${1#*=}");;
     --spack-config-file) spack_config_files+=("$2"); shift;;
+    --spack-config-cmd=*) spack_config_cmds+=("${1#*=}");;
+    --spack-config-cmd) spack_config_cmds+=("$2"); shift;;
     --spack-infrastructure-root=*) si_root="${1#*=}";;
     --spack-infrastructure-root) si_root="$2"; shift;;
     --spack-infrastructure-version=*) si_ver="${1#*=}";;
