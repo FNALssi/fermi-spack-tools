@@ -201,7 +201,7 @@ for config_file in ${spack_config_files[*]:+"${spack_config_files[@]}"}; do
   [ "$cf_scope" = "$config_file" ] && cf_scope=site
   config_file="${config_file##*'|'}"
   if [[ "$config_file" =~ ^[a-z][a-z0-9_-]*://(.*/)?(.*) ]]; then
-    curl -O "${BASH_REMATCH[2]}" --insecure --fail -L "$config_file" \
+    curl -o "${BASH_REMATCH[2]}" --insecure --fail -L "$config_file" \
       || { printf "ERROR: unable to obtain specified config file \"$config_file\"\n" 1>&2; exit 1; }
     config_file="${BASH_REMATCH[2]}"
   fi
