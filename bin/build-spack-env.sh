@@ -223,7 +223,7 @@ for config_file in ${spack_config_files[*]:+"${spack_config_files[@]}"}; do
 done
 # 2. Spack config commands.
 for config_cmd in ${spack_config_cmds[*]:+"${spack_config_cmds[@]}"}; do
-  eval spack config add $config_cmd \
+  eval spack config $config_cmd \
     || { printf "ERROR: executing spack config command \"$config_cmd\"\n" 1>&2; exit 1; }
 done
 # 3. Caches
