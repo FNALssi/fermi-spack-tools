@@ -77,7 +77,7 @@ _ups_string_to_opt() {
     plain|traditional|unified) opt="-${ups_string:0:1}";;
     *) printf "ERROR: unrecognized --ups option \"$1\"\n" 1>&2; exit 1
   esac
-  printf "$opt\n";
+  printf -- "$opt\n";
 }
 
 ########################################################################
