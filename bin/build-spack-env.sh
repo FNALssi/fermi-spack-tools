@@ -262,7 +262,7 @@ _make_concretize_mirrors_yaml "$concretize_mirrors"
 
 for env_cfg in "$@"; do
   if [[ "$env_cfg" =~ ^[a-z][a-z0-9_-]*://(.*/)?(.*) ]]; then
-    curl -O "${BASH_REMATCH[2]}" --insecure --fail -L "$env_cfg" \
+    curl -o "${BASH_REMATCH[2]}" --insecure --fail -L "$env_cfg" \
       || { printf "ERROR: unable to obtain specified environment config file \"$env_cfg\"\n" 1>&2; exit 1; }
     env_cfg="${BASH_REMATCH[2]}"
   fi
