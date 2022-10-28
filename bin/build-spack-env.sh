@@ -238,13 +238,13 @@ if [ -z "${cache_urls+x}" ] \
     || { printf "ERROR: executing spack mirror rm --scope site fnal\n" 1>&2; exit 1; }
 else
   for cache_spec in ${cache_urls[*]:+"${cache_urls[@]}"}; do
-    if [[ "$cache_spec" =~ ^([^|]+)|(.*)$ ]]; then
+    if [[ "$cache_spec" =~ ^([^|]+)\|(.*)$ ]]; then
       cache_name="${BASH_REMATCH[1]}"
       cache_spec="${BASH_REMATCH[2]}"
     else
       cache_name="buildcache_$((++cache_count))"
     fi
-    spack mirror add --scope=site $cache_name "$cache_spec" \
+    spack mirror add --scope=site "$cache_name" "$cache_spec" \
       || { printf "ERROR: executing spack mirror add --scope=site $cache_name \"$cache_spec\n" 1>&2; exit 1; }
   done
 fi
