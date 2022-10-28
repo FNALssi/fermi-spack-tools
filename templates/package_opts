@@ -1,8 +1,10 @@
-bzip2	+shared
+binutils +gas+gold+ld
 doxygen	+graphviz
-pcre	+jit+utf
-zlib	+optimize+pic+shared
-gettext	~libxml2
+pcre +jit+utf
+zlib +optimize+pic+shared
+libc +iconv+rpc
+mesa +opengl
+gettext ~bzip2+curses~git+libunistring+libxml2~tar+xz
 pkg-config	+internal_glib
 ncurses	~symlinks+termlib
 font-util	fonts=encodings

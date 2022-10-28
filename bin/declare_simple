@@ -12,20 +12,14 @@ import ruamel.yaml
 import spack.spec
 import spack.store
 import spack.hooks
+import spack.platforms
 
-try:
-    from spack.architecture import sys_type
-    def get_tuple():
-        platform = sys_type()
-        tfl = platform.split("-")
-        return tfl
-except:
-    import spack.platforms
-    def get_tuple():
-        host_platform = spack.platforms.host()
-        host_os = host_platform.operating_system('default_os')
-        host_target = host_platform.target('default_target')
-        return (str(host_platform), str(host_os), str(host_target))
+def get_tuple():
+    host_platform = spack.platforms.host()
+    host_os = host_platform.operating_system('default_os')
+    host_target = host_platform.target('default_target')
+    generic_target = host_platform.target('fe').microarchitecture.generic.name
+    return (str(host_platform), str(host_os), str(generic_target))
 
 
 def run_command(s):
@@ -64,7 +58,7 @@ def make_recipe_if_needed( namespace, name, pathvar='IGNORE'):
     if os.path.exists( "%s/packages/%s/package.py" % (rd, name)):
          return
 
-    f = os.popen("EDITOR=/bin/ed spack create -N %s --template generic --name %s" % (namespace, name), "w")
+    f = os.popen("unset VISUAL; EDITOR=/bin/ed spack create -N %s --template generic --name %s" % (namespace, name), "w")
     dict = {
        'name': name, 
        'NAME': name.upper().replace('-','_'), 
@@ -162,5 +156,9 @@ def make_spec(name, version):
     dbf.close()
 
     run_command("spack reindex")
+    #run_command("spack module ups_table refresh")
+    #run_command("spack module ups_version refresh")
+    #run_command("spack module tcl refresh")
+    #run_command("spack module lmod refresh")
 
 make_spec(sys.argv[1], sys.argv[2])
