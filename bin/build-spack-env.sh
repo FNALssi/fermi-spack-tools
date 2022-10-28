@@ -132,12 +132,6 @@ spack_env_top_dir="$working_dir/spack_env"
 mirrors_cfg="$spack_env_top_dir/etc/spack/mirrors.yaml"
 default_mirrors="$spack_env_top_dir/etc/spack/defaults/mirrors.yaml"
 concretize_mirrors="$working_dir/concretize_mirrors.yaml"
-TMP=`mktemp -d -t build-spack-env.sh.XXXXXX`
-
-# Safe, comprehensive cleanup.
-trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
-[ -f \"$mirrors_cfg~\" ] && mv -f \"$mirrors_cfg\"{~,}; \
-_copy_back_logs" EXIT
 
 ####################################
 # Set up working area.
@@ -149,6 +143,23 @@ if [ -z "$TMPDIR" ]; then
   rm -rf "$TMPDIR"
   mkdir -p "$TMPDIR"
 fi
+####################################
+
+####################################
+# Safe, comprehensive cleanup.
+TMP=`mktemp -d -t build-spack-env.sh.XXXXXX`
+trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
+[ -f \"$mirrors_cfg~\" ] && mv -f \"$mirrors_cfg\"{~,}; \
+_copy_back_logs; \
+if (( failed == 1 )); then \
+  printf \"ALERT: emergency buildcache dump...\\n\"; \
+  spack buildcache create -a --deptype=all \
+      \${extra_buildcache_opts[*]:+\"\${extra_buildcache_opts[@]}\"} \
+      -d \"$working_dir/copyBack\" \
+      -r --rebuild-index \$(spack find --no-groups); \
+  printf \"       ...done\\n\"; \
+fi\
+" EXIT
 ####################################
 
 si_upsver="v${si_ver#v}"
@@ -292,14 +303,8 @@ for env_cfg in "$@"; do
       | csplit -f "$env_name" -b "_%03d.json" -z -s - '/^\}$/+1' '{*}' \
     && spack -e $env_name install ${extra_install_opts[*]:+"${extra_install_opts[@]}"} --test=root \
       || failed=1
-  # Store all successfully-built packages in the buildcache
-  for env_json in "${env_name}"_*.json; do
-    spack buildcache create -a --deptype=all \
-          ${extra_buildcache_opts[*]:+"${extra_buildcache_opts[@]}"} \
-          -d "$working_dir/copyBack" \
-          -r --rebuild-index --spec-file "$env_json"
-  done
   if [ -n "$interrupt" ]; then
+    failed=1 # Trigger buildcache dump.
     printf "ABORT: exit due to caught signal ${interrupt:-(HUP, INT, QUIT or TERM)}\n" 1>&2
     if (( interrupt )); then
       exit $interrupt
@@ -307,6 +312,13 @@ for env_cfg in "$@"; do
       exit 3
     fi
   fi
+  # Store all successfully-built packages in the buildcache
+  for env_json in "${env_name}"_*.json; do
+    spack buildcache create -a --deptype=all \
+          ${extra_buildcache_opts[*]:+"${extra_buildcache_opts[@]}"} \
+          -d "$working_dir/copyBack" \
+          -r --rebuild-index --spec-file "$env_json"
+  done
   (( failed == 0 )) \
     || { printf "ERROR: failed to build environment $env_name\n" 1>&2; exit $failed; }
   if [[ "${env_cfg##*/}" =~ ^((gcc|intel|pgci|clang|xl|nag|fj|aocc)@.*)\.yaml$ ]]; then
