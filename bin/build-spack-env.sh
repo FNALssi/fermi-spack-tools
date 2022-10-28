@@ -222,7 +222,7 @@ for config_file in ${spack_config_files[*]:+"${spack_config_files[@]}"}; do
     || { printf "ERROR: unable to add file obtained from \"$config_file\" to spack config with scope $cf_scope\n" 1>&2; exit 1; }
 done
 # 2. Spack config commands.
-for config_cmd in ${spack_config_cmds[*]:+"${spack_config_commands[@]}"}; do
+for config_cmd in ${spack_config_cmds[*]:+"${spack_config_cmds[@]}"}; do
   eval spack config add $config_cmd \
     || { printf "ERROR: executing spack config command \"$config_cmd\"\n" 1>&2; exit 1; }
 done
