@@ -227,7 +227,7 @@ done
 # 3. Caches
 if [ -n "$SPACK_BUILDCACHE_SECRET" ]; then
   spack gpg trust "$SPACK_BUILDCACHE_SECRET"
-  keyid="$(gpg2 --list-secret-keys --keyid-format long --homedir "$SPACK_ROOT/opt/spack/gpg" | sed -Ene '/^sec/ s&^[^/]+/([A-F0-9]+).*$&\1&p')"
+  keyid="$(gpg2 --list-secret-keys --keyid-format long --homedir "$SPACK_ROOT/opt/spack/gpg" | sed -Ene '/^sec/{s&^[^/]+/([A-F0-9]+).*$&\1&p; q}')"
   extra_buildcache_opts+=(--key "$keyid")
 else
   extra_buildcache_opts+=(-u)
