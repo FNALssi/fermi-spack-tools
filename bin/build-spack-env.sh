@@ -226,7 +226,8 @@ for config_cmd in ${spack_config_cmds[*]:+"${spack_config_commands[@]}"}; do
 done
 # 3. Caches
 if [ -n "$SPACK_BUILDCACHE_SECRET" ]; then
-  keyid="$(spack gpg trust "$SPACK_BUILDCACHE_SECRET" 2>&1 | sed -Ene '1 s&^gpg: key ([^:]+).*$&\1&p')"
+  spack gpg trust "$SPACK_BUILDCACHE_SECRET"
+  keyid="$(spack gpg list --signing | sed -Ene '/^sec/ s&^[^/]+/([A-F0-9]+).*$&\1&p')"
   extra_buildcache_opts+=(--key "$keyid")
 else
   extra_buildcache_opts+=(-u)
