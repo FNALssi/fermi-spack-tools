@@ -339,12 +339,6 @@ do
     fi
 
     # check for installed devel rpm, otherwise warn
-    if ! { rpm -q "$dv" || echo "$p" | egrep "$no_devel"; } > /dev/null
-    then
-      echo "Notice: no devel headers/libraries found for package $p"
-      echo "Need to install rpm: $dv"
-      continue
-    fi
 
     echo "  $spp:"               >&3
     if echo $spp | egrep "$force_x86_64" > /dev/null
