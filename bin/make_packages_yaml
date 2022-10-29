@@ -331,8 +331,10 @@ do
     then
         if [ "$spp" = "$dv" ] || rpm -q "$dv"  > /dev/null 
         then
+            echo "Notice: no devel headers/libraries found for package $p"
             echo "May want to install rpm: $p"
         else
+            echo "Notice: no devel headers/libraries found for package $p"
             echo "May want to install rpms: $spp and  $dv"
         fi
         if [ "x$cvmfsversions" = x ]
