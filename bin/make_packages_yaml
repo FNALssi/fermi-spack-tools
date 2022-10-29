@@ -1,5 +1,6 @@
 #!/bin/sh
 
+
 case "x$0" in
 x*/*) dir=`echo $0 | sed -e 's;\(.*\)/\([^/]*\);\1/..;'` ;;
 x*)   dir=.. ;;
@@ -7,6 +8,7 @@ esac
 
 os=${2:-`spack arch -o`}
 
+cvmfs_area=/cvmfs/fermilab.opensciencegrid.org/packages/external
 src=$dir/templates/packagelist
 optf=$dir/templates/package_opts
 #dst=$1/etc/spack/$os/packages.yaml
@@ -145,6 +147,12 @@ getv2() {
   echo $x | sed -e 's/ .*//'
 }
 
+get_cvmfs_spack_versions() {
+  #printf "get_cvmfs_spack_versions($1): " > /dev/tty
+  csr=${cvmfs_area}/spack/current/NULL/ 
+  SPACK_ROOT=$csr $csr/bin/spack find $1 | grep -v '^[=-]' | sed -e 's/[^ ]*@//'| sort -u # | tee /dev/tty
+}
+
 mkdir -p `dirname $dst`
 
 compiler=""
@@ -270,15 +278,17 @@ EOF
 
 for p in `cat $src`
 do
+    did_externals=false
+
     case $p in
     *:*:*) 
            dv=$(echo $p | sed -e 's/.*:.*:\(.*\)/\1/') 
-           lp=$(echo $p | sed -e 's/.*:\(.*\):.*/\1/')
-            p=$(echo $p | sed -e 's/\(.*\):.*:.*/\1/') 
+           spp=$(echo $p | sed -e 's/.*:\(.*\):.*/\1/')
+           p=$(echo $p | sed -e 's/\(.*\):.*:.*/\1/') 
            ;;
     *)
-           lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/' -e 's/pkgconfig/pkgconf/' -e 's/glibc/libc/' -e 's/libdb/berkeley-db/'`
-           dv="$lp"'-devel'
+           spp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/' -e 's/pkgconfig/pkgconf/' -e 's/glibc/libc/' -e 's/libdb/berkeley-db/'`
+           dv="$spp"'-devel'
     esac
 
     # if its a wildcarded rpm name, look for it
@@ -294,7 +304,7 @@ do
     debug_pkg=
     if [ "$debug_pkg" != "" ] 
     then
-        if [ "$lp" = "$debug_pkg" ]
+        if [ "$spp" = "$debug_pkg" ]
         then
             set -x
         else
@@ -303,19 +313,29 @@ do
     fi
 
     # some packages aren't on SL7 but are on SL8...
-    if [ "$os" = "scientific7" -a "$dv" = "z3-devel" ]
+    if [ "$os" = "scientific7" -a \( "$dv" = "z3-devel" -o "$spp" = "pkg-config" \) ]
     then
         continue
     fi
 
     # find local version if any...
-    v=`getv2 $p $lp`
+    v=`getv2 $p $spp`
+    # also find any cvmfs versions
+    cvmfsversions=`get_cvmfs_spack_versions $spp`
     if [ "x$v" = x ]
     then
-        # not found...
-        echo "Notice: no version found for package $p"
-        echo "Need to install rpm: $lp"
-        continue
+        if [ "$spp" = "$dv" ] || rpm -q "$dv"  > /dev/null 
+        then
+            echo "May want to install rpm: $p"
+        else
+            echo "May want to install rpms: $spp and  $dv"
+        fi
+        if [ "x$cvmfsversions" = x ]
+        then
+            echo "Notice: no system version or cvmfs versions found for package $p"
+            # also no cvmfs versions, so skip...
+            continue
+        fi
     fi
 
     # check for installed devel rpm, otherwise warn
@@ -326,8 +346,8 @@ do
       continue
     fi
 
-    echo "  $lp:"               >&3
-    if echo $lp | egrep "$force_x86_64" > /dev/null
+    echo "  $spp:"               >&3
+    if echo $spp | egrep "$force_x86_64" > /dev/null
     then
         echo "    target:"     >&3
         echo "      - x86_64"     >&3
@@ -335,7 +355,7 @@ do
         [ -z "$compiler"  ] || echo "      - $compiler" >&3
         [ -z "$compiler2" ] || echo "      - $compiler2" >&3
     fi
-    cprefix=`ls -d /cvmfs/fermilab.opensciencegrid.org/packages/external/$lp/$v/*-$os-x86_64-* 2>/dev/null | head -1`
+
     sysprefix='/usr'
     # mpich is goofy on RedHat/Centos
     case "$p" in
@@ -346,45 +366,66 @@ do
     esac
 
     #variants from known variants list
-    opts=`grep "^$lp[ \t]" $optf | sed -e "s/^$lp[ \t]*//"`
+    opts=`grep "^$spp[ \t]" $optf | sed -e "s/^$spp[ \t]*//"`
 
     #dependencies, one needed so far on gettext
-    if [ "$lp" = "gettext" ]
+    if [ "$spp" = "gettext" ]
     then
         deps=" ^libc"
     else
         deps=""
     fi
 
+    if [ "x$v" != x ]
+    then 
+
     # use the right external syntax based on spack version in path
     case $SPACK_ROOT in
     *rollout*)
         echo "    paths:"           >&3
-        echo "      \"${lp}$opts @$v $comp$deps\": $sysprefix"    >&3
+        echo "      \"${spp}$opts @$v $comp$deps\": $sysprefix"    >&3
         ;;
     *)
         echo "    externals:" >&3
-        echo "    - spec: \"${lp}$opts @$v $comp os=$os$deps\"" >&3
+        echo "    - spec: \"${spp}$opts @$v $comp os=$os$deps\"" >&3
         echo "      prefix: $sysprefix" >&3
     esac
 
-    if echo $lp | egrep "$force_system" > /dev/null
-    then
-        echo "    buildable: False"           >&3
-    elif [ -d "$cprefix" ]
-    then   
+    did_externals=true
+
+    fi
+
+    for v in $cvmfsversions
+    do
+        #printf "cvmfs $spp $v $os: " > /dev/tty
+        # should get info from spack here, not this way...
+        cprefix=`ls -d ${cvmfs_area}/$spp/$v/* 2>/dev/null | grep $os | head -1`
+
+        if [ "x$cprefix" = "x" ]
+        then
+            continue
+        fi
+
         # if we have it in cvmfs, use that one
         case $SPACK_ROOT in
         *rollout*)
+            $did_externals ||
             echo "    paths:"           >&3
-            echo "      \"$lp @$v $comp$deps\": $cprefix"    >&3
+            echo "      \"$spp @$v $comp$deps\": $cprefix"    >&3
             ;;
         *)
+            $did_externals ||
             echo "    externals:" >&3
-            echo "    - spec: \"${lp} @$v $comp$deps\"" >&3
+            echo "    - spec: \"${spp}$opts @$v $comp os=$os$deps\"" >&3
             echo "      prefix: $cprefix" >&3
             ;;
         esac
+        did_externals=true
+    done
+
+    if echo $spp | egrep "$force_system" > /dev/null
+    then
+        echo "    buildable: False"           >&3
     fi
 done
 
