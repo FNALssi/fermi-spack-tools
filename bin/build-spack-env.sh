@@ -103,7 +103,7 @@ ups_opt=-u
 eval "$si_split_options"
 while (( $# )); do
   case $1 in
-    --clear-mirrors) unset cache_urls; clear_mirrors=1;;
+    --clear-mirrors) clear_mirrors=1;;
     -h) usage; exit 1;;
     --help)  usage 2; exit 1;;
     --no-ups) ups_opt=-p;;
