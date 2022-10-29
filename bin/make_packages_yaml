@@ -284,12 +284,12 @@ do
     case $p in
     *:*:*) 
            dv=$(echo $p | sed -e 's/.*:.*:\(.*\)/\1/') 
-           lp=$(echo $p | sed -e 's/.*:\(.*\):.*/\1/')
-            p=$(echo $p | sed -e 's/\(.*\):.*:.*/\1/') 
+           spp=$(echo $p | sed -e 's/.*:\(.*\):.*/\1/')
+           p=$(echo $p | sed -e 's/\(.*\):.*:.*/\1/') 
            ;;
     *)
-           lp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/' -e 's/pkgconfig/pkgconf/' -e 's/glibc/libc/' -e 's/libdb/berkeley-db/'`
-           dv="$lp"'-devel'
+           spp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/' -e 's/pkgconfig/pkgconf/' -e 's/glibc/libc/' -e 's/libdb/berkeley-db/'`
+           dv="$spp"'-devel'
     esac
 
     # if its a wildcarded rpm name, look for it
