@@ -103,9 +103,9 @@ ups_opt=-u
 eval "$si_split_options"
 while (( $# )); do
   case $1 in
+    --clear-mirrors) unset cache_urls; clear_mirrors=1;;
     -h) usage; exit 1;;
     --help)  usage 2; exit 1;;
-    --no-cache) unset cache_urls;;
     --no-ups) ups_opt=-p;;
     --spack-config-file=*) spack_config_files+=("${1#*=}");;
     --spack-config-file) spack_config_files+=("$2"); shift;;
@@ -235,22 +235,20 @@ else
   extra_buildcache_opts+=(-u)
   extra_install_opts+=(--no-check-signature)
 fi
-if [ -z "${cache_urls+x}" ] \
-     && { spack mirror list | grep -qEe '^fnal[[:space:]]+'; } >/dev/null 2>&1; then
-  spack mirror rm --scope site fnal \
-    || { printf "ERROR: executing spack mirror rm --scope site fnal\n" 1>&2; exit 1; }
-else
-  for cache_spec in ${cache_urls[*]:+"${cache_urls[@]}"}; do
-    if [[ "$cache_spec" =~ ^([^|]+)\|(.*)$ ]]; then
-      cache_name="${BASH_REMATCH[1]}"
-      cache_spec="${BASH_REMATCH[2]}"
-    else
-      cache_name="buildcache_$((++cache_count))"
-    fi
-    spack mirror add --scope=site "$cache_name" "$cache_spec" \
-      || { printf "ERROR: executing spack mirror add --scope=site $cache_name \"$cache_spec\n" 1>&2; exit 1; }
-  done
-fi
+
+# Clear mirrors list back to defaults.
+(( clear_mirrors )) && cp "$default_mirrors" "$mirrors_cfg"
+
+for cache_spec in ${cache_urls[*]:+"${cache_urls[@]}"}; do
+  if [[ "$cache_spec" =~ ^([^|]+)\|(.*)$ ]]; then
+    cache_name="${BASH_REMATCH[1]}"
+    cache_spec="${BASH_REMATCH[2]}"
+  else
+    cache_name="buildcache_$((++cache_count))"
+  fi
+  spack mirror add --scope=site "$cache_name" "$cache_spec" \
+    || { printf "ERROR: executing spack mirror add --scope=site $cache_name \"$cache_spec\n" 1>&2; exit 1; }
+done
 
 # Add mirror as buildcache for locally-built packages.
 spack mirror add --scope=site local "$working_dir/copyBack"
@@ -299,11 +297,13 @@ for env_cfg in "$@"; do
   # 2. Restore the original mirror list.
   # 3. Store the environment specs so they can be used by
   #       `spack buildcache create`
-  # 4. Install the environment.
+  # 4. Download and save sources to copyBack for mirroring.
+  # 5. Install the environment.
   spack -e $env_name concretize --test=root \
     && mv -f "$mirrors_cfg"{~,} \
     && spack -e $env_name spec -j \
       | csplit -f "$env_name" -b "_%03d.json" -z -s - '/^\}$/+1' '{*}' \
+    && spack mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack" \
     && spack -e $env_name install ${extra_install_opts[*]:+"${extra_install_opts[@]}"} --test=root \
       || failed=1
   if [ -n "$interrupt" ]; then
@@ -315,6 +315,8 @@ for env_cfg in "$@"; do
       exit 3
     fi
   fi
+  (( failed == 0 )) \
+    || { printf "ERROR: failed to build environment $env_name\n" 1>&2; exit $failed; }
   # Store all successfully-built packages in the buildcache
   for env_json in "${env_name}"_*.json; do
     spack buildcache create -a --deptype=all \
@@ -322,8 +324,6 @@ for env_cfg in "$@"; do
           -d "$working_dir/copyBack" \
           -r --rebuild-index --spec-file "$env_json"
   done
-  (( failed == 0 )) \
-    || { printf "ERROR: failed to build environment $env_name\n" 1>&2; exit $failed; }
   if [[ "${env_cfg##*/}" =~ ^((gcc|intel|pgci|clang|xl|nag|fj|aocc)@.*)\.yaml$ ]]; then
     compiler_path="$( ( spack cd -i ${BASH_REMATCH[1]} && pwd -P ) )"
     status=$?
