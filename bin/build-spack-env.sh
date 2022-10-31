@@ -236,15 +236,6 @@ for config_cmd in ${spack_config_cmds[*]:+"${spack_config_cmds[@]}"}; do
     || { printf "ERROR: executing spack config command \"$config_cmd\"\n" 1>&2; exit 1; }
 done
 # 3. Caches
-if [ -n "$SPACK_BUILDCACHE_SECRET" ]; then
-  spack gpg trust "$SPACK_BUILDCACHE_SECRET"
-  keyid="$(gpg2 --list-secret-keys --keyid-format long --homedir "$SPACK_ROOT/opt/spack/gpg" | sed -Ene '/^sec/{s&^[^/]+/([A-F0-9]+).*$&\1&p; q}')"
-  extra_buildcache_opts+=(--key "$keyid")
-else
-  extra_buildcache_opts+=(-u)
-  extra_install_opts+=(--no-check-signature)
-fi
-
 for cache_spec in ${cache_urls[*]:+"${cache_urls[@]}"}; do
   if [[ "$cache_spec" =~ ^([^|]+)\|(.*)$ ]]; then
     cache_name="${BASH_REMATCH[1]}"
@@ -259,6 +250,20 @@ done
 # Add mirror as buildcache for locally-built packages.
 spack mirror add --scope=site local "$working_dir/copyBack"
 spack buildcache keys
+####################################
+
+####################################
+# Initialize signing key for binary packages.
+if [ -n "$SPACK_BUILDCACHE_SECRET" ]; then
+  spack gpg trust "$SPACK_BUILDCACHE_SECRET"
+  # Handle older Spack installations that need the long-format keyid.
+  keyid="$(gpg2 --list-secret-keys --keyid-format long --homedir "$SPACK_ROOT/opt/spack/gpg" | sed -Ene '/^sec/{s&^[^/]+/([A-F0-9]+).*$&\1&p; q}')"
+  extra_buildcache_opts+=(--key "$keyid")
+else
+  # Enable insecure mirror use.
+  extra_buildcache_opts+=(-u)
+  extra_install_opts+=(--no-check-signature)
+fi
 ####################################
 
 ####################################
