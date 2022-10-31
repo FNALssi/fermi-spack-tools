@@ -9,27 +9,55 @@ esac
 
 extralist="$spackbindir/../templates/extralist"
 
-ups depend "$@" | 
-    sed -e 's/^[ |_]*//' | 
-    (
-    first=true
-    while read p v rest 
-    do 
-        case "$p" in
-        cetbuildtools) p=cetmodules;  v=2.05.02;;
-        range)         p=range-v3;    v=`echo $v| sed -e 's/^v3_//'`;;
-        cmake)         v=3.19.0;;
-        esac
-        dp=`echo $p | tr '[A-Z]' '[a-z]'| sed -e 's/_/-/g'`
-        dv=`echo $v | sed -e 's/^v//' -e 's/_/./g'`
-        extra=`grep "^$dp:" $extralist | sed -e "s/^$dp://"`
-        if $first
-        then
-           echo "$dp@$dv %gcc@8.2.0 $extra"
-           first=false
-        else
-           echo "  ^$dp@$dv $extra"
-        fi
-    done
-    )
+compver=$(
+     ups depend "$@" -Kproduct:version  | 
+     egrep 'gcc|clang' | head -1 | 
+     sed -e 's/"//g' -e 's/  *$//' -e 's/  */@/' -e 's/@v/@/' -e 's/_/./g' 
+) 
+if [ "x$compver" != "x" ]
+then
+    compver="%$compver"
+fi
 
+ups depend "$@" -Kproduct:version | 
+       ( 
+          first=true
+          while read p v
+          do
+             #
+             # fix package names that are different; most are fixed
+             # by turning _ to - but there are a few others...
+             #
+             p=$(echo $p | sed -e 's/"//g' \
+                              -e 's/_/-/g' \
+                              -e 's/numpy/py-numpy/' \
+                              -e 's/fhiclcpp/fhicl-cpp/' \
+                              -e 's/tbb/intel-tbb/' \
+                              -e 's/mysql-client/mysql/' \
+                              -e 's/gojsonnet/jsonnet/' \
+                              -e 's/range/range-v3/' \
+                              -e 's/tensorflow/py-&/' \
+                              -e 's/libtorch/py-torch/' )
+             #
+             # similarly versions are plain numeric, dotted, and do not
+             # have letter suffixes
+             # then some packages have version parts moved to their names
+             # or do not have leading zeros in version components
+             #
+             v=$(echo $v| sed -e 's/"//g' -e 's/^v//' -e s/_/./g -e 's/[a-z]$//g' )
+             case "$p" in
+             range-v3) v=$(echo $v | sed -e 's/3\.//');;
+             geant4)   v=$(echo $v | sed -e 's/4\.//' -e 's/p0//');;
+             pythia8)  v=$(echo $v | sed -e 's/\.\([0-9]*\)$/\1/');;
+             sqlite)   v=$(echo $v | sed -e 's/\.0/./g' -e 's/\.0$//');;
+             gcc|clang) continue;;  # spack doesnt make compilers dependencies...
+             esac
+             if $first
+             then
+                echo "$p@$v $compver $extra"
+                first=false
+             else
+                echo "  ^$p@$v $compver $extra"
+             fi
+          done
+       )
