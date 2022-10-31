@@ -3,51 +3,46 @@
 # make a sub-spack repository
 # ...but make it unified layout...
 
-#spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
 spack_repo=https://github.com/FNALssi/spack.git
 
-#spack_release=rollout
-#spack_release=rollout2
-spack_release=v0.17.1.fermi
-while echo x$1 | grep x-- > /dev/null
-do
-    case "x$1" in
-    x--spack_release)
-       spack_release=$2
-       shift; shift
-       ;;
-    *)
-        echo "unknown option $1"
-        shift
-        ;;
+get_from_bootstrap() {
+    grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//'
+}
+
+usage() {
+    echo "usage: make_subspack [--spack_release ver] [-t|-u] /path/to/existing/spack /path/to/new/area"
+}
+
+parse_args() {
+    spack_release=$(get_from_bootstrap  default_spack_version)
+
+    eval set : $(getopt --longoptions spack_release: --options tu -- "$@")
+    while echo x$1 | grep x- > /dev/null
+    do
+        case "x$1" in
+        x--spack_release) spack_release=$2; shift; shift;;
+        x-t) unified=false; shift ;;
+        x-u) unified=true; shift ;;
+        esac
+    done
+
+
+    if [ $# != 2 ]
+    then
+        echo "usage: make_subspack [-t|-u] /path/to/existing/spack /path/to/new/area"
+        exit 1
+    fi
+
+    src=$1
+    dst=$2
+
+    echo "spack_release is $spack_release"
+
+    case "$spack_release" in
+    rollout*) extra="";;
+    *)        extra=".new";;
     esac
-done
-
-echo "spack_release is $spack_release"
-
-case "$spack_release" in
-rollout*) extra="";;
-*)        extra=".new";;
-esac
-
-if [ "$1" == "-t" ]
-then
-   unified=false
-   shift
-fi
-if [ "$1" == "-u" ]
-then
-    unified=true
-   shift
-fi
-if [ $# != 2 ]
-then
-    echo "usage: make_subspack [-t|-u] /path/to/existing/spack /path/to/new/area"
-    exit 1
-fi
-
-src=$1
-dst=$2
+}
 
 
 spackbindir=`echo $0 | sed -e 's;make_subspack;;' `
@@ -55,6 +50,8 @@ case x$spackbindir in
 x/*) ;;
 x*)  spackbindir="$PWD/$spackbindir"
 esac
+
+parse_args "$@"
 
 # assume unified layout...
 if $unified
