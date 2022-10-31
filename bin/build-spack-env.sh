@@ -303,7 +303,7 @@ for env_cfg in "$@"; do
     && mv -f "$mirrors_cfg"{~,} \
     && spack -e $env_name spec -j \
       | csplit -f "$env_name" -b "_%03d.json" -z -s - '/^\}$/+1' '{*}' \
-    && spack mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack" \
+    && spack -e $env_name mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack" \
     && spack -e $env_name install ${extra_install_opts[*]:+"${extra_install_opts[@]}"} --test=root \
       || failed=1
   if [ -n "$interrupt" ]; then
