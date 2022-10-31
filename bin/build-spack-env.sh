@@ -188,6 +188,10 @@ if ! [ -f "$spack_env_top_dir/setup-env.sh" ]; then
   PATH="$TMP/bin:$PATH" ${make_spack_cmd[*]:+"${make_spack_cmd[@]}"} \
     || { printf "ERROR: unable to install Spack $spack_ver with\n          ${make_spack_cmd[*]}\n" 1>&2; exit 1; }
 fi
+
+# Clear mirrors list back to defaults.
+(( clear_mirrors )) && cp "$default_mirrors" "$mirrors_cfg"
+
 if [ "$ups_opt" = "-p" ]; then
   cat >setup-env.sh <<EOF
 . "$spack_env_top_dir/share/spack/setup-env.sh"
@@ -235,9 +239,6 @@ else
   extra_buildcache_opts+=(-u)
   extra_install_opts+=(--no-check-signature)
 fi
-
-# Clear mirrors list back to defaults.
-(( clear_mirrors )) && cp "$default_mirrors" "$mirrors_cfg"
 
 for cache_spec in ${cache_urls[*]:+"${cache_urls[@]}"}; do
   if [[ "$cache_spec" =~ ^([^|]+)\|(.*)$ ]]; then
