@@ -212,6 +212,8 @@ fi
 source "$spack_env_top_dir/setup-env.sh" \
   || { printf "ERROR: unable to set up Spack $spack_ver\n" 1>&2; exit 1; }
 spack compiler find --scope=site
+spack bootstrap now \
+  || { printf "ERROR: unable to bootstrap safely with base configuration\n" 1>&2; exit 1; }
 ####################################
 
 ####################################
