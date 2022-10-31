@@ -192,6 +192,7 @@ fi
 # Clear mirrors list back to defaults.
 (( clear_mirrors )) && cp "$default_mirrors" "$mirrors_cfg"
 
+# Enhanced setup scripts.
 if [ "$ups_opt" = "-p" ]; then
   cat >setup-env.sh <<EOF
 . "$spack_env_top_dir/share/spack/setup-env.sh"
@@ -204,6 +205,10 @@ setenv SPACK_DISABLE_LOCAL_CONFIG true
 setenv SPACK_USER_CACHE_PATH "$spack_env_top_dir/tmp/spack-cache"
 EOF
 fi
+####################################
+
+####################################
+# Source the setup script and start work.
 source "$spack_env_top_dir/setup-env.sh" \
   || { printf "ERROR: unable to set up Spack $spack_ver\n" 1>&2; exit 1; }
 spack compiler find --scope=site
