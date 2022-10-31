@@ -304,7 +304,7 @@ do
     fi
 
     # some packages aren't on SL7 but are on SL8...
-    if [ "$os" = "scientific7" -a \( "$dv" = "z3-devel" -o "$lp" = "pkg-config" \) ]
+    if [ "$os" = "scientific7" -a "$dv" = "z3-devel" ]
     then
         continue
     fi
