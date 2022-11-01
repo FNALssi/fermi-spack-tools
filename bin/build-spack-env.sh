@@ -53,6 +53,16 @@ _make_concretize_mirrors_yaml() {
       || { printf "ERROR: unable to generate concretization-specific mirrors.yaml at \"$out_file\"\n" 1>&2; exit 1; }
 }
 
+_set_cache_write_binaries() {
+  local wcb="$(echo "$1" | tr '[A-Z-]' '[a-z_]')"
+  case $wcb in
+    all|deps|dependencies|none|no_roots|roots) cache_write_binaries="$wcb";;
+    *) printf "ERROR: unrecognized argument \"$1\" to --write-cache-binaries\n" 1>&2
+       usage
+       exit 1
+  esac
+}
+
 _split_opts_impl() {
   local unbundling=1
   while (( $# )); do
@@ -100,29 +110,46 @@ spack_config_cmds=()
 cache_urls=()
 ups_opt=-u
 
+cache_write_binaries=all
+#unset cache_write_bootstrap
+cache_write_sources=1
+
 eval "$si_split_options"
 while (( $# )); do
   case $1 in
+    --cache-write-binaries=*) _set_cache_write_binaries "${1#*=}";;
+    --cache-write-binaries) _set_cache_write_binaries "$2"; shift;;
+    --cache-write-bootstrap) cache_write_bootstrap=1;;
+    --cache-write-dependencies) cache_write_dependencies=1;;
+    --cache-write-roots) cache_write_roots=1;;
+    --cache-write-sources) cache_write_sources=1;;
     --clear-mirrors) clear_mirrors=1;;
-    -h) usage; exit 1;;
-    --help)  usage 2; exit 1;;
+    --help) usage 2; exit 1;;
+    --no-cache-write-binaries) cache_write_binaries=none;;
+    --no-cache-write-bootstrap) unset cache_write_bootstrap;;
+    --no-cache-write-dependencies) unset cache_write_dependencies;;
+    --no-cache-write-roots) unset cache_write_roots;;
+    --no-cache-write-sources) unset cache_write_sources;;
     --no-ups) ups_opt=-p;;
-    --spack-config-file=*) spack_config_files+=("${1#*=}");;
-    --spack-config-file) spack_config_files+=("$2"); shift;;
-    --spack-config-cmd=*) spack_config_cmds+=("${1#*=}");;
     --spack-config-cmd) spack_config_cmds+=("$2"); shift;;
-    --spack-infrastructure-root=*) si_root="${1#*=}";;
+    --spack-config-cmd=*) spack_config_cmds+=("${1#*=}");;
+    --spack-config-file) spack_config_files+=("$2"); shift;;
+    --spack-config-file=*) spack_config_files+=("${1#*=}");;
     --spack-infrastructure-root) si_root="$2"; shift;;
-    --spack-infrastructure-version=*) si_ver="${1#*=}";;
+    --spack-infrastructure-root=*) si_root="${1#*=}";;
     --spack-infrastructure-version) si_ver="$2"; shift;;
-    --spack-version=*) spack_ver="${1#*=}";;
+    --spack-infrastructure-version=*) si_ver="${1#*=}";;
+    --spack-root) spack_root="$2"; shift;;
+    --spack-root=*) spack_root="${1#*=}";;
     --spack-version) spack_ver="$2"; shift;;
-    --ups=*) ups_opt="$(_ups_string_to_opt "${1#*=}")" || exit;;
+    --spack-version=*) spack_ver="${1#*=}";;
     --ups) ups_opt="$(_ups_string_to_opt "$2")" || exit; shift;;
-    --with-cache=*) optarg="${1#*=}"; OIFS="$IFS"; IFS=","; cache_urls+=($optarg); IFS="$OIFS";;
+    --ups=*) ups_opt="$(_ups_string_to_opt "${1#*=}")" || exit;;
     --with-cache) optarg="$2"; shift; OIFS="$IFS"; IFS=","; cache_urls+=($optarg); IFS="$OIFS";;
+    --with-cache=*) optarg="${1#*=}"; OIFS="$IFS"; IFS=","; cache_urls+=($optarg); IFS="$OIFS";;
     --working-dir=*) working_dir="${1#*=}";;
     --working_dir) working_dir="$2"; shift;;
+    -h) usage; exit 1;;
     --) shift; break;;
     -*) printf "ERROR unrecognized option $1\n$(usage)" 1>&2; exit 2;;
     *) break
@@ -148,18 +175,29 @@ fi
 ####################################
 
 ####################################
+# Translate --cache-write-binaries opt into options to
+#
+#    `spack buildcache create`
+case ${cache_write_binaries:-none} in
+  all|none|no_roots) : ;;
+  roots) extra_buildcache_opts+=(--only roots);;
+  *) extra_buildcache_opts+=(--only dependencies)
+esac
+####################################
+
+####################################
 # Safe, comprehensive cleanup.
 TMP=`mktemp -d -t build-spack-env.sh.XXXXXX`
 trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
 [ -f \"$mirrors_cfg~\" ] && mv -f \"$mirrors_cfg\"{~,}; \
 _copy_back_logs; \
-if (( failed == 1 )); then \
-  printf \"ALERT: emergency buildcache dump...\\n\"; \
+if (( failed == 1 )) && [ \"${cache_write_binaries:-none}\" != none ]; then \
+  printf \"ALERT: emergency buildcache dump...\\n\" 1>&2 ; \
   spack buildcache create -a --deptype=all \
       \${extra_buildcache_opts[*]:+\"\${extra_buildcache_opts[@]}\"} \
       -d \"$working_dir/copyBack\" \
       -r --rebuild-index \$(spack find --no-groups); \
-  printf \"       ...done\\n\"; \
+  printf \"       ...done\\n\" 1>&2; \
 fi\
 " EXIT
 ####################################
@@ -214,6 +252,10 @@ source "$spack_env_top_dir/setup-env.sh" \
 spack compiler find --scope=site
 spack bootstrap now \
   || { printf "ERROR: unable to bootstrap safely with base configuration\n" 1>&2; exit 1; }
+if (( cache_write_bootstrap )); then \
+  spack bootstrap mirror --binary-packages --dev "$working_dir/copyBack" \
+    || { printf "WARNING: unable to write bootstrap packages to local cache\n" 1>&2; }
+fi
 ####################################
 
 ####################################
@@ -316,7 +358,8 @@ for env_cfg in "$@"; do
     && mv -f "$mirrors_cfg"{~,} \
     && spack -e $env_name spec -j \
       | csplit -f "$env_name" -b "_%03d.json" -z -s - '/^\}$/+1' '{*}' \
-    && spack -e $env_name mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack" \
+    && { ! (( cache_write_sources )) \
+           || spack -e $env_name mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack"; } \
     && spack -e $env_name install ${extra_install_opts[*]:+"${extra_install_opts[@]}"} --test=root \
       || failed=1
   if [ -n "$interrupt" ]; then
@@ -331,12 +374,21 @@ for env_cfg in "$@"; do
   (( failed == 0 )) \
     || { printf "ERROR: failed to build environment $env_name\n" 1>&2; exit $failed; }
   # Store all successfully-built packages in the buildcache
-  for env_json in "${env_name}"_*.json; do
-    spack buildcache create -a --deptype=all \
-          ${extra_buildcache_opts[*]:+"${extra_buildcache_opts[@]}"} \
-          -d "$working_dir/copyBack" \
-          -r --rebuild-index --spec-file "$env_json"
-  done
+  if [ "${cache_write_binaries:-none}" != none ]; then
+    for env_json in "${env_name}"_*.json; do
+      spack buildcache create -a --deptype=all \
+            ${extra_buildcache_opts[*]:+"${extra_buildcache_opts[@]}"} \
+            -d "$working_dir/copyBack" \
+            -r --rebuild-index --spec-file "$env_json"
+    done
+    if [ "$cache_write_binaries" = no_roots ]; then
+      for env_json in "${env_name}"_*.json; do
+        spec="$(spack buildcache get-buildcache-name --spec-file "$env_json")"
+        find "$working_dir/copyBack" -type f \( -name "$spec.spack" -o -name "$spec.json" -o -name '$spec.json.sig' \) -exec rm -f \{\} \;
+      done
+      spack buildcache update-index -k -d "$working_dir/copyBack"
+    fi  >/dev/null 2>&1
+  fi
   if [[ "${env_cfg##*/}" =~ ^((gcc|intel|pgci|clang|xl|nag|fj|aocc)@.*)\.yaml$ ]]; then
     compiler_path="$( ( spack cd -i ${BASH_REMATCH[1]} && pwd -P ) )"
     status=$?
