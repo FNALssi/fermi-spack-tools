@@ -385,7 +385,7 @@ for env_cfg in "$@"; do
     if [ "$cache_write_binaries" = no_roots ]; then
       for env_json in "${env_name}"_*.json; do
         spec="$(spack buildcache get-buildcache-name --spec-file "$env_json")"
-        find "$working_dir/copyBack" -type f \( -name "$spec.spack" -o -name "$spec.json" -o -name '$spec.json.sig' \) -exec rm -f \{\} \;
+        find "$working_dir/copyBack" -type f \( -name "$spec.spack" -o -name "$spec.json" -o -name "$spec.json.sig" \) -exec rm -f \{\} \;
       done
       spack buildcache update-index -k -d "$working_dir/copyBack"
     fi  >/dev/null 2>&1
