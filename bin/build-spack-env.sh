@@ -357,7 +357,8 @@ for env_cfg in "$@"; do
       | csplit -f "$env_name" -b "_%03d.json" -z -s - '/^\}$/+1' '{*}' \
     && { ! (( cache_write_sources )) \
            || spack -e $env_name mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack"; } \
-    && spack ${__debug_spack_install:+-d} -e $env_name install ${extra_install_opts[*]:+"${extra_install_opts[@]}"} --test=root \
+    && spack ${__debug_spack_install:+-d} -e $env_name install --fail-fast --only-concrete \
+             ${extra_install_opts[*]:+"${extra_install_opts[@]}"} --test=root \
       || failed=1
   if [ -n "$interrupt" ]; then
     failed=1 # Trigger buildcache dump.
