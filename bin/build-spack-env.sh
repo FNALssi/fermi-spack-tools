@@ -124,6 +124,7 @@ while (( $# )); do
     --cache-write-roots) cache_write_roots=1;;
     --cache-write-sources) cache_write_sources=1;;
     --clear-mirrors) clear_mirrors=1;;
+    --debug-spack-*) eval "${1//-/_}=1";;
     --help) usage 2; exit 1;;
     --no-cache-write-binaries) cache_write_binaries=none;;
     --no-cache-write-bootstrap) unset cache_write_bootstrap;;
@@ -193,7 +194,7 @@ trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
 _copy_back_logs; \
 if (( failed == 1 )) && [ \"${cache_write_binaries:-none}\" != none ]; then \
   printf \"ALERT: emergency buildcache dump...\\n\" 1>&2 ; \
-  spack buildcache create -a --deptype=all \
+  spack ${__debug_spack_buildcache:+-d} buildcache create -a --deptype=all \
       \${extra_buildcache_opts[*]:+\"\${extra_buildcache_opts[@]}\"} \
       -d \"$working_dir/copyBack\" \
       -r --rebuild-index \$(spack find --no-groups); \
@@ -250,10 +251,10 @@ fi
 source "$spack_env_top_dir/setup-env.sh" \
   || { printf "ERROR: unable to set up Spack $spack_ver\n" 1>&2; exit 1; }
 spack compiler find --scope=site
-spack bootstrap now \
+spack ${__debug_spack_bootstrap:+-d} bootstrap now \
   || { printf "ERROR: unable to bootstrap safely with base configuration\n" 1>&2; exit 1; }
 if (( cache_write_bootstrap )); then \
-  spack bootstrap mirror --binary-packages --dev "$working_dir/copyBack" \
+  spack ${__debug_spack_bootstrap:+-d} bootstrap mirror --binary-packages --dev "$working_dir/copyBack" \
     || { printf "WARNING: unable to write bootstrap packages to local cache\n" 1>&2; }
 fi
 ####################################
@@ -354,13 +355,13 @@ for env_cfg in "$@"; do
   #       `spack buildcache create`
   # 4. Download and save sources to copyBack for mirroring.
   # 5. Install the environment.
-  spack -e $env_name concretize --test=root \
+  spack ${__debug_spack_concretize:+-d} -e $env_name concretize --test=root \
     && mv -f "$mirrors_cfg"{~,} \
     && spack -e $env_name spec -j \
       | csplit -f "$env_name" -b "_%03d.json" -z -s - '/^\}$/+1' '{*}' \
     && { ! (( cache_write_sources )) \
            || spack -e $env_name mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack"; } \
-    && spack -e $env_name install ${extra_install_opts[*]:+"${extra_install_opts[@]}"} --test=root \
+    && spack ${__debug_spack_install:+-d} -e $env_name install ${extra_install_opts[*]:+"${extra_install_opts[@]}"} --test=root \
       || failed=1
   if [ -n "$interrupt" ]; then
     failed=1 # Trigger buildcache dump.
@@ -376,7 +377,7 @@ for env_cfg in "$@"; do
   # Store all successfully-built packages in the buildcache
   if [ "${cache_write_binaries:-none}" != none ]; then
     for env_json in "${env_name}"_*.json; do
-      spack buildcache create -a --deptype=all \
+      spack ${__debug_spack_buildcache:+-d} buildcache create -a --deptype=all \
             ${extra_buildcache_opts[*]:+"${extra_buildcache_opts[@]}"} \
             -d "$working_dir/copyBack" \
             -r --rebuild-index --spec-file "$env_json"
