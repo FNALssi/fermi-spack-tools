@@ -314,8 +314,8 @@ do
     if [ "x$v" = x ]
     then
         # not found...
-        echo "Notice: no version found for package $p"
-        echo "Need to install rpm: $lp"
+        echo "Notice: no version found for Spack package $lp"
+        echo "Need to install rpm: $p"
         continue
     fi
 
