@@ -314,14 +314,18 @@ do
     if [ "x$v" = x ]
     then
         # not found...
-        echo "Notice: no version found for package $p"
-        echo "Need to install rpm: $lp"
+        echo "Notice: no version found for Spack package $lp"
+        echo "Need to install rpm: $p"
         continue
     fi
 
     # check for installed devel rpm, otherwise warn
-    rpm -q "$dv"  > /dev/null || 
-        echo "Need to install rpm: $dv"
+    if ! { rpm -q "$dv" || echo "$p" | egrep "$no_devel"; } > /dev/null
+    then
+      echo "Notice: no devel headers/libraries found for package $p"
+      echo "Need to install rpm: $dv"
+      continue
+    fi
 
     echo "  $lp:"               >&3
     if echo $lp | egrep "$force_x86_64" > /dev/null
