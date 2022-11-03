@@ -93,7 +93,7 @@ pcre2:pcre2:pcre2-devel
 pcre:pcre:pcre-devel
 perl-Data-Dumper:perl-data-dumper:perl-Data-Dumper
 perl:perl:perl-devel
-pkgconfig:pkgconf:pkgconfig
+pkgconfig:pkg-config:pkgconfig
 pkgconf-pkg-config:pkg-config:pkgconf-pkg-config
 python.*:python:python.*-devel
 python.*-setuptools:py-setuptools:python.*-setuptools
