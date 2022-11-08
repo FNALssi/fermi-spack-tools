@@ -47,7 +47,8 @@ _make_concretize_mirrors_yaml() {
   local out_file="$1"
   cp -p "$mirrors_cfg"{,~} \
     && cp "$default_mirrors" "$mirrors_cfg" \
-    && spack mirror add --scope=site local "$working_dir/copyBack" \
+    && spack mirror add --scope=site __local_binaries "$working_dir/copyBack/spack-binary-mirror" \
+    && spack mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-mirror" \
     && cp "$mirrors_cfg" "$out_file" \
     && mv -f "$mirrors_cfg"{~,} \
       || { printf "ERROR: unable to generate concretization-specific mirrors.yaml at \"$out_file\"\n" 1>&2; exit 1; }
@@ -190,9 +191,9 @@ trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
 _copy_back_logs; \
 if (( failed == 1 )) && [ \"${cache_write_binaries:-none}\" != none ]; then \
   printf \"ALERT: emergency buildcache dump...\\n\" 1>&2 ; \
-  spack ${__debug_spack_buildcache:+-d} buildcache create -a --deptype=all \
+  spack buildcache create -a --deptype=all \
       \${extra_buildcache_opts[*]:+\"\${extra_buildcache_opts[@]}\"} \
-      -d \"$working_dir/copyBack\" \
+      -d \"$working_dir/copyBack/spack-binary-mirror\" \
       -r --rebuild-index \$(spack find --no-groups); \
   printf \"       ...done\\n\" 1>&2; \
 fi\
@@ -250,7 +251,7 @@ spack compiler find --scope=site
 spack ${__debug_spack_bootstrap:+-d} bootstrap now \
   || { printf "ERROR: unable to bootstrap safely with base configuration\n" 1>&2; exit 1; }
 if (( cache_write_bootstrap )); then \
-  spack ${__debug_spack_bootstrap:+-d} bootstrap mirror --binary-packages --dev "$working_dir/copyBack" \
+  spack ${__debug_spack_bootstrap:+-d} bootstrap mirror --binary-packages --dev "$working_dir/copyBack/spack-bootstrap-mirror" \
     || { printf "WARNING: unable to write bootstrap packages to local cache\n" 1>&2; }
 fi
 ####################################
@@ -289,7 +290,8 @@ for cache_spec in ${cache_urls[*]:+"${cache_urls[@]}"}; do
 done
 
 # Add mirror as buildcache for locally-built packages.
-spack mirror add --scope=site local "$working_dir/copyBack"
+spack mirror add --scope=site __local_binaries "$working_dir/copyBack/spack-binary-mirror"
+spack mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-mirror"
 spack buildcache keys
 ####################################
 
@@ -351,13 +353,13 @@ for env_cfg in "$@"; do
   #       `spack buildcache create`
   # 4. Download and save sources to copyBack for mirroring.
   # 5. Install the environment.
-  spack ${__debug_spack_concretize:+-d} -e $env_name concretize --test=root \
+  spack ${__debug_spack_concretize:+-d --backtrace} -e $env_name concretize --test=root \
     && mv -f "$mirrors_cfg"{~,} \
     && spack -e $env_name spec -j \
       | csplit -f "$env_name" -b "_%03d.json" -z -s - '/^\}$/+1' '{*}' \
     && { ! (( cache_write_sources )) \
-           || spack -e $env_name mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack"; } \
-    && spack ${__debug_spack_install:+-d} -e $env_name install --fail-fast --only-concrete \
+           || spack -e $env_name mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack/spack-source-mirror"; } \
+    && spack ${__debug_spack_install:+-d --backtrace} -e $env_name install --fail-fast --only-concrete \
              ${extra_install_opts[*]:+"${extra_install_opts[@]}"} --test=root \
       || failed=1
   if [ -n "$interrupt" ]; then
@@ -376,16 +378,16 @@ for env_cfg in "$@"; do
     for env_json in "${env_name}"_*.json; do
       spack ${__debug_spack_buildcache:+-d} buildcache create -a --deptype=all \
             ${extra_buildcache_opts[*]:+"${extra_buildcache_opts[@]}"} \
-            -d "$working_dir/copyBack" \
-            -r --rebuild-index --spec-file "$env_json"
+            -d "$working_dir/copyBack/spack-binary-mirror" \
+            -r --spec-file "$env_json"
     done
     if [ "$cache_write_binaries" = no_roots ]; then
       for env_json in "${env_name}"_*.json; do
         spec="$(spack buildcache get-buildcache-name --spec-file "$env_json")"
-        find "$working_dir/copyBack" -type f \( -name "$spec.spack" -o -name "$spec.json" -o -name "$spec.json.sig" \) -exec rm -f \{\} \;
+        find "$working_dir/copyBack/spack-binary-mirror" -type f \( -name "$spec.spack" -o -name "$spec.json" -o -name "$spec.json.sig" \) -exec rm -f \{\} \;
       done
-      spack buildcache update-index -k -d "$working_dir/copyBack"
     fi  >/dev/null 2>&1
+    spack buildcache update-index -k -d "$working_dir/copyBack/spack-binary-mirror"
   fi
   if [[ "${env_cfg##*/}" =~ ^((gcc|intel|pgci|clang|xl|nag|fj|aocc)@.*)\.yaml$ ]]; then
     compiler_path="$( ( spack cd -i ${BASH_REMATCH[1]} && pwd -P ) )"
