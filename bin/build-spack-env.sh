@@ -68,9 +68,6 @@ _do_build_and_test() {
   )
   local extra_cmd_opts=()
   if ! [ "$tests_type" = "none" ]; then
-    # If we're testing and want all (not just failing) test logs saved,
-    # ensure the log contains test output.
-    (( save_all_tests )) && extra_cmd_opts+=(--keep-stage)
     extra_cmd_opts+=(--test=$tests_type)
   fi
   if [ -z "$is_compiler_env" ] && [ "$tests_type" = "root" ]; then
@@ -398,7 +395,6 @@ while (( $# )); do
     --no-safe-concretize) unset concretize_safely;;
     --no-ups) ups_opt=-p;;
     --safe-concretize) concretize_safely=1;;
-    --save-all-tests) save_all_tests=1;;
     --spack-config-cmd) spack_config_cmds+=("$2"); shift;;
     --spack-config-cmd=*) spack_config_cmds+=("${1#*=}");;
     --spack-config-file) spack_config_files+=("$2"); shift;;
