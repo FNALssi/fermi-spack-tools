@@ -27,6 +27,7 @@ _copy_back_logs() {
   local spack_env= env_spec= install_prefix=
   mkdir -p "$tar_tmp"
   cd "$spack_env_top_dir"
+  spack clean -dmp
   tar -c *.log *-out.txt *.yaml | tar -C "$tar_tmp" -x
   tar -C "$TMPDIR" -c spack-stage | tar -C "$tar_tmp" -x
   for spack_env in $(spack env list); do
@@ -46,10 +47,10 @@ _copy_back_logs() {
     | while read env_spec install_prefix; do
     if [ -d "$install_prefix/.spack" ]; then
       mkdir -p "$tar_tmp/$env_spec"
-      tar -C "$install_prefix" -c .spack | tar -C "$tar_tmp/$env_spec" -x
+      tar -C "$install_prefix/.spack" -c . | tar -C "$tar_tmp/$env_spec" -x
     fi
   done
-  tar -C "$tar_tmp" -jcf "$working_dir/copyBack/spack-output.tar.bz2" .
+  tar -C "$tar_tmp" -jcf "$working_dir/copyBack/${BUILD_TAG:-spack-output}.tar.bz2" .
   rm -rf "$tar_tmp"
 } 2>/dev/null
 
