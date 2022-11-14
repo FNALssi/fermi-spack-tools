@@ -66,10 +66,7 @@ _do_build_and_test() {
     --only-concrete
     ${extra_install_opts[*]:+"${extra_install_opts[@]}"}
   )
-  local extra_cmd_opts=()
-  if ! [ "$tests_type" = "none" ]; then
-    extra_cmd_opts+=(--test=$tests_type)
-  fi
+  local extra_cmd_opts=(${tests_arg:+"$tests_arg"})
   if [ -z "$is_compiler_env" ] && [ "$tests_type" = "root" ]; then
     extra_cmd_opts+=(--no-cache) # Ensure roots are built even if in cache.
     # Identify and install non-root dependencies first.
@@ -172,7 +169,7 @@ _piecemeal_build() {
   local spack_build_root_cmd=(
     "${spack_install_cmd[@]}" \
       ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"} \
-      ${build_root_hash:+--test=all --no-add "/${build_root_hash##*/}"}
+      ${build_root_hash:+--no-add "/${build_root_hash##*/}"}
   )
   echo "      ${spack_build_root_cmd[*]}"
   "${spack_build_root_cmd[@]}" || return
@@ -229,7 +226,7 @@ _process_environment() {
     ${__debug_spack_concretize:+-d} \
     ${__verbose_spack_concretize:+-v} \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-    concretize --test=$tests_type \
+    concretize ${tests_arg:+"$tests_arg"} \
     && { ! (( concretize_safely )) || mv -f "$mirrors_cfg"{~,}; } \
     && spack \
          -e $env_name \
@@ -444,6 +441,11 @@ case ${tests_type:=none} in
   all|none|root) : ;;
   *) printf "ERROR: unknown --test argument $tests_type\n" 1>&2; exit 1
 esac
+
+tests_arg=
+if ! [ "$tests_type" = "none" ]; then
+  tests_arg="--test=$tests_type"
+fi
 
 
 ####################################
