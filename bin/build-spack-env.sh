@@ -178,7 +178,6 @@ _piecemeal_build() {
   )
   echo "      ${spack_build_root_cmd[*]}"
   "${spack_build_root_cmd[@]}" || return
-  exit 1
   installed_deps+=(${build_root_hash:+"$build_root_hash"})
   if (( ${#buildable_dep_hashes[@]} + ${#build_root_hash} )); then
     OIFS="$IFS"; IFS=$'\n'
