@@ -66,8 +66,9 @@ _do_build_and_test() {
     --only-concrete
     ${extra_install_opts[*]:+"${extra_install_opts[@]}"}
   )
-  local extra_cmd_opts=(${tests_arg:+"$tests_arg"})
-  if ! (( is_compiler_env )) && [ "$tests_type" = "root" ]; then
+  local extra_cmd_opts=
+  (( is_nonterminal_compiler_env )) || extra_cmd_opts+=(${tests_arg:+"$tests_arg"})
+  if ! (( is_nonterminal_compiler_env )) && [ "$tests_type" = "root" ]; then
     extra_cmd_opts+=(--no-cache) # Ensure roots are built even if in cache.
     # Identify and install non-root dependencies first.
     local root_spec_args=()
@@ -210,11 +211,23 @@ _process_environment() {
       && cp "$concretize_mirrors" "$mirrors_cfg" \
         || { printf "ERROR: failed to install \"$concretize_mirrors\" prior to concretizing $env_name\n" 1>&2; exit 1; }
   fi
-  local is_compiler_env=
+  local is_nonterminal_compiler_env=
   local env_spec="${env_cfg%.yaml}"
   env_spec="${env_spec##*/}"
-  [[ "$env_spec"  =~ ^$known_compilers_re([~+@%[:space:]].*)?$ ]] \
-    && is_compiler_env=1
+  ####################################
+  # If this environment is:
+  #
+  #   1. Not the last environment in the build list, and
+  #
+  #   2. a compiler environment
+  #
+  # then note that fact.
+  (( num_environments > ++env_idx ))
+    && [[ "$env_spec"  =~ ^$known_compilers_re([~+@%[:space:]].*)?$ ]] \
+    && is_nonterminal_compiler_env=1
+  ####################################
+
+  ####################################
   # 1. Concretize the environment with a possibly restricted mirror
   #    list, restoring the original mirror list immediately afterward.
   # 2. Store the environment specs so they can be used by
@@ -251,6 +264,9 @@ _process_environment() {
   fi
   (( failed == 0 )) \
     || { printf "ERROR: failed to build environment $env_name\n" 1>&2; exit $failed; }
+  ####################################
+
+  ####################################
   # Store all successfully-built packages in the buildcache
   if [ "${cache_write_binaries:-none}" != none ]; then
     for env_json in "${env_name}"_*.json; do
@@ -273,7 +289,12 @@ _process_environment() {
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
       buildcache update-index -k -d "$working_dir/copyBack/spack-binary-mirror"
   fi
-  if (( is_compiler_env )); then
+  ####################################
+
+  ####################################
+  # If we just built a non-terminal compiler environment, add the
+  # compiler to the list of available compilers.
+  if (( is_nonterminal_compiler_env )); then
     compiler_path="$( ( spack \
                     -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
@@ -285,6 +306,7 @@ _process_environment() {
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
       compiler find "$compiler_path"
   fi
+  ####################################
 }
 
 _remove_root_hash() {
@@ -647,10 +669,16 @@ if ! [ "$ups_opt" = "-p" ]; then
 fi
 ####################################
 
+environment_specs=("$@")
+num_environments=${#environment_specs}
+env_idx=0
 
-for env_cfg in "$@"; do
+####################################
+# Build each specified environment.
+for env_cfg in ${environment_specs[*]:+"${environment_specs[@]}"}; do
   _process_environment "$env_cfg"
 done
+####################################
 
 ### Local Variables:
 ### mode: sh
