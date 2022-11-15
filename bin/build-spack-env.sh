@@ -67,7 +67,7 @@ _do_build_and_test() {
     --only-concrete
     ${extra_install_opts[*]:+"${extra_install_opts[@]}"}
   )
-  local extra_cmd_opts=
+  local extra_cmd_opts=()
   (( is_nonterminal_compiler_env )) || extra_cmd_opts+=(${tests_arg:+"$tests_arg"})
   if ! (( is_nonterminal_compiler_env )) && [ "$tests_type" = "root" ]; then
     extra_cmd_opts+=(--no-cache) # Ensure roots are built even if in cache.
@@ -685,7 +685,7 @@ fi
 ####################################
 
 environment_specs=("$@")
-num_environments=${#environment_specs}
+num_environments=${#environment_specs[@]}
 env_idx=0
 
 ####################################
