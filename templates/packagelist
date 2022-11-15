@@ -8,6 +8,7 @@ bison:bison:bison-devel
 bzip2:bzip2:bzip2-devel
 cigetcert:cigetcert:cigetcert
 cmake:cmake:cmake
+coreutils:coreutils:coreutils
 libcurl:curl:libcurl-devel
 xorg-x11-proto-devel:damageproto:xorg-x11-proto-devel
 davix:davix:davix-devel
