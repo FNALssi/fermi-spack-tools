@@ -436,7 +436,7 @@ while (( $# )); do
     --working_dir) working_dir="$2"; shift;;
     -h) usage; exit 1;;
     --) shift; break;;
-    -*) printf "ERROR unrecognized option $1\n$(usage)" 1>&2; exit 2;;
+    -*) printf "ERROR: unrecognized option $1\n$(usage)" 1>&2; exit 2;;
     *) break
   esac
   shift
@@ -450,8 +450,8 @@ concretize_mirrors="$working_dir/concretize_mirrors.yaml"
 ####################################
 # Set up working area.
 [ -n "$working_dir" ] || working_dir="${WORKSPACE:-$(pwd)}"
-mkdir -p "$working_dir" || { printf "ERROR unable to ensure existence of working directory \"$working_dir\"\n" 1>&2; exit 1; }
-cd "$working_dir" || { printf "ERROR unable to change to working directory \"$working_dir\"\n" 1>&2; exit 1; }
+mkdir -p "$working_dir" || { printf "ERROR: unable to ensure existence of working directory \"$working_dir\"\n" 1>&2; exit 1; }
+cd "$working_dir" || { printf "ERROR: unable to change to working directory \"$working_dir\"\n" 1>&2; exit 1; }
 if [ -z "$TMPDIR" ]; then
   export TMPDIR="$working_dir/tmp"
   rm -rf "$TMPDIR"
