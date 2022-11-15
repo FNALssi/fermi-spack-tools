@@ -637,7 +637,6 @@ spack buildcache keys
 # Initialize signing key for binary packages.
 if [ -n "$SPACK_BUILDCACHE_SECRET" ]; then
   spack \
-    -e $env_name \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
     gpg trust "$SPACK_BUILDCACHE_SECRET"
   # Handle older Spack installations that need the long-format keyid.
