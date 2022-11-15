@@ -6,6 +6,7 @@ xorg-x11-font-utils:bdftopcf:xorg-x11-font-utils
 binutils:binutils:binutils-devel
 bison:bison:bison-devel
 bzip2:bzip2:bzip2-devel
+cigetcert:cigetcert:cigetcert
 cmake:cmake:cmake
 libcurl:curl:libcurl-devel
 xorg-x11-proto-devel:damageproto:xorg-x11-proto-devel
@@ -30,6 +31,7 @@ gperf:gperf:gperf
 groff-base:groff:groff-base
 gsl:gsl:gsl-devel
 help2man:help2man:help2man
+htgettoken:htgettoken:htgettoken
 condor:htcondor:condor
 hwloc:hwloc:hwloc-devel
 krb5-libs:krb5:krb5-devel
@@ -97,7 +99,6 @@ perl:perl:perl-devel
 pkgconfig:pkg-config:pkgconfig
 pkgconf-pkg-config:pkg-config:pkgconf-pkg-config
 python:python:python-devel
-python.*-setuptools:py-setuptools:python.*-setuptools
 readline:readline:readline-devel
 rhash:rhash:rhash-devel
 sqlite:sqlite:sqlite-devel
