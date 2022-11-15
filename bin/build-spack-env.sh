@@ -422,6 +422,8 @@ while (( $# )); do
     --spack-infrastructure-root=*) si_root="${1#*=}";;
     --spack-infrastructure-version) si_ver="$2"; shift;;
     --spack-infrastructure-version=*) si_ver="${1#*=}";;
+    --spack-python) spack_python="$2"; shift;;
+    --spack-python=*) spack_python="${1#*=}";;
     --spack-root) spack_root="$2"; shift;;
     --spack-root=*) spack_root="${1#*=}";;
     --spack-version) spack_ver="$2"; shift;;
@@ -446,6 +448,18 @@ spack_env_top_dir="$working_dir/spack_env"
 mirrors_cfg="$spack_env_top_dir/etc/spack/mirrors.yaml"
 default_mirrors="$spack_env_top_dir/etc/spack/defaults/mirrors.yaml"
 concretize_mirrors="$working_dir/concretize_mirrors.yaml"
+
+####################################
+# Handle SPACK_PYTHON
+if [ -n "$spack_python" ]; then
+  python_type="$(type -t "$spack_python")" \
+    || { printf "ERROR: specified python \"$spack_python\" is not a viable command\n" 1>&2; exit 1; }
+  [ "$python_type" = "file" ] && spack_python="$(type -P "$spack_python")"
+  export SPACK_PYTHON="$spack_python"
+fi
+
+[ -n "$SPACK_PYTHON" ] && echo "==> SPACK_PYTHON=$SPACK_PYTHON"
+####################################
 
 ####################################
 # Set up working area.
