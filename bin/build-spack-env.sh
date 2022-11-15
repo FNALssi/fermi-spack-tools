@@ -67,7 +67,7 @@ _do_build_and_test() {
     ${extra_install_opts[*]:+"${extra_install_opts[@]}"}
   )
   local extra_cmd_opts=(${tests_arg:+"$tests_arg"})
-  if [ -z "$is_compiler_env" ] && [ "$tests_type" = "root" ]; then
+  if ! (( is_compiler_env )) && [ "$tests_type" = "root" ]; then
     extra_cmd_opts+=(--no-cache) # Ensure roots are built even if in cache.
     # Identify and install non-root dependencies first.
     local root_spec_args=()
@@ -214,7 +214,7 @@ _process_environment() {
   local env_spec="${env_cfg%.yaml}"
   env_spec="${env_spec##*/}"
   [[ "$env_spec"  =~ ^$known_compilers_re([~+@%[:space:]].*)?$ ]] \
-    && is_compiler_env="${BASH_REMATCH[1]}"
+    && is_compiler_env=1
   # 1. Concretize the environment with a possibly restricted mirror
   #    list, restoring the original mirror list immediately afterward.
   # 2. Store the environment specs so they can be used by
@@ -273,14 +273,14 @@ _process_environment() {
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
       buildcache update-index -k -d "$working_dir/copyBack/spack-binary-mirror"
   fi
-  if [ -n "$is_compiler_env" ]; then
+  if (( is_compiler_env )); then
     compiler_path="$( ( spack \
                     -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-                     cd -i ${BASH_REMATCH[1]} && pwd -P ) )"
+                     location --install-dir "${env_spec}" ) )"
     status=$?
     (( $status == 0 )) \
-      || { printf "ERROR: failed to extract path info for new compiler $is_compiler_env\n" 1>&2; exit $status; }
+      || { printf "ERROR: failed to extract path info for new compiler $env_spec\n" 1>&2; exit $status; }
     spack \
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
       compiler find "$compiler_path"
@@ -523,24 +523,9 @@ fi
 ####################################
 
 ####################################
-# Source the setup script and start work.
+# Source the setup script.
 source "$spack_env_top_dir/setup-env.sh" \
   || { printf "ERROR: unable to set up Spack $spack_ver\n" 1>&2; exit 1; }
-spack compiler find --scope=site
-spack \
-  ${__debug_spack_bootstrap:+-d} \
-  ${__verbose_spack_bootstrap:+-v} \
-  ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-  bootstrap now \
-  || { printf "ERROR: unable to bootstrap safely with base configuration\n" 1>&2; exit 1; }
-if (( cache_write_bootstrap )); then \
-  spack \
-    ${__debug_spack_bootstrap:+-d} \
-    ${__verbose_spack_bootstrap:+-v} \
-    ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-    bootstrap mirror --binary-packages --dev "$working_dir/copyBack/spack-bootstrap-mirror" \
-    || { printf "WARNING: unable to write bootstrap packages to local cache\n" 1>&2; }
-fi
 ####################################
 
 ####################################
@@ -585,6 +570,30 @@ done
 # Add mirror as buildcache for locally-built packages.
 spack mirror add --scope=site __local_binaries "$working_dir/copyBack/spack-binary-mirror"
 spack mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-mirror"
+
+# Make a cut-down mirror configuration for safe concretization.
+if (( concretize_safely )); then
+  _make_concretize_mirrors_yaml "$concretize_mirrors"
+fi
+####################################
+
+####################################
+# Make sure we know about compilers.
+spack compiler find --scope=site
+####################################
+
+####################################
+# Execute bootstrap explicitly.
+spack \
+  ${__debug_spack_bootstrap:+-d} \
+  ${__verbose_spack_bootstrap:+-v} \
+  ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+  bootstrap now \
+  || { printf "ERROR: unable to bootstrap safely with base configuration\n" 1>&2; exit 1; }
+####################################
+
+####################################
+# Update our local public keys from configured build caches.
 spack buildcache keys
 ####################################
 
@@ -602,6 +611,18 @@ else
   # Enable insecure mirror use.
   extra_buildcache_opts+=(-u)
   extra_install_opts+=(--no-check-signature)
+fi
+####################################
+
+####################################
+# Write bootstrap packages to cache.
+if (( cache_write_bootstrap )); then \
+  spack \
+    ${__debug_spack_bootstrap:+-d} \
+    ${__verbose_spack_bootstrap:+-v} \
+    ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+    bootstrap mirror --binary-packages --dev "$working_dir/copyBack/spack-bootstrap-mirror" \
+    || { printf "WARNING: unable to write bootstrap packages to local cache\n" 1>&2; }
 fi
 ####################################
 
@@ -626,7 +647,6 @@ if ! [ "$ups_opt" = "-p" ]; then
 fi
 ####################################
 
-_make_concretize_mirrors_yaml "$concretize_mirrors"
 
 for env_cfg in "$@"; do
   _process_environment "$env_cfg"
