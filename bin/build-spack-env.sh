@@ -222,7 +222,7 @@ _process_environment() {
   #   2. a compiler environment
   #
   # then note that fact.
-  (( num_environments > ++env_idx ))
+  (( num_environments > ++env_idx )) \
     && [[ "$env_spec"  =~ ^$known_compilers_re([~+@%[:space:]].*)?$ ]] \
     && is_nonterminal_compiler_env=1
   ####################################
