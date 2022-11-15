@@ -30,6 +30,7 @@ gperf:gperf:gperf
 groff-base:groff:groff-base
 gsl:gsl:gsl-devel
 help2man:help2man:help2man
+condor:htcondor:condor
 hwloc:hwloc:hwloc-devel
 krb5-libs:krb5:krb5-devel
 libicu:icu4c:libicu-devel
