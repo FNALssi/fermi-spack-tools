@@ -25,10 +25,11 @@ EOF
 _copy_back_logs() {
   local tar_tmp="$working_dir/copyBack/tmp"
   local spack_env= env_spec= install_prefix=
-  mkdir -p "$tar_tmp"
+  mkdir -p "$tar_tmp/spack_env"
   cd "$spack_env_top_dir"
   spack clean -dmp
-  tar -c *.log *-out.txt *.yaml | tar -C "$tar_tmp" -x
+  tar -c *.log *-out.txt *.yaml etc var/spack/environments \
+    | tar -C "$tar_tmp/spack_env" -x
   tar -C "$TMPDIR" -c spack-stage | tar -C "$tar_tmp" -x
   for spack_env in $(spack env list); do
     spack -e $spack_env \
@@ -46,8 +47,8 @@ _copy_back_logs() {
     | sort -u \
     | while read env_spec install_prefix; do
     if [ -d "$install_prefix/.spack" ]; then
-      mkdir -p "$tar_tmp/$env_spec"
-      tar -C "$install_prefix/.spack" -c . | tar -C "$tar_tmp/$env_spec" -x
+      mkdir -p "$tar_tmp/installed/$env_spec"
+      tar -C "$install_prefix/.spack" -c . | tar -C "$tar_tmp/installed/$env_spec" -x
     fi
   done
   tar -C "$tar_tmp" -jcf "$working_dir/copyBack/${BUILD_TAG:-spack-output}.tar.bz2" .
@@ -444,10 +445,22 @@ while (( $# )); do
   shift
 done
 
+####################################
+# Set up working area.
+[ -n "$working_dir" ] || working_dir="${WORKSPACE:-$(pwd)}"
+mkdir -p "$working_dir" || { printf "ERROR: unable to ensure existence of working directory \"$working_dir\"\n" 1>&2; exit 1; }
+cd "$working_dir" || { printf "ERROR: unable to change to working directory \"$working_dir\"\n" 1>&2; exit 1; }
+if [ -z "$TMPDIR" ]; then
+  export TMPDIR="$working_dir/tmp"
+  rm -rf "$TMPDIR"
+  mkdir -p "$TMPDIR"
+fi
+####################################
+
 spack_env_top_dir="$working_dir/spack_env"
 mirrors_cfg="$spack_env_top_dir/etc/spack/mirrors.yaml"
 default_mirrors="$spack_env_top_dir/etc/spack/defaults/mirrors.yaml"
-concretize_mirrors="$working_dir/concretize_mirrors.yaml"
+concretize_mirrors="$spack_env_top_dir/concretize_mirrors.yaml"
 
 ####################################
 # Handle SPACK_PYTHON
@@ -461,17 +474,6 @@ fi
 [ -n "$SPACK_PYTHON" ] && echo "==> SPACK_PYTHON=$SPACK_PYTHON"
 ####################################
 
-####################################
-# Set up working area.
-[ -n "$working_dir" ] || working_dir="${WORKSPACE:-$(pwd)}"
-mkdir -p "$working_dir" || { printf "ERROR: unable to ensure existence of working directory \"$working_dir\"\n" 1>&2; exit 1; }
-cd "$working_dir" || { printf "ERROR: unable to change to working directory \"$working_dir\"\n" 1>&2; exit 1; }
-if [ -z "$TMPDIR" ]; then
-  export TMPDIR="$working_dir/tmp"
-  rm -rf "$TMPDIR"
-  mkdir -p "$TMPDIR"
-fi
-####################################
 
 case ${tests_type:=none} in
   all|none|root) : ;;
