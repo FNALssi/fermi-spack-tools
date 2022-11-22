@@ -99,7 +99,7 @@ _do_build_and_test() {
     # Loop through all specs in reverse order (i.e. generally up each
     # dependency tree).
     local idx=${#hashes[@]}
-    while (( idx )); do
+    while (( idx > 0 )); do
       _piecemeal_build || return
     done
   else
