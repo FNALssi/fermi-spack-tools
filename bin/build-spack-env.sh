@@ -642,7 +642,7 @@ if [ -n "$SPACK_BUILDCACHE_SECRET" ]; then
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
     gpg trust "$SPACK_BUILDCACHE_SECRET"
   # Handle older Spack installations that need the long-format keyid.
-  keyid="$(gpg2 --list-secret-keys --keyid-format long --homedir "$SPACK_ROOT/opt/spack/gpg" | sed -Ene '/^sec/{s&^[^/]+/([A-F0-9]+).*$&\1&p; q}')"
+  keyid="$(gpg2 --list-secret-keys --keyid-format long --homedir "${SPACK_GNUPGHOME:-$SPACK_ROOT/opt/spack/gpg}" | sed -Ene '/^sec/{s&^[^/]+/([A-F0-9]+).*$&\1&p; q}')"
   extra_buildcache_opts+=(--key "$keyid")
 else
   # Enable insecure mirror use.
