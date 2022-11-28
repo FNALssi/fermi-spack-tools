@@ -12,14 +12,71 @@
 #
 ####################################
 
-prog="${BASH_SOURCE##*/}"
-working_dir="${WORKSPACE:=$(pwd)}"
 shopt -s extglob nullglob
+
+####################################
+# Message tags.
+(( INFO = 0 )) # Baseline.
+# Important.
+(( WARNING = INFO - 1 ))
+(( ERROR = WARNING - 1 ))
+(( FATAL_ERROR = ERROR - 1 ))
+(( INTERNAL_ERROR = FATAL_ERROR -1 ))
+(( PIPE = INTERNAL_ERROR - 1 ))
+# Informative.
+(( PROGRESS = INFO + 1 ))
+(( DEBUG_0 = PROGRESS )) # Bookkeeping.
+(( DEBUG_1 = DEBUG_0 + 1 ))
+(( DEBUG_2 = DEBUG_1 + 1 ))
+(( DEBUG_3 = DEBUG_2 + 1 ))
+(( DEBUG_4 = DEBUG_3 + 1 ))
+# ... etc.
+####################################
+
+# Exit status codes.
+(( EXIT_SUCCESS = 0 ))
+(( EXIT_FAILURE = 1 ))
+(( EXIT_PATH_FAILURE = 2 ))
+(( EXIT_BOOTSTRAP_FAILURE = 3 ))
+(( EXIT_CONFIG_FAILURE = 4 ))
+(( EXIT_UPS_FAILURE = 5 ))
+(( EXIT_SPACK_CONFIG_FAILURE = 6 ))
+(( EXIT_SPACK_ENV_FAILURE = 7 ))
+(( EXIT_SPACK_CONCRETIZE_FAILURE = 8 ))
+(( EXIT_SPACK_INSTALL_FAILURE = 9 ))
+(( EXIT_SPACK_GPG_FAILURE = 10 ))
+
+# Default verbosity
+(( DEFAULT_VERBOSITY = DEBUG_4 ))
+(( VERBOSITY = DEFAULT_VERBOSITY ))
+
+# Unredirected standard outout, error
+(( STDOUT = 3 ))
+(( STDERR = 4 ))
+eval exec "$STDOUT>&1" "$STDERR>&2"
+
+prog="${BASH_SOURCE##*/}"
+progfill=${prog//?/ }
+working_dir="${WORKSPACE:=$(pwd)}"
 
 usage() {
   cat <<EOF
+
 usage: $prog 
 EOF
+}
+
+# Report and execute this command.
+_cmd() {
+  local cmd_severity=$VERBOSITY
+  _report_cmd "$@"
+  while [[ "$1" =~ ^-?[0-9]*$ ]]; do
+    (( cmd_severity = $1 ))
+    shift
+  done
+  [ -n "$redirect" ] \
+    || { (( VERBOSITY < cmd_severity )) && local redirect='>/dev/null 2>&1'; }
+  eval '"$@"' $redirect
 }
 
 _copy_back_logs() {
@@ -27,16 +84,16 @@ _copy_back_logs() {
   local spack_env= env_spec= install_prefix=
   mkdir -p "$tar_tmp/spack_env"
   cd "$spack_env_top_dir"
-  spack clean -dmp
-  tar -c *.log *-out.txt *.yaml etc var/spack/environments \
-    | tar -C "$tar_tmp/spack_env" -x
-  tar -C "$TMPDIR" -c spack-stage | tar -C "$tar_tmp" -x
+  _cmd $DEBUG_1 spack clean -dmp
+  _cmd $DEBUG_1 $PIPE tar -c *.log *-out.txt *.yaml etc var/spack/environments \
+    | _cmd $DEBUG_1 tar -C "$tar_tmp/spack_env" -x
+  _cmd $DEBUG_1 $PIPE tar -C "$TMPDIR" -c spack-stage | _cmd $DEUBG_1 tar -C "$tar_tmp" -x
   for spack_env in $(spack env list); do
-    spack -e $spack_env \
+    _cmd $DEBUG_1 $PIPE spack -e $spack_env \
           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
           spec --format '{fullname}{/hash}' \
       | while read root_spec; do
-      spack \
+      _cmd $DEBUG_1 $PIPE spack \
         ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
         find -d --no-groups \
         --format '{fullname}{/hash}'$'\t''{prefix}' \
@@ -48,12 +105,22 @@ _copy_back_logs() {
     | while read env_spec install_prefix; do
     if [ -d "$install_prefix/.spack" ]; then
       mkdir -p "$tar_tmp/installed/$env_spec"
-      tar -C "$install_prefix/.spack" -c . | tar -C "$tar_tmp/installed/$env_spec" -x
+      _cmd $DEBUG_1 $PIPE tar -C "$install_prefix/.spack" -c . \
+        | _cmd $DEBUG_1 tar -C "$tar_tmp/installed/$env_spec" -x
     fi
   done
-  tar -C "$tar_tmp" -jcf "$working_dir/copyBack/${BUILD_TAG:-spack-output}.tar.bz2" .
-  rm -rf "$tar_tmp"
+  _cmd $DEBUG_1 $PIPE tar -C "$tar_tmp" -jcf "$working_dir/copyBack/${BUILD_TAG:-spack-output}.tar.bz2" .
+  _debug $DEBUG_1 rm -rf "$tar_tmp"
 } 2>/dev/null
+
+# Print a message and exit with the specifed numeric first argument or 1
+# as status code.
+_die() {
+  local exitval= DIE_ERROR="${DIE_ERROR:-FATAL}"
+  if [[ "$1" =~ ^[0-9]*$ ]]; then (( exitval = $1 )); shift; fi
+  _report $ERROR "$@"
+  exit ${exitval:-$EXIT_FAILURE}
+}
 
 _do_build_and_test() {
   local spack_install_cmd=(
@@ -104,14 +171,18 @@ _do_build_and_test() {
     done
   else
     # Build the whole environment.
-    echo "==> building environment $env_name"
+    _report "building environment $env_name"
     local spack_build_env_cmd=(
       "${spack_install_cmd[@]}"
       ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"}
     )
-    echo "      ${spack_build_env_cmd[*]}"
-    "${spack_build_env_cmd[@]}"
+    _cmd $PROGRESS $INFO "${spack_build_env_cmd[@]}"
   fi
+}
+
+_internal_error() {
+  local DIE_ERROR="INTERNAL"
+  _die "$@"
 }
 
 # Test a hash to see whether it's present in a sorted list
@@ -127,6 +198,7 @@ _in_sorted_hashlist() {
 
 _make_concretize_mirrors_yaml() {
   local out_file="$1"
+  _report $DEBUG_1 "generating concretization-specific mirrors.yaml at \"$out_file\""
   cp -p "$mirrors_cfg"{,~} \
     && cp "$default_mirrors" "$mirrors_cfg" \
     && spack \
@@ -137,7 +209,7 @@ _make_concretize_mirrors_yaml() {
          mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-mirror" \
     && cp "$mirrors_cfg" "$out_file" \
     && mv -f "$mirrors_cfg"{~,} \
-      || { printf "ERROR: unable to generate concretization-specific mirrors.yaml at \"$out_file\"\n" 1>&2; exit 1; }
+      || _die $EXIT_SPACK_CONFIG_FAILURE "unable to generate concretization-specific mirrors.yaml at \"$out_file\""
 }
 
 _piecemeal_build() {
@@ -148,7 +220,7 @@ _piecemeal_build() {
       _remove_root_hash "${hashes[$idx]}"
       break;
     fi
-    # This is a dependency we should build.
+    # This is a dependency we should build if we haven't already.
     _in_sorted_hashlist "${hashes[$idx]}" ${installed_deps[*]:+"${installed_deps[@]}"}\
       || buildable_dep_hashes+=("${hashes[$idx]}")
   done
@@ -158,23 +230,23 @@ _piecemeal_build() {
   IFS="$OIFS"
   # Build identified dependencies.
   if (( ${#buildable_dep_hashes[@]} )); then
-    echo "==> building the following dependencies of root packages in environment $env_name:"
-    OIFS="$IFS"; IFS=$'\n'; echo "${buildable_dep_hashes[*]/#/      }"; IFS="$OIFS"
-    "${spack_install_cmd[@]}" ${buildable_dep_hashes[*]:+--no-add "${buildable_dep_hashes[@]//*\///}"} \
+    _report $PROGRESS "building ${#buildable_dep_hashes[@]} dependencies of root packages in environment $env_name (tranche #$(( ++deps_tranche_counter )))"
+    _cmd $DEBUG_1 $INFO \
+         "${spack_install_cmd[@]}" \
+         ${buildable_dep_hashes[*]:+--no-add "${buildable_dep_hashes[@]//*\///}"} \
       || return
     # Add deps to list of installed deps.
     installed_deps+=(${buildable_dep_hashes[*]:+"${buildable_dep_hashes[@]}"})
   fi
   # Build identified root or the whole environment if we've run out of
   # intermediate roots to build.
-  echo "==> building${build_root_hash:+ root package $build_root_hash in} environment $env_name"
+  _report $PROGRESS "building${build_root_hash:+ root package $build_root_hash in} environment $env_name"
   local spack_build_root_cmd=(
     "${spack_install_cmd[@]}" \
       ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"} \
       ${build_root_hash:+--no-add "/${build_root_hash##*/}"}
   )
-  echo "      ${spack_build_root_cmd[*]}"
-  "${spack_build_root_cmd[@]}" || return
+  _cmd $PROGRESS $INFO "${spack_build_root_cmd[@]}" || return
   installed_deps+=(${build_root_hash:+"$build_root_hash"})
   if (( ${#buildable_dep_hashes[@]} + ${#build_root_hash} )); then
     OIFS="$IFS"; IFS=$'\n'
@@ -188,7 +260,7 @@ _process_environment() {
   local env_cfg="$1"
   if [[ "$env_cfg" =~ ^[a-z][a-z0-9_-]*://(.*/)?(.*) ]]; then
     curl -o "${BASH_REMATCH[2]}" --insecure --fail -L "$env_cfg" \
-      || { printf "ERROR: unable to obtain specified environment config file \"$env_cfg\"\n" 1>&2; exit 1; }
+      || _die $EXIT_PATH_FAILURE "unable to obtain specified environment config file \"$env_cfg\""
     env_cfg="${BASH_REMATCH[2]}"
   fi
   env_name="${env_cfg##*/}"
@@ -198,10 +270,11 @@ _process_environment() {
   spack \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
     env rm -y $env_name >/dev/null 2>&1
-  spack \
+  _report $PROGRESS "creating environment $env_name from $env_cfg"
+  _cmd $DEBUG_1 spack \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
     env create --without-view $env_name "$env_cfg" \
-    || { printf "ERROR: unable to create environment $env_name from $env_cfg\n" 1>&2; exit 1; }
+    || _die $EXIT_SPACK_ENV_FAILURE "unable to create environment $env_name from $env_cfg"
   # Save logs and attempt to cache successful builds before we're killed.
   trap 'interrupt=$?; _copy_back_logs' HUP INT QUIT TERM
   # Copy our concretization-specific mirrors configuration into place to
@@ -210,7 +283,7 @@ _process_environment() {
   if (( concretize_safely )); then
     cp -p "$mirrors_cfg"{,~} \
       && cp "$concretize_mirrors" "$mirrors_cfg" \
-        || { printf "ERROR: failed to install \"$concretize_mirrors\" prior to concretizing $env_name\n" 1>&2; exit 1; }
+        || _die $EXIT_PATH_FAILURE "failed to install \"$concretize_mirrors\" prior to concretizing $env_name"
   fi
   local is_nonterminal_compiler_env=
   local env_spec="${env_cfg%.yaml}"
@@ -235,60 +308,69 @@ _process_environment() {
   #       `spack buildcache create`
   # 3. Download and save sources to copyBack for mirroring.
   # 4. Install the environment.
-  spack \
-    -e $env_name \
-    ${__debug_spack_concretize:+-d} \
-    ${__verbose_spack_concretize:+-v} \
-    ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-    concretize ${tests_arg:+"$tests_arg"} \
+  _report $PROGRESS "concretizing environment $env_name${concretize_safely:+ safely}"
+  _cmd $DEBUG_1 $PROGRESS \
+       spack \
+       -e $env_name \
+       ${__debug_spack_concretize:+-d} \
+       ${__verbose_spack_concretize:+-v} \
+       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+       concretize ${tests_arg:+"$tests_arg"} \
     && { ! (( concretize_safely )) || mv -f "$mirrors_cfg"{~,}; } \
-    && spack \
-         -e $env_name \
-         ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+    && _report $DEBUG_1 "saving concretized spec as ${env_name}_nnn.json" \
+    && _cmd $DEBUG_1 $PIPE spack \
+            -e $env_name \
+            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
          spec -j \
       | csplit -f "$env_name" -b "_%03d.json" -z -s - '/^\}$/+1' '{*}' \
     && { ! (( cache_write_sources )) \
-           || spack \
-                -e $env_name \
-                ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-                mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack/spack-source-mirror"; } \
-    && _do_build_and_test \
-      || failed=1
+           || { _report $PROGRESS "caching sources in local mirror"
+                _cmd $DEBUG_1 $PROGRESS spack \
+                     -e $env_name \
+                     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+                     mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack/spack-source-mirror"; }; } \
+                  && _do_build_and_test \
+                    || failed=1
   if [ -n "$interrupt" ]; then
     failed=1 # Trigger buildcache dump.
-    printf "ABORT: exit due to caught signal ${interrupt:-(HUP, INT, QUIT or TERM)}\n" 1>&2
-    if (( interrupt )); then
-      exit $interrupt
-    else
-      exit 3
-    fi
+    local tag_text=ALERT
+    _die $interrupt "exit due to caught signal ${interrupt:-(HUP, INT, QUIT or TERM)}"
   fi
   (( failed == 0 )) \
-    || { printf "ERROR: failed to build environment $env_name\n" 1>&2; exit $failed; }
+    || _die "failed to build environment $env_name" 1>&2
   ####################################
 
   ####################################
   # Store all successfully-built packages in the buildcache
   if [ "${cache_write_binaries:-none}" != none ]; then
-    for env_json in "${env_name}"_*.json; do
-      spack \
-        ${__debug_spack_buildcache:+-d} \
-        ${__verbose_spack_buildcache:+-v} \
-        ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-        buildcache create -a --deptype=all \
-        ${extra_buildcache_opts[*]:+"${extra_buildcache_opts[@]}"} \
-        -d "$working_dir/copyBack/spack-binary-mirror" \
-        -r --spec-file "$env_json"
+    _report $PROGRESS "caching $cache_write_binaries binary packages for environment $env_name in local mirror"
+    for env_json in "$env_name"_*.json; do
+      _cmd $DEBUG_1 $PROGRESS \
+           spack \
+           ${__debug_spack_buildcache:+-d} \
+           ${__verbose_spack_buildcache:+-v} \
+           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+           buildcache create -a --deptype=all \
+           ${extra_buildcache_opts[*]:+"${extra_buildcache_opts[@]}"} \
+           -d "$working_dir/copyBack/spack-binary-mirror" \
+           -r --spec-file "$env_json"
     done
     if [ "$cache_write_binaries" = "no_roots" ]; then
-      for env_json in "${env_name}"_*.json; do
+      _report $PROGRESS "removing roots of environment $env_name from binary cache"
+      for env_json in "$env_name"_*.json; do
         spec="$(spack buildcache get-buildcache-name --spec-file "$env_json")"
-        find "$working_dir/copyBack/spack-binary-mirror" -type f \( -name "$spec.spack" -o -name "$spec.json" -o -name "$spec.json.sig" \) -exec rm -f \{\} \;
+        _report $DEBUG_1 "removing package for root spec $spec from binary cache"
+        find "$working_dir/copyBack/spack-binary-mirror" \
+             -type f \
+             \( -name "$spec.spack" -o -name "$spec.json" -o -name "$spec.json.sig" \) \
+             -exec rm -f \{\} \;
       done
     fi  >/dev/null 2>&1
-    spack \
-      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-      buildcache update-index -k -d "$working_dir/copyBack/spack-binary-mirror"
+    _report $PROGRESS "updating local build cache index"
+    _cmd $DEBUG_1 $PROGRESS \
+         spack \
+         ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+         buildcache update-index -k -d "$working_dir/copyBack/spack-binary-mirror"
   fi
   ####################################
 
@@ -299,16 +381,36 @@ _process_environment() {
     compiler_path="$( ( spack \
                     -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-                     location --install-dir "${env_spec}" ) )"
-    status=$?
-    (( $status == 0 )) \
-      || { printf "ERROR: failed to extract path info for new compiler $env_spec\n" 1>&2; exit $status; }
-    spack \
+                     location --install-dir "$env_spec" ) )" \
+      || _die $EXIT_PATH_FAILURE "failed to extract path info for new compiler $env_spec"
+    _report $DEBUG_1 "registering compiler at $compiler_path with Spack"
+    _cmd $DEBUG_1 spack \
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
       compiler find "$compiler_path"
   fi
   ####################################
 }
+
+# Properly quote a message for protection from the shell if copy/pasted.
+if (( ${BASH_VERSINFO[0]} > 4 )) \
+     || { (( ${BASH_VERSINFO[0]} == 4 )) \
+            && (( ${BASH_VERSINFO[1]} >= 4 )); }; then
+_quote() { local result_var="$1"; shift; eval $result_var='"${*@Q}"'; }
+else
+_quote() {
+  local x= result_var="$1" result=()
+  shift
+  for x in "$@"; do
+    if [[ "$x" =~ ^[.A-Za-z0-9_/@=-]*$ ]]; then
+      result+=("$x")
+    else
+      local tmp_result="${x//\\/\\\\}"
+      result+=("'${tmp_result//\'/\'\"\'\"\'}'")
+    fi
+  done
+  eval $result_var='"${result[*]}"'
+}
+fi
 
 _remove_root_hash() {
   local handled_root="$1"
@@ -319,14 +421,57 @@ _remove_root_hash() {
   root_hashes=(${filtered_root_hashes[*]:+"${filtered_root_hashes[@]}"})
 }
 
+# Print a message with the specifed numeric first argument or 0 as
+# severity.
+_report() {
+  local severity=$DEFAULT_VERBOSITY redirect=">&$STDOUT"
+  if [[ "$1" =~ ^-?[0-9]*$ ]]; then (( severity = $1 )); shift; fi
+  (( VERBOSITY < severity )) && return # Diagnostics suppression.
+  (( severity < INFO )) && redirect=">&$STDERR" # Important to stderr.
+  local severity_tag="$(_severity_tag $severity)"
+  eval printf '"${severity_tag:+$severity_tag }${is_cmd:+executing }$*\n"' \
+       $redirect \
+    || { echo "==> INTERNAL_ERROR: unable to report: $*" >&$STDERR; exit $EXIT_FAILURE; }
+}
+
+# Report the command we're just about to execute.
+_report_cmd() {
+  local is_cmd=1 verbosity_directives=() quoted_cmd=()
+  while [[ "$1" =~ ^-?[0-9]*$ ]]; do
+    verbosity_directives+=("$1")
+    shift
+  done
+  # We only use the first verbosity directive (if we have it) for the report:
+  _quote quoted_cmd "$@"
+  _report $verbosity_directives "$quoted_cmd"
+}
+
 _set_cache_write_binaries() {
   local wcb="$(echo "$1" | tr '[A-Z-]' '[a-z_]')"
   case $wcb in
     all|deps|dependencies|none|no_roots|roots) cache_write_binaries="$wcb";;
-    *) printf "ERROR: unrecognized argument \"$1\" to --write-cache-binaries\n" 1>&2
-       usage
-       exit 1
+    *) _die $EXIT_CONFIG_FAILURE "unrecognized argument \"$1\" to --write-cache-binaries\n$(usage)"
   esac
+}
+
+# Print a severity tag for the given severity code
+_severity_tag() {
+  local tag_text
+  if (( is_cmd )); then
+    if (( $1 > DEBUG_0 )); then
+      local tag_text="DEBUG_$(( $1 - DEBUG_0 ))_CMD"
+    else
+      local tag_text="CMD"
+    fi
+  fi
+  case $1 in
+    $ERROR) tag="\e[1;31m==> ${tag_text:-${DIE_ERROR:+$DIE_ERROR }ERROR}\e[m";;
+    $WARNING) tag="\e[1;33m==> ${tag_text:-WARNING}\e[m";;
+    $INFO) tag="\e[1;34m==> ${tag_text:-INFO}\e[m";;
+    $PROGRESS) tag="\e[1;32m==> ${tag_text:-PROGRESS}\e[m";;
+    *) tag="\e[1m==> ${tag_text:-DEBUG_$(( $1 - DEBUG_0 ))}\e[m"
+  esac
+  echo "$tag"
 }
 
 _split_opts_impl() {
@@ -339,7 +484,7 @@ _split_opts_impl() {
       done
     else
       [ "$1" = -- ] && unbundling=
-      printf "%q\n" "${1}"
+      printf "%q\n" "$1"
     fi
     shift
   done
@@ -351,7 +496,7 @@ _ups_string_to_opt() {
   case $ups_string in
     -[utp]) opt="$ups_string";;
     plain|traditional|unified) opt="-${ups_string:0:1}";;
-    *) printf "ERROR: unrecognized --ups option \"$1\"\n" 1>&2; exit 1
+    *) _die $EXIT_CONFIG_FAILURE "unrecognized --ups option \"$1\"\n$(usage)"
   esac
   printf -- "$opt\n";
 }
@@ -362,15 +507,12 @@ _ups_string_to_opt() {
 
 # Sanity check.
 if [ -n "$SPACK_ROOT" ]; then
-  cat 1>&2 <<EOF
-ERROR: cowardly refusing to initialize a Spack system with one
-       already in the shell environment:
+_die "cowardly refusing to initialize a Spack system with one
+already in the shell environment:
 
-       SPACK_ROOT=$SPACK_ROOT
+SPACK_ROOT=$SPACK_ROOT
 
-       $(spack env status)
-EOF
-  exit 1
+$(spack env status)"
 fi
 
 ########################################################################
@@ -408,12 +550,13 @@ while (( $# )); do
     --cache-write-sources) cache_write_sources=1;;
     --clear-mirrors) clear_mirrors=1;;
     --debug-spack-*|--verbose-spack-*) eval "${1//-/_}=1";;
-    --help) usage 2; exit 1;;
+    --help|-h|-\?) usage 2; exit 1;;
     --no-cache-write-binaries) cache_write_binaries=none;;
     --no-cache-write-bootstrap) unset cache_write_bootstrap;;
     --no-cache-write-sources) unset cache_write_sources;;
     --no-safe-concretize) unset concretize_safely;;
     --no-ups) ups_opt=-p;;
+    --quiet|-q) QUIET=1;;
     --safe-concretize) concretize_safely=1;;
     --spack-config-cmd) spack_config_cmds+=("$2"); shift;;
     --spack-config-cmd=*) spack_config_cmds+=("${1#*=}");;
@@ -433,23 +576,33 @@ while (( $# )); do
     --test=*) tests_type="${1#*=}";;
     --ups) ups_opt="$(_ups_string_to_opt "$2")" || exit; shift;;
     --ups=*) ups_opt="$(_ups_string_to_opt "${1#*=}")" || exit;;
+    -v) (( ++VERBOSITY ));;
     --with-cache) optarg="$2"; shift; OIFS="$IFS"; IFS=","; cache_urls+=($optarg); IFS="$OIFS";;
     --with-cache=*) optarg="${1#*=}"; OIFS="$IFS"; IFS=","; cache_urls+=($optarg); IFS="$OIFS";;
     --working-dir=*) working_dir="${1#*=}";;
     --working_dir) working_dir="$2"; shift;;
     -h) usage; exit 1;;
     --) shift; break;;
-    -*) printf "ERROR: unrecognized option $1\n$(usage)" 1>&2; exit 2;;
+    -*) _die $EXIT_CONFIG_FAILURE "unrecognized option $1\n$(usage)";;
     *) break
   esac
   shift
 done
 
 ####################################
+# Supress all but warnings and errors if we need quiet.
+if (( QUIET )); then
+  (( VERBOSITY > DEFAULT_VERBOSITY )) && _report $INFO "-q overrides -v"
+  (( VERBOSITY = WARNING ))
+fi
+####################################
+
+
+####################################
 # Set up working area.
 [ -n "$working_dir" ] || working_dir="${WORKSPACE:-$(pwd)}"
-mkdir -p "$working_dir" || { printf "ERROR: unable to ensure existence of working directory \"$working_dir\"\n" 1>&2; exit 1; }
-cd "$working_dir" || { printf "ERROR: unable to change to working directory \"$working_dir\"\n" 1>&2; exit 1; }
+mkdir -p "$working_dir" || _die $EXIT_PATH_FAILURE "unable to ensure existence of working directory \"$working_dir\""
+cd "$working_dir" || _die $EXIT_PATH_FAILURE "unable to change to working directory \"$working_dir\""
 if [ -z "$TMPDIR" ]; then
   export TMPDIR="$working_dir/tmp"
   rm -rf "$TMPDIR"
@@ -466,25 +619,26 @@ concretize_mirrors="$spack_env_top_dir/concretize_mirrors.yaml"
 # Handle SPACK_PYTHON
 if [ -n "$spack_python" ]; then
   python_type="$(type -t "$spack_python")" \
-    || { printf "ERROR: specified python \"$spack_python\" is not a viable command\n" 1>&2; exit 1; }
+    || _die $EXIT_CONFIG_FAILURE "specified python \"$spack_python\" is not a viable command"
   [ "$python_type" = "file" ] && spack_python="$(type -P "$spack_python")"
   export SPACK_PYTHON="$spack_python"
 fi
 
-[ -n "$SPACK_PYTHON" ] && echo "==> SPACK_PYTHON=$SPACK_PYTHON"
+[ -n "$SPACK_PYTHON" ] && _report "SPACK_PYTHON=$SPACK_PYTHON"
 ####################################
 
-
+####################################
+# Handle tests type
 case ${tests_type:=none} in
   all|none|root) : ;;
-  *) printf "ERROR: unknown --test argument $tests_type\n" 1>&2; exit 1
+  *) _die $EXIT_CONFIG_FAILURE "unknown --test argument $tests_type\n$(usage)"
 esac
 
 tests_arg=
 if ! [ "$tests_type" = "none" ]; then
   tests_arg="--test=$tests_type"
 fi
-
+####################################
 
 ####################################
 # Translate --cache-write-binaries opt into options to
@@ -494,7 +648,7 @@ case ${cache_write_binaries:=none} in
   all|none|no_roots) : ;;
   roots) extra_buildcache_opts+=(--only package);;
   dep*) extra_buildcache_opts+=(--only dependencies);;
-  *) printf "ERROR: unknown --cache-write-binaries argument $cache_write_binaries\n" 1>&2; exit 1
+  *) _die $EXIT_CONFIG_FAILURE "unknown --cache-write-binaries argument $cache_write_binaries\n$(usage)"
 esac
 ####################################
 
@@ -505,45 +659,54 @@ trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
 [ -f \"$mirrors_cfg~\" ] && mv -f \"$mirrors_cfg\"{~,}; \
 _copy_back_logs; \
 if (( failed == 1 )) && [ \"${cache_write_binaries:-none}\" != none ]; then \
-  printf \"ALERT: emergency buildcache dump...\\n\" 1>&2 ; \
-  spack \
+  tag_text=ALERT _report $ERROR \"emergency buildcache dump...\"; \
+  _cmd $ERROR $PIPE spack \
       \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
       buildcache create -a --deptype=all \
       \${extra_buildcache_opts[*]:+\"\${extra_buildcache_opts[@]}\"} \
       -d \"$working_dir/copyBack/spack-binary-mirror\" \
       -r --rebuild-index \$(spack find --no-groups); \
-  printf \"       ...done\\n\" 1>&2; \
-fi\
+  tag_text=ALERT _report $ERROR \"emergency buildcache dump COMPLETE\"; \
+fi; \
+eval exec \"$STDOUT>&-\" \"$STDERR>&-\"\
 " EXIT
 ####################################
 
 si_upsver="v${si_ver#v}"
 ####################################
 # Install spack-infrastructure to bootstrap a Spack installation.
-git clone -b "$si_ver" "$si_root" "$TMP/" \
-  || { printf "ERROR: unable to clone spack-infrastructure $si_ver from $si_root\n" 1>&2; exit 1; }
+_report $PROGRESS "cloning spack-infrastructure"
+_cmd $DEBUG_1 git clone -b "$si_ver" "$si_root" "$TMP/" \
+  || _die "unable to clone spack-infrastructure $si_ver from $si_root"
 if [[ "${spack_config_files[*]}" =~ (^|/)packages\.yaml([[:space:]]|$) ]]; then
   # Bypass packages.yaml generation if we're going to ignore it anyway.
-  ln -sf /usr/bin/true "$TMP/bin/make_packages_yaml"
+  _report $DEBUG_2 "bypassing packages.yaml generation"
+  _cmd $DEBUG_2 ln -sf /usr/bin/true "$TMP/bin/make_packages_yaml"
 else
   # Don't want externals from CVMFS.
-  sed -Ei'' -e 's&^([[:space:]]+cprefix=).*$&\1'"''"'&' "$TMP/bin/make_packages_yaml"
+  _report $DEBUG_2 "externals in CVMFS will be excluded from generated packages.yaml"
+  _cmd $DEBUG_2 sed -Ei'' -e 's&^([[:space:]]+cprefix=).*$&\1'"''"'&' "$TMP/bin/make_packages_yaml"
 fi
 ####################################
 
 ####################################
 # Bootstrap the Spack installation.
 mkdir -p "$spack_env_top_dir" \
-  || { printf "ERROR: unable to make directory structure for spack environment installation\n" 1>&2; exit 1; }
+  || _die $EXIT_PATH_FAILURE "unable to make directory structure for spack environment installation"
 cd "$spack_env_top_dir"
 if ! [ -f "$spack_env_top_dir/setup-env.sh" ]; then
   make_spack_cmd=(make_spack --spack_release $spack_ver --minimal $ups_opt "$spack_env_top_dir")
-  PATH="$TMP/bin:$PATH" ${make_spack_cmd[*]:+"${make_spack_cmd[@]}"} \
-    || { printf "ERROR: unable to install Spack $spack_ver with\n          ${make_spack_cmd[*]}\n" 1>&2; exit 1; }
+  _report $INFO "bootstrapping Spack $spack_ver"
+  PATH="$TMP/bin:$PATH" \
+      _cmd $PROGRESS ${make_spack_cmd[*]:+"${make_spack_cmd[@]}"} \
+    || _die "unable to install Spack $spack_ver"
 fi
 
 # Clear mirrors list back to defaults.
-(( clear_mirrors )) && cp "$default_mirrors" "$mirrors_cfg"
+if (( clear_mirrors )); then
+  _report $PROGRESS "clearing default mirrors list"
+  _cmd $PROGRESS "$default_mirrors" "$mirrors_cfg"
+fi
 
 # Enhanced setup scripts.
 if [ "$ups_opt" = "-p" ]; then
@@ -562,8 +725,9 @@ fi
 
 ####################################
 # Source the setup script.
+_report $PROGRESS "setting up Spack $spack_ver"
 source "$spack_env_top_dir/setup-env.sh" \
-  || { printf "ERROR: unable to set up Spack $spack_ver\n" 1>&2; exit 1; }
+  || _die "unable to set up Spack $spack_ver"
 ####################################
 
 ####################################
@@ -576,20 +740,20 @@ for config_file in ${spack_config_files[*]:+"${spack_config_files[@]}"}; do
   config_file="${config_file##*'|'}"
   if [[ "$config_file" =~ ^[a-z][a-z0-9_-]*://(.*/)?(.*) ]]; then
     curl -o "${BASH_REMATCH[2]}" --insecure --fail -L "$config_file" \
-      || { printf "ERROR: unable to obtain specified config file \"$config_file\"\n" 1>&2; exit 1; }
+      || _die $EXIT_PATH_FAILURE "unable to obtain specified config file \"$config_file\""
     config_file="${BASH_REMATCH[2]}"
   fi
-  spack \
+  _cmd $DEBUG_1 spack \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
     config --scope=$cf_scope add -f "$config_file" \
-    || { printf "ERROR: unable to add file obtained from \"$config_file\" to spack config with scope $cf_scope\n" 1>&2; exit 1; }
+    || _die $EXIT_SPACK_CONFIG_FAILURE "unable to add file obtained from \"$config_file\" to spack config with scope $cf_scope"
 done
 # 2. Spack config commands.
 for config_cmd in ${spack_config_cmds[*]:+"${spack_config_cmds[@]}"}; do
-  eval spack \
+  eval _cmd $DEBUG_1 spack \
        ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
        config $config_cmd \
-    || { printf "ERROR: executing spack config command \"$config_cmd\"\n" 1>&2; exit 1; }
+    || _die $EXIT_SPACK_CONFIG_FAILURE "executing spack config command \"$config_cmd\""
 done
 # 3. Caches
 for cache_spec in ${cache_urls[*]:+"${cache_urls[@]}"}; do
@@ -599,15 +763,15 @@ for cache_spec in ${cache_urls[*]:+"${cache_urls[@]}"}; do
   else
     cache_name="buildcache_$((++cache_count))"
   fi
-  spack \
+  _cmd $DEBUG_1 spack \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
     mirror add --scope=site "$cache_name" "$cache_spec" \
-    || { printf "ERROR: executing spack mirror add --scope=site $cache_name \"$cache_spec\n" 1>&2; exit 1; }
+    || _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site $cache_name \"$cache_spec"
 done
 
 # Add mirror as buildcache for locally-built packages.
-spack mirror add --scope=site __local_binaries "$working_dir/copyBack/spack-binary-mirror"
-spack mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-mirror"
+_cmd $DEBUG_1 spack mirror add --scope=site __local_binaries "$working_dir/copyBack/spack-binary-mirror"
+_cmd $DEBUG_1 spack mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-mirror"
 
 # Make a cut-down mirror configuration for safe concretization.
 if (( concretize_safely )); then
@@ -617,27 +781,31 @@ fi
 
 ####################################
 # Make sure we know about compilers.
-spack compiler find --scope=site
+spack compiler find --scope=site >/dev/null 2>&1
 ####################################
 
 ####################################
 # Execute bootstrap explicitly.
-spack \
-  ${__debug_spack_bootstrap:+-d} \
-  ${__verbose_spack_bootstrap:+-v} \
-  ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-  bootstrap now \
-  || { printf "ERROR: unable to bootstrap safely with base configuration\n" 1>&2; exit 1; }
+_report $PROGRESS "bootstrapping Spack's tools"
+_cmd $PROGRESS $INFO \
+     spack \
+     ${__debug_spack_bootstrap:+-d} \
+     ${__verbose_spack_bootstrap:+-v} \
+     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+     bootstrap now \
+  || _die $EXIT_BOOTSTRAP_FAILURE "unable to bootstrap safely with base configuration"
 ####################################
 
 ####################################
 # Update our local public keys from configured build caches.
-spack buildcache keys
+_report $PROGRESS "updating local keys from configured build caches"
+_cmd $DEBUG_1 spack buildcache keys
 ####################################
 
 ####################################
 # Initialize signing key for binary packages.
 if [ -n "$SPACK_BUILDCACHE_SECRET" ]; then
+  _report $PROGRESS "initializing configured signing key"
   spack \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
     gpg trust "$SPACK_BUILDCACHE_SECRET"
@@ -654,12 +822,13 @@ fi
 ####################################
 # Write bootstrap packages to cache.
 if (( cache_write_bootstrap )); then \
-  spack \
+  _report $PROGRESS "writing bootstrap packages to build cache"
+  _cmd $DEBUG_1 spack \
     ${__debug_spack_bootstrap:+-d} \
     ${__verbose_spack_bootstrap:+-v} \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
     bootstrap mirror --binary-packages --dev "$working_dir/copyBack/spack-bootstrap-mirror" \
-    || { printf "WARNING: unable to write bootstrap packages to local cache\n" 1>&2; }
+    || _report $WARNING "unable to write bootstrap packages to local cache"
 fi
 ####################################
 
@@ -672,14 +841,15 @@ IFS="$OIFS"
 ####################################
 # Set up the build environment.
 if ! [ "$ups_opt" = "-p" ]; then
+  _report $PROGRESS "declaring spack-infrastructure package to UPS"
   source /grid/fermiapp/products/common/etc/setups \
     || source /products/setup \
-    || { printf "ERROR: unable to set up UPS\n" 1>&2; exit 1; }
+    || _die $EXIT_UPS_ERROR "unable to set up UPS"
   PRODUCTS="$spack_env_top_dir:$PRODUCTS"
 
   cd $TMP \
-    && "$TMP/bin/declare_simple" spack-infrastructure $si_upsver \
-      || { printf "ERROR: unable to declare spack-infrastructure $si_ver to UPS\n" 1>&2; exit 1; }
+    && _cmd $DEBUG_1 "$TMP/bin/declare_simple" spack-infrastructure $si_upsver \
+      || _die $EXIT_UPS_ERROR "unable to declare spack-infrastructure $si_ver to UPS"
   cd - >/dev/null
 fi
 ####################################
