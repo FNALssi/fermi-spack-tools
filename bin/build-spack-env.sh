@@ -82,12 +82,13 @@ _cmd() {
 _copy_back_logs() {
   local tar_tmp="$working_dir/copyBack/tmp"
   local spack_env= env_spec= install_prefix=
-  mkdir -p "$tar_tmp/spack_env"
+  mkdir -p "$tar_tmp/"{spack_env,spack-stage}
   cd "$spack_env_top_dir"
   _cmd $DEBUG_1 spack clean -dmp
   _cmd $DEBUG_1 $PIPE tar -c *.log *-out.txt *.yaml etc var/spack/environments \
     | _cmd $DEBUG_1 tar -C "$tar_tmp/spack_env" -x
-  _cmd $DEBUG_1 $PIPE tar -C "$TMPDIR" -c spack-stage | _cmd $DEUBG_1 tar -C "$tar_tmp" -x
+  _cmd $DEBUG_1 $PIPE tar -C "$(spack location -S)" -c . \
+    | _cmd $DEUBG_1 tar -C "$tar_tmp/spack-stage" -x
   for spack_env in $(spack env list); do
     _cmd $DEBUG_1 $PIPE spack -e $spack_env \
           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
