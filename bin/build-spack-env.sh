@@ -716,7 +716,7 @@ fi
 # Clear mirrors list back to defaults.
 if (( clear_mirrors )); then
   _report $PROGRESS "clearing default mirrors list"
-  _cmd $PROGRESS "$default_mirrors" "$mirrors_cfg"
+  _cmd $PROGRESS cp "$default_mirrors" "$mirrors_cfg"
 fi
 
 # Enhanced setup scripts.
