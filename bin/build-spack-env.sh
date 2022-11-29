@@ -62,7 +62,232 @@ working_dir="${WORKSPACE:=$(pwd)}"
 usage() {
   cat <<EOF
 
-usage: $prog 
+usage: $prog <options> (--)? (<spack-env-yaml-file>|<spack-env-yaml-url>)+
+       $prog (-[h?]|--help)
+
+EOF
+  cat <<\EOF
+BRIEF OPTIONS
+
+  --cache-write-(bootstrap|sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots)) \
+  --no-cache-write-(binaries|bootstrap|sources) --clear-mirrors \
+  --color[= ](auto|always|never) --(debug|verbose)-spack \
+  --(no-)?safe-concretize --spack-python[= ]<python-exec> \
+  --spack-config-cmd[= ]<config-cmd-string>+ \
+  --spack-config-file[= ](<cache-name>\|)?<config-file>+ \
+  --spack-infrastructure-root[= ]<repo> \
+  --spack-infrastructure-version[= ]<version> --spack-root[= ]<repo> \
+  --spack-version[= ]<version> --test[= ](all|none|root) -q --quiet [+-]v+ \
+  --verbosity[= ](-?[0-9]+|INFO|WARNING|(FATAL_|INTERNAL_)?ERROR|INFO|PROGRESS|DEBUG_[1-9][0-9]*) \
+  --no-ups --ups[= ](plain|traditional|unified|-[ptu]) \
+  --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+ \
+  --working-dir[= ]<dir>
+
+  [ Options suffixed with + are repeatable and cumulative ]
+
+EOF
+  if (( "$1" == 0 )); then
+    return
+  fi
+cat <<\EOF
+HELP AND DIAGNOSTIC OPTIONS
+
+  -h
+  -\?
+  --help
+
+    This help.
+
+  -q
+  --quiet
+
+    Reset the verbosity to WARNING.
+
+  -v
+  +v
+
+    Increase (-v) or decrease (+v) the verbosity by one level.
+
+  --verbosity[= ](-?[0-9]+|INFO|WARNING|(FATAL_|INTERNAL_)?ERROR|INFO|PROGRESS|DEBUG_[1-9][0-9]*)
+
+    Set the verbosity to the indicated value.
+
+  --debug-spack
+  --verbose-spack
+
+    Add -d or -v options to invocations of Spack.
+
+  --color[= ](auto|always|never)
+
+    Control the use of ANSI colors; auto (default) => color on tty output only.
+
+
+LOCATION AND VERSION OPTIONS
+
+  --spack-infrastructure-root[= ]<repo>
+  --spack-infrastructure-version[= ]<version|branch>
+
+    Obtain the Spack infrastructure utilities from the specified
+    repository and/or branch/version.
+
+  --spack-root[= ]<repo>
+
+    [ NOT CURRENTLY SUPPORTED due to limitations in downstream utilities ]
+
+  --spack-version[= ]<version|branch>
+
+    Obtain the specified branch/version of Spack.
+
+  --working-dir[= ]<working_dir>
+
+    Top level working directory. If not set, use $WORKSPACE or $PWD.
+
+
+SPACK CONFIGURATION OPTIONS
+
+  --cache-write-(bootstrap|sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots))
+  --no-cache-write-(binaries|bootstrap|sources)
+
+    Control whether bootstrap packages, sources or binaries are written
+    to local caches under <working-dir>/copyBack.
+
+  --clear-mirrors
+  --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
+
+    Control the use of mirrors from which to obtain sources and/or
+    pre-built binary packages.
+
+  --(no-)?safe-concretize
+
+    Control whether to concretize environments with only a minimal set
+    of mirrors configured to improve reproducibility (default yes).
+
+  --spack-python[= ]<python-exec>
+
+    Use the specified non-default Python executable to invoke Spack.
+
+  --spack-config-cmd[= ]<config-cmd-string>+
+
+    Pass the specified configuration command to `spack config`.
+
+  --spack-config-file[= ](<config-scope>\|)?<config-file>+
+
+    Import the specified YAML configuration file into Spack's
+    configuration.
+
+  --test[= ](all|none|root)
+
+     Configure Spack to test all, none, or only specified "root"
+     packages in non-compiler environment configurations (default is
+     none).
+
+  --no-ups
+  --ups[= ](plain|traditional|unified|-[ptu])
+
+    Create and populate a traditional, unified ("relocatable") or no UPS
+    area to allow the use of installed Spack packages via UPS. Default
+    is unified.
+
+
+NON-OPTION ARGUMENTS
+
+  (<spack-env-yaml-file>|<spack-env-yaml-url>)+
+
+  Paths or URLs to `spack.yaml` or `spack.lock` files configuring
+  environments. The basename of the path or URL will be used to form the
+  Spack environment name and should be descriptive of the environment
+  (e.g. gcc@12.2.0.yaml, clang@14.0.6.yaml, or
+  critic@develop-e26-prof.yaml).
+
+
+BUILDING CONFIGURED SPACK ENVIRONMENTS
+
+  Environments describing compilers recognized by Spack are treated
+  specially:
+
+  * After the environment has been built, the compiler will be added to
+    Spack's list of available compilers for building subsequent
+    environments.
+
+  * if `--test=root` is specified, then non-terminal compiler
+    environments will be built without tests; otherwise the user's
+    preference will be honored as for terminal or non-compiler
+    environments.
+
+  If `--test=root` is specified, then for terminal or non-compiler
+  environments:
+
+  * Dependencies which are not themselves roots of the environment will
+    be built in batches before their dependents.
+
+  * Root packages will be built with `spack install --no-cache` to
+    ensure that they will be built and tests will be run regardless of
+    whether the package is available as a pre-built binary package from
+    a configured mirror cache.
+
+
+CACHING SOURCE AND BINARY PACKAGES
+
+  If configured:
+
+  * Bootstrap packages will be cached under
+    `<working-dir>/copyBack/spack-bootstrap-mirror` before any
+    environment is built.
+
+  * Source packages for each environment will be cached under
+    `<working-dir>/copyBack/spack-source-mirror` before that environment
+    is built. "Non-stable" sources (e.g. those obtained from
+    repositories) will not be cached.
+
+  * Binary packages for each environment will be cached under
+    `<working-dir/copyBack/spack-binary-mirror>` after that environment
+    has been built successfully. If `--cache-write-binaries=no_root` is
+    active, then root packages of the environment will not be cached.
+
+
+LOG RETRIEVAL AND ERROR RECOVERY
+
+  At the end of execution of `build-spack-env.sh` (successful or
+  otherwise), the `.spack` directories for all installed packages will
+  be stored in a `.tar.bz2` file under `<working-dir>/copyBack`, along
+  with any generated YAML or Spack configuration files and anything
+  remaining in or under Spack's top-level staging directory (see `spack
+  location -S`).
+
+  In the event of an abnormal termination: if the configured option for
+  writing binaries to cache is anything other than, "none," then all
+  successfully installed packages will be written to cache before
+  `build-spack-env.sh` exits.
+
+
+ENVIRONMENT VARIABLES
+
+  SPACK_BUILDCACHE_SECRET
+
+    Location of a file containing a secret key to be used for signing
+    binary package for a Spack build cache.
+
+  SPACK_CMAKE_GENERATOR
+
+    A CMake generator identifier interpreted by certain Spack recipes.
+
+  SPACK_GNUPGHOME
+
+    Non-default location for Spack GPG keys.
+
+  SPACK_PYTHON
+
+    Non-default Python exec for use by invocations of Spack. Overridden
+    by --spack-python.
+
+  TMPDIR
+
+    Honored if set; otherwise set to <working-dir>/tmp and create/clear.
+
+  WORKSPACE
+
+    If set: use as default value for <working-dir>; otherwise use <pwd>.
+
 EOF
 }
 
