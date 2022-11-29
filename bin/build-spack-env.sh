@@ -542,7 +542,7 @@ cache_write_binaries=all
 cache_write_sources=1
 common_spack_opts=(--backtrace --timestamp)
 
-eval "$si_split_options"
+eval "$ssi_split_options"
 while (( $# )); do
   case $1 in
     --cache-write-binaries=*) _set_cache_write_binaries "${1#*=}";;
