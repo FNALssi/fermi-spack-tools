@@ -47,7 +47,7 @@ shopt -s extglob nullglob
 (( EXIT_SPACK_GPG_FAILURE = 10 ))
 
 # Default verbosity
-(( DEFAULT_VERBOSITY = DEBUG_4 ))
+(( DEFAULT_VERBOSITY = INFO ))
 (( VERBOSITY = DEFAULT_VERBOSITY ))
 
 # Unredirected standard outout, error
