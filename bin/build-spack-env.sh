@@ -262,7 +262,7 @@ _piecemeal_build() {
 _process_environment() {
   local env_cfg="$1"
   if [[ "$env_cfg" =~ ^[a-z][a-z0-9_-]*://(.*/)?(.*) ]]; then
-    curl -o "${BASH_REMATCH[2]}" --insecure --fail -L "$env_cfg" \
+    curl -o "${BASH_REMATCH[2]}" -N --no-progress-meter --insecure --fail -L "$env_cfg" \
       || _die $EXIT_PATH_FAILURE "unable to obtain specified environment config file \"$env_cfg\""
     env_cfg="${BASH_REMATCH[2]}"
   fi
@@ -750,7 +750,7 @@ for config_file in ${spack_config_files[*]:+"${spack_config_files[@]}"}; do
   [ "$cf_scope" = "$config_file" ] && cf_scope=site
   config_file="${config_file##*'|'}"
   if [[ "$config_file" =~ ^[a-z][a-z0-9_-]*://(.*/)?(.*) ]]; then
-    curl -o "${BASH_REMATCH[2]}" --insecure --fail -L "$config_file" \
+    curl -o "${BASH_REMATCH[2]}" -N --no-progress-meter --insecure --fail -L "$config_file" \
       || _die $EXIT_PATH_FAILURE "unable to obtain specified config file \"$config_file\""
     config_file="${BASH_REMATCH[2]}"
   fi
