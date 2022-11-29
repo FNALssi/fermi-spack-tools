@@ -567,7 +567,7 @@ while (( $# )); do
     --no-cache-write-sources) unset cache_write_sources;;
     --no-safe-concretize) unset concretize_safely;;
     --no-ups) ups_opt=-p;;
-    --quiet|-q) QUIET=1;;
+    --quiet|-q) (( VERBOSITY = WARNING ));;
     --safe-concretize) concretize_safely=1;;
     --spack-config-cmd) spack_config_cmds+=("$2"); shift;;
     --spack-config-cmd=*) spack_config_cmds+=("${1#*=}");;
@@ -587,7 +587,10 @@ while (( $# )); do
     --test=*) tests_type="${1#*=}";;
     --ups) ups_opt="$(_ups_string_to_opt "$2")" || exit; shift;;
     --ups=*) ups_opt="$(_ups_string_to_opt "${1#*=}")" || exit;;
+    +v) (( --VERBOSITY ));;
     -v) (( ++VERBOSITY ));;
+    --verbosity) eval "(( VERBOSITY = $2 ))"; shift;;
+    --verbosity=*) eval "(( VERBOSITY = ${1#*=} ))";;
     --with-cache) optarg="$2"; shift; OIFS="$IFS"; IFS=","; cache_urls+=($optarg); IFS="$OIFS";;
     --with-cache=*) optarg="${1#*=}"; OIFS="$IFS"; IFS=","; cache_urls+=($optarg); IFS="$OIFS";;
     --working-dir=*) working_dir="${1#*=}";;
@@ -607,15 +610,6 @@ else
   unset want_color
 fi
 common_spack_opts+=($color_arg)
-
-####################################
-# Supress all but warnings and errors if we need quiet.
-if (( QUIET )); then
-  (( VERBOSITY > DEFAULT_VERBOSITY )) && _report $INFO "-q overrides -v"
-  (( VERBOSITY = WARNING ))
-fi
-####################################
-
 
 ####################################
 # Set up working area.
