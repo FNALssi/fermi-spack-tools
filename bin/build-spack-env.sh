@@ -91,10 +91,12 @@ _copy_back_logs() {
   for spack_env in $(spack env list); do
     _cmd $DEBUG_1 $PIPE spack -e $spack_env \
           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+          --color=never \
           spec --format '{fullname}{/hash}' \
       | while read root_spec; do
       _cmd $DEBUG_1 $PIPE spack \
         ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+        --color=never \
         find -d --no-groups \
         --format '{fullname}{/hash}'$'\t''{prefix}' \
         "$root_spec"
@@ -146,6 +148,7 @@ _do_build_and_test() {
       $(IFS="$OIFS" \
            spack -e $env_name \
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+          --color=never \
            spec -NL \
           | sed -Ene '/^Concretized$/,/^$/ { /^(Concretized|-+)?$/ b; p;  }')
     )
@@ -321,6 +324,7 @@ _process_environment() {
     && _cmd $DEBUG_1 $PIPE spack \
             -e $env_name \
             ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+          --color=never \
          spec -j \
       | csplit -f "$env_name" -b "_%03d.json" -z -s - '/^\}$/+1' '{*}' \
     && { ! (( cache_write_sources )) \
@@ -528,6 +532,7 @@ fi
 } 2>/dev/null
 ########################################################################
 
+color=
 concretize_safely=1
 si_root=https://github.com/FNALssi/spack-infrastructure.git
 si_ver=master
@@ -550,6 +555,8 @@ while (( $# )); do
     --cache-write-bootstrap) cache_write_bootstrap=1;;
     --cache-write-sources) cache_write_sources=1;;
     --clear-mirrors) clear_mirrors=1;;
+    --color) color="$2"; shift;;
+    --color=*) color="${1#*=}";;
     --debug-spack-*|--verbose-spack-*) eval "${1//-/_}=1";;
     --help|-h|-\?) usage 2; exit 1;;
     --no-cache-write-binaries) cache_write_binaries=none;;
@@ -589,6 +596,9 @@ while (( $# )); do
   esac
   shift
 done
+
+color_arg=${color:+--color=$color}
+common_spack_opts+=($color_arg)
 
 ####################################
 # Supress all but warnings and errors if we need quiet.
