@@ -333,9 +333,11 @@ _process_environment() {
                 _cmd $DEBUG_1 $PROGRESS spack \
                      -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-                     mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack/spack-source-mirror"; }; } \
-                  && _do_build_and_test \
-                    || failed=1
+                     mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack/spack-source-mirror"
+         }
+    } \
+      && _do_build_and_test \
+        || failed=1
   if [ -n "$interrupt" ]; then
     failed=1 # Trigger buildcache dump.
     local tag_text=ALERT
