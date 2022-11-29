@@ -15,14 +15,19 @@ usage() {
 
 parse_args() {
     spack_release=$(get_from_bootstrap  default_spack_version)
+    padding=true
 
-    eval set : $(getopt --longoptions spack_release: --options tu -- "$@")
+    eval set : $(getopt --longoptions with_padding,spack_release: --options tu -- "$@")
+    shift
+
     while echo x$1 | grep x- > /dev/null
     do
         case "x$1" in
+        x--with_padding)  padding=true; shift ;;
         x--spack_release) spack_release=$2; shift; shift;;
         x-t) unified=false; shift ;;
         x-u) unified=true; shift ;;
+        x--) shift; break;;
         esac
     done
 
@@ -67,6 +72,12 @@ else
 fi
 install_tcl_path=$src/share/spack/modules
 
+if [ -d "$install_tree_path/__spack_path_placeholder__" ]
+then
+    echo "Checking for padded .spack-db"
+    install_tree_path=$(find $install_tree_path/__spack_path_placeholder__ -name .spack-db -print | head -1 | sed -e 's;/.spack-db;;')
+fi
+
 SPACK_ROOTb=`basename $SPACK_ROOT`
 SPACK_ROOTd=`dirname $SPACK_ROOT`
 
@@ -91,6 +102,12 @@ then
 cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml
 else
 cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml
+fi
+
+if $padding 
+then 
+    echo "turning on padding." 
+    echo "    padded_length: 255" >> $SPACK_ROOT/etc/spack/config.yaml
 fi
 
 echo "installing upstreams.yaml..."
