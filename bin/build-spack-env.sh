@@ -473,11 +473,11 @@ _severity_tag() {
     fi
   fi
   case $1 in
-    $ERROR) tag="\e[1;31m==> ${tag_text:-${DIE_ERROR:+$DIE_ERROR }ERROR}\e[m";;
-    $WARNING) tag="\e[1;33m==> ${tag_text:-WARNING}\e[m";;
-    $INFO) tag="\e[1;34m==> ${tag_text:-INFO}\e[m";;
-    $PROGRESS) tag="\e[1;32m==> ${tag_text:-PROGRESS}\e[m";;
-    *) tag="\e[1m==> ${tag_text:-DEBUG_$(( $1 - DEBUG_0 ))}\e[m"
+    $ERROR) tag="${want_color:+\e[1;31m}==> ${tag_text:-${DIE_ERROR:+$DIE_ERROR }ERROR}${want_color:+\e[m}";;
+    $WARNING) tag="${want_color:+\e[1;33m}==> ${tag_text:-WARNING}${want_color:+\e[m}";;
+    $INFO) tag="${want_color:+\e[1;34m}==> ${tag_text:-INFO}${want_color:+\e[m}";;
+    $PROGRESS) tag="${want_color:+\e[1;32m}==> ${tag_text:-PROGRESS}${want_color:+\e[m}";;
+    *) tag="${want_color:+\e[1m}==> ${tag_text:-DEBUG_$(( $1 - DEBUG_0 ))}${want_color:+\e[m}"
   esac
   echo "$tag"
 }
@@ -601,6 +601,11 @@ while (( $# )); do
 done
 
 color_arg=${color:+--color=$color}
+if [ "${color:-auto}" = "auto" -a -t 1 ] || [ "$color" = "always" ]; then
+  want_color=1
+else
+  unset want_color
+fi
 common_spack_opts+=($color_arg)
 
 ####################################
