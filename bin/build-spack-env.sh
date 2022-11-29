@@ -595,7 +595,6 @@ while (( $# )); do
     --with-cache=*) optarg="${1#*=}"; OIFS="$IFS"; IFS=","; cache_urls+=($optarg); IFS="$OIFS";;
     --working-dir=*) working_dir="${1#*=}";;
     --working_dir) working_dir="$2"; shift;;
-    -h) usage; exit 1;;
     --) shift; break;;
     -*) _die $EXIT_CONFIG_FAILURE "unrecognized option $1\n$(usage)";;
     *) break
