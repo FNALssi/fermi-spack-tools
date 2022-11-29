@@ -449,7 +449,8 @@ _report_cmd() {
 _set_cache_write_binaries() {
   local wcb="$(echo "$1" | tr '[A-Z-]' '[a-z_]')"
   case $wcb in
-    all|deps|dependencies|none|no_roots|roots) cache_write_binaries="$wcb";;
+    all|deps|dependencies|none|roots) cache_write_binaries="$wcb";;
+    no_roots|non_roots) cache_write_binaries="no_roots";;
     *) _die $EXIT_CONFIG_FAILURE "unrecognized argument \"$1\" to --write-cache-binaries\n$(usage)"
   esac
 }
