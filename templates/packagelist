@@ -98,8 +98,8 @@ perl-Data-Dumper:perl-data-dumper:perl-Data-Dumper
 perl:perl:perl-devel
 pkgconfig:pkgconf:pkgconfig
 pkgconf-pkg-config:pkg-config:pkgconf-pkg-config
-python-matplotlib:py-matplotlib:python-matplotlib
-python:python:python-devel
+python.*:python:python.*-devel
+python.*-setuptools:py-setuptools:python.*-setuptools
 readline:readline:readline-devel
 rhash:rhash:rhash-devel
 sqlite:sqlite:sqlite-devel
