@@ -71,7 +71,8 @@ BRIEF OPTIONS
 
   --cache-write-(bootstrap|sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots)) \
   --no-cache-write-(binaries|bootstrap|sources) --clear-mirrors \
-  --color[= ](auto|always|never) --(debug|verbose)-spack \
+  --color[= ](auto|always|never) \
+  --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install) \
   --(no-)?safe-concretize --spack-python[= ]<python-exec> \
   --spack-config-cmd[= ]<config-cmd-string>+ \
   --spack-config-file[= ](<cache-name>\|)?<config-file>+ \
@@ -112,10 +113,9 @@ HELP AND DIAGNOSTIC OPTIONS
 
     Set the verbosity to the indicated value.
 
-  --debug-spack
-  --verbose-spack
+  --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install)
 
-    Add -d or -v options to invocations of Spack.
+    Add -d or -v options to appropriate invocations of Spack.
 
   --color[= ](auto|always|never)
 
