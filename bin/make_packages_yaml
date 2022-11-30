@@ -149,8 +149,11 @@ getv2() {
 
 get_cvmfs_spack_versions() {
   #printf "get_cvmfs_spack_versions($1): " > /dev/tty
-  csr=${cvmfs_area}/spack/current/NULL/ 
-  SPACK_ROOT=$csr $csr/bin/spack find $1 | grep -v '^[=-]' | sed -e 's/[^ ]*@//'| sort -u # | tee /dev/tty
+  if [ -d ${cvmfs_area} ]
+  then
+      csr=${cvmfs_area}/spack/current/NULL/ 
+      SPACK_ROOT=$csr $csr/bin/spack find $1 | grep -v '^[=-]' | sed -e 's/[^ ]*@//'| sort -u # | tee /dev/tty
+  fi
 }
 
 mkdir -p `dirname $dst`
@@ -265,10 +268,6 @@ cat <<EOF >&3
   libiconv:
     buildable: false
   util-macros:
-    buildable: false
-        - intel-oneapi-tbb, intel-tbb
-        - intel-tbb
-  libiconv:
     buildable: false
 EOF
 
