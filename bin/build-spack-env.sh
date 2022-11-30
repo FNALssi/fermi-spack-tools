@@ -1061,10 +1061,11 @@ fi
 if (( cache_write_bootstrap )); then \
   _report $PROGRESS "writing bootstrap packages to build cache"
   _cmd $DEBUG_1 spack \
-    ${__debug_spack_bootstrap:+-d} \
-    ${__verbose_spack_bootstrap:+-v} \
+    ${__debug_spack_buildcache:+-d} \
+    ${__verbose_spack_buildcache:+-v} \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-    bootstrap mirror --binary-packages --dev "$working_dir/copyBack/spack-bootstrap-mirror" \
+    bootstrap mirror --binary-packages --dev \
+    "$working_dir/copyBack/spack-bootstrap-mirror" \
     || _report $WARNING "unable to write bootstrap packages to local cache"
 fi
 ####################################
