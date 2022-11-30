@@ -848,9 +848,6 @@ fi
 ####################################
 
 spack_env_top_dir="$working_dir/spack_env"
-mirrors_cfg="$spack_env_top_dir/etc/spack/mirrors.yaml"
-default_mirrors="$spack_env_top_dir/etc/spack/defaults/mirrors.yaml"
-concretize_mirrors="$spack_env_top_dir/concretize_mirrors.yaml"
 
 ####################################
 # Handle SPACK_PYTHON
@@ -893,7 +890,7 @@ esac
 # Safe, comprehensive cleanup.
 TMP=`mktemp -d -t build-spack-env.sh.XXXXXX`
 trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
-[ -f \"$mirrors_cfg~\" ] && mv -f \"$mirrors_cfg\"{~,}; \
+[ -f \"\$mirrors_cfg~\" ] && mv -f \"\$mirrors_cfg\"{~,}; \
 _copy_back_logs; \
 if (( failed == 1 )) && [ \"${cache_write_binaries:-none}\" != none ]; then \
   tag_text=ALERT _report $ERROR \"emergency buildcache dump...\"; \
@@ -939,12 +936,6 @@ if ! [ -f "$spack_env_top_dir/setup-env.sh" ]; then
     || _die "unable to install Spack $spack_ver"
 fi
 
-# Clear mirrors list back to defaults.
-if (( clear_mirrors )); then
-  _report $PROGRESS "clearing default mirrors list"
-  _cmd $PROGRESS cp "$default_mirrors" "$mirrors_cfg"
-fi
-
 # Enhanced setup scripts.
 if [ "$ups_opt" = "-p" ]; then
   cat >setup-env.sh <<EOF
@@ -966,6 +957,16 @@ _report $PROGRESS "setting up Spack $spack_ver"
 source "$spack_env_top_dir/setup-env.sh" \
   || _die "unable to set up Spack $spack_ver"
 ####################################
+
+mirrors_cfg="$SPACK_ROOT/etc/spack/mirrors.yaml"
+default_mirrors="$SPACK_ROOT/etc/spack/defaults/mirrors.yaml"
+concretize_mirrors="$SPACK_ROOT/concretize_mirrors.yaml"
+
+# Clear mirrors list back to defaults.
+if (( clear_mirrors )); then
+  _report $PROGRESS "clearing default mirrors list"
+  _cmd $PROGRESS cp "$default_mirrors" "$mirrors_cfg"
+fi
 
 ####################################
 # Configure Spack according to user specifications.
@@ -1080,14 +1081,18 @@ IFS="$OIFS"
 # Set up the build environment.
 if ! [ "$ups_opt" = "-p" ]; then
   _report $PROGRESS "declaring spack-infrastructure package to UPS"
-  source /grid/fermiapp/products/common/etc/setups \
-    || source /products/setup \
-    || _die $EXIT_UPS_ERROR "unable to set up UPS"
+  { source /grid/fermiapp/products/common/etc/setups \
+      || source /products/setup \
+      || _die $EXIT_UPS_ERROR "unable to set up UPS"
+  } >/dev/null 2>&1
   PRODUCTS="$spack_env_top_dir:$PRODUCTS"
 
   cd $TMP \
-    && _cmd $DEBUG_1 "$TMP/bin/declare_simple" spack-infrastructure $si_upsver \
-      || _die $EXIT_UPS_ERROR "unable to declare spack-infrastructure $si_ver to UPS"
+    && {
+    _cmd $DEBUG_1 ups exist spack-infrastructure $si_upsver \
+      || _cmd $DEBUG_1 "$TMP/bin/declare_simple" spack-infrastructure $si_upsver
+  } \
+    || _die $EXIT_UPS_ERROR "unable to declare spack-infrastructure $si_ver to UPS"
   cd - >/dev/null
 fi
 ####################################
