@@ -400,7 +400,7 @@ _do_build_and_test() {
     done
   else
     # Build the whole environment.
-    _report "building environment $env_name"
+    _report $PROGRESS "building environment $env_name"
     local spack_build_env_cmd=(
       "${spack_install_cmd[@]}"
       ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"}
@@ -478,7 +478,7 @@ _piecemeal_build() {
       ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"} \
       ${build_root_hash:+--no-add "/${build_root_hash##*/}"}
   )
-  _cmd $PROGRESS $INFO "${spack_build_root_cmd[@]}" || return
+  _cmd $DEBUG_1 $INFO "${spack_build_root_cmd[@]}" || return
   installed_deps+=(${build_root_hash:+"$build_root_hash"})
   if (( ${#buildable_dep_hashes[@]} + ${#build_root_hash} )); then
     OIFS="$IFS"; IFS=$'\n'
@@ -946,7 +946,7 @@ mkdir -p "$spack_env_top_dir" \
 cd "$spack_env_top_dir"
 if ! [ -f "$spack_env_top_dir/setup-env.sh" ]; then
   make_spack_cmd=(make_spack --spack_release $spack_ver --minimal $ups_opt "$spack_env_top_dir")
-  _report $INFO "bootstrapping Spack $spack_ver"
+  _report $PROGRESS "bootstrapping Spack $spack_ver"
   PATH="$TMP/bin:$PATH" \
       _cmd $PROGRESS ${make_spack_cmd[*]:+"${make_spack_cmd[@]}"} \
     || _die "unable to install Spack $spack_ver"
