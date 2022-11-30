@@ -19,6 +19,9 @@ expat:expat:expat-devel
 findutils:findutils:findutils
 flex:flex:flex-devel
 fontconfig:fontconfig:fontconfig-devel
+freeglut:freeglut:freeglut-devel
+freetype:freetype:freetype-devel
+ftgl:ftgl:ftgl-devel
 xorg-x11-font-utils:font-util:xorg-x11-font-utils
 freeglut:freeglut:freeglut-devel
 freetype:freetype:freetype-devel
@@ -35,8 +38,8 @@ gettext:gettext:gettext-devel
 git:git:git
 gl2ps:gl2ps:gl2ps-devel
 glew:glew:glew-devel
+glibc:glibc:glibc-devel
 gperf:gperf:gperf
-groff-base:groff:groff-base
 gsl:gsl:gsl-devel
 help2man:help2man:help2man
 htgettoken:htgettoken:htgettoken
@@ -66,6 +69,8 @@ libpciaccess:libpciaccess:libpciaccess-devel
 libpng:libpng:libpng-devel
 libsigsegv:libsigsegv:libsigsegv-devel
 libSM:libsm:libSM-devel
+libtool:libtool:libtool
+libuuid:libuuid:libuuid-devel
 libtool:libtool:libtool-ltdl-devel
 libunistring:libunistring:libunistring-devel
 libuuid:libuuid:libuuid-devel
@@ -83,7 +88,7 @@ libXrandr:xrandr:libXrandr-devel
 libxshmfence:libxshmfence:libxshmfence-devel
 libXt:libxt:libXt-devel
 libXv:libxv:libXv-devel
-libXvMC:libxvmc:libXvMC-devel
+libXvMC:libxvxmc:libXvMC-devel
 libXxf86vm:libXxf86vm:libXxf86vm-devel
 libyaml:libyaml:libyaml-devel
 Lmod:lmod:Lmod
@@ -95,9 +100,7 @@ mariadb:mysql:mariadb-devel
 mesa-libGL:mesa:mesa-libGL-devel
 mesa-libGLU:mesa-glu:mesa-libGLU-devel
 meson:meson:meson
-xorg-x11-font-utils:mkfontdir:xorg-x11-font-utils
-xorg-x11-font-utils:mkfontscale:xorg-x11-font-utils
-mpich-.*:mpich:mpich-.*-devel
+mpich-3.2:mpich:mpich-3.2-devel
 nasm:nasm:nasm
 ncurses:ncurses:ncurses-devel
 ninja-build:ninja:ninja-build
@@ -111,8 +114,8 @@ perl-Data-Dumper:perl-data-dumper:perl-Data-Dumper
 perl:perl:perl-devel
 pkgconfig:pkgconf:pkgconfig
 pkgconf-pkg-config:pkg-config:pkgconf-pkg-config
-python-matplotlib:py-matplotlib:python-matplotlib
-python:python:python-devel
+python.*:python:python.*-devel
+python.*-setuptools:py-setuptools:python.*-setuptools
 readline:readline:readline-devel
 rhash:rhash:rhash-devel
 sqlite:sqlite:sqlite-devel
@@ -122,8 +125,10 @@ tcl:tcl:tcl-devel
 texinfo:texinfo:texinfo
 texlive:texlive:texlive
 tk:tk:tk-devel
-unuran:unuran:unuran-devel
 unzip:unzip:unzip
+xorg-x11-font-utils:font-util:xorg-x11-font-utils
+xorg-x11-font-utils:mkfontdir:xorg-x11-font-utils
+xorg-x11-font-utils:mkfontscale:xorg-x11-font-utils
 xorg-x11-server-Xorg:xorg-server:xorg-x11-server-Xorg
 xorg-x11-proto-devel:xextproto:xorg-x11-proto-devel
 xorg-x11-proto-devel:xproto:xorg-x11-proto-devel
@@ -133,4 +138,3 @@ xxhash:xxhash:xxhash-devel
 xz:xz:xz-devel
 z3:z3:z3-devel
 zlib:zlib:zlib-devel
-zstd:zstd:zstd
