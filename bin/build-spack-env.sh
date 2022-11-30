@@ -69,8 +69,8 @@ EOF
   cat <<\EOF
 BRIEF OPTIONS
 
-  --cache-write-(bootstrap|sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots)) \
-  --no-cache-write-(binaries|bootstrap|sources) --clear-mirrors \
+  --cache-write-(sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots)) \
+  --no-cache-write-(sources|binaries) --clear-mirrors \
   --color[= ](auto|always|never) \
   --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install) \
   --(no-)?safe-concretize --spack-python[= ]<python-exec> \
@@ -145,11 +145,11 @@ LOCATION AND VERSION OPTIONS
 
 SPACK CONFIGURATION OPTIONS
 
-  --cache-write-(bootstrap|sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots))
-  --no-cache-write-(binaries|bootstrap|sources)
+  --cache-write-(sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots))
+  --no-cache-write-(sources|binaries)
 
-    Control whether bootstrap packages, sources or binaries are written
-    to local caches under <working-dir>/copyBack.
+    Control whether sources or binary packages are written to local
+    caches under <working-dir>/copyBack.
 
   --clear-mirrors
   --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
@@ -230,19 +230,17 @@ CACHING SOURCE AND BINARY PACKAGES
 
   If configured:
 
-  * Bootstrap packages will be cached under
-    `<working-dir>/copyBack/spack-bootstrap-cache` before any
-    environment is built.
-
   * Source packages for each environment will be cached under
     `<working-dir>/copyBack/spack-source-cache` before that environment
     is built. "Non-stable" sources (e.g. those obtained from
     repositories) will not be cached.
 
   * Binary packages for each environment will be cached under
-    `<working-dir/copyBack/spack-binary-cache>` after that environment
-    has been built successfully. If `--cache-write-binaries=no_root` is
-    active, then root packages of the environment will not be cached.
+    `<working-dir>/copyBack/spack-binary-cache` or
+    `<working-dir>/copyBack/spack-compiler-cache` (as appropriate) after
+    that environment has been built successfully. If
+    `--cache-write-binaries=no_root` is active, then root packages of
+    non-compiler environments will not be cached.
 
 
 LOG RETRIEVAL AND ERROR RECOVERY
@@ -256,7 +254,8 @@ LOG RETRIEVAL AND ERROR RECOVERY
 
   In the event of an abnormal termination: if the configured option for
   writing binaries to cache is anything other than, "none," then all
-  successfully installed packages will be written to cache before
+  successfully installed packages will be written to an emergency cache
+  `<working-dir>/copyBack/spack-emergency-cache` before
   `build-spack-env.sh` exits.
 
 
@@ -787,7 +786,6 @@ cache_urls=()
 ups_opt=-u
 
 cache_write_binaries=all
-#unset cache_write_bootstrap
 cache_write_sources=1
 common_spack_opts=(--backtrace --timestamp)
 
@@ -796,7 +794,6 @@ while (( $# )); do
   case $1 in
     --cache-write-binaries=*) _set_cache_write_binaries "${1#*=}";;
     --cache-write-binaries) _set_cache_write_binaries "$2"; shift;;
-    --cache-write-bootstrap) cache_write_bootstrap=1;;
     --cache-write-sources) cache_write_sources=1;;
     --clear-mirrors) clear_mirrors=1;;
     --color) color="$2"; shift;;
@@ -804,7 +801,6 @@ while (( $# )); do
     --debug-spack-*|--verbose-spack-*) eval "${1//-/_}=1";;
     --help|-h|-\?) usage 2; exit 1;;
     --no-cache-write-binaries) _set_cache_write_binaries "none";;
-    --no-cache-write-bootstrap) unset cache_write_bootstrap;;
     --no-cache-write-sources) unset cache_write_sources;;
     --no-safe-concretize) unset concretize_safely;;
     --no-ups) ups_opt=-p;;
@@ -1041,6 +1037,12 @@ spack compiler find --scope=site >/dev/null 2>&1
 ####################################
 
 ####################################
+# Update our local public keys from configured build caches.
+_report $PROGRESS "updating local keys from configured build caches"
+_cmd $DEBUG_1 spack buildcache keys
+####################################
+
+####################################
 # Execute bootstrap explicitly.
 _report $PROGRESS "bootstrapping Spack's tools"
 _cmd $PROGRESS $INFO \
@@ -1050,12 +1052,6 @@ _cmd $PROGRESS $INFO \
      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
      bootstrap now \
   || _die $EXIT_BOOTSTRAP_FAILURE "unable to bootstrap safely with base configuration"
-####################################
-
-####################################
-# Update our local public keys from configured build caches.
-_report $PROGRESS "updating local keys from configured build caches"
-_cmd $DEBUG_1 spack buildcache keys
 ####################################
 
 ####################################
@@ -1072,20 +1068,6 @@ else
   # Enable insecure mirror use.
   buildcache_key_opts+=(-u)
   extra_install_opts+=(--no-check-signature)
-fi
-####################################
-
-####################################
-# Write bootstrap packages to cache.
-if (( cache_write_bootstrap )); then \
-  _report $PROGRESS "writing bootstrap packages to build cache"
-  _cmd $DEBUG_1 spack \
-    ${__debug_spack_buildcache:+-d} \
-    ${__verbose_spack_buildcache:+-v} \
-    ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-    bootstrap mirror --binary-packages --dev \
-    "$working_dir/copyBack/spack-bootstrap-cache" \
-    || _report $WARNING "unable to write bootstrap packages to local cache"
 fi
 ####################################
 
