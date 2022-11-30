@@ -231,16 +231,16 @@ CACHING SOURCE AND BINARY PACKAGES
   If configured:
 
   * Bootstrap packages will be cached under
-    `<working-dir>/copyBack/spack-bootstrap-mirror` before any
+    `<working-dir>/copyBack/spack-bootstrap-cache` before any
     environment is built.
 
   * Source packages for each environment will be cached under
-    `<working-dir>/copyBack/spack-source-mirror` before that environment
+    `<working-dir>/copyBack/spack-source-cache` before that environment
     is built. "Non-stable" sources (e.g. those obtained from
     repositories) will not be cached.
 
   * Binary packages for each environment will be cached under
-    `<working-dir/copyBack/spack-binary-mirror>` after that environment
+    `<working-dir/copyBack/spack-binary-cache>` after that environment
     has been built successfully. If `--cache-write-binaries=no_root` is
     active, then root packages of the environment will not be cached.
 
@@ -432,10 +432,13 @@ _make_concretize_mirrors_yaml() {
     && cp "$default_mirrors" "$mirrors_cfg" \
     && spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site __local_binaries "$working_dir/copyBack/spack-binary-mirror" \
+         mirror add --scope=site __local_binaries "$working_dir/copyBack/spack-binary-cache" \
     && spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-mirror" \
+         mirror add --scope=site __local_compilers "$working_dir/copyBack/spack-compiler-cache" \
+    && spack \
+         ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+         mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-cache" \
     && cp "$mirrors_cfg" "$out_file" \
     && mv -f "$mirrors_cfg"{~,} \
       || _die $EXIT_SPACK_CONFIG_FAILURE "unable to generate concretization-specific mirrors.yaml at \"$out_file\""
@@ -514,6 +517,7 @@ _process_environment() {
       && cp "$concretize_mirrors" "$mirrors_cfg" \
         || _die $EXIT_PATH_FAILURE "failed to install \"$concretize_mirrors\" prior to concretizing $env_name"
   fi
+  local is_compiler_env=
   local is_nonterminal_compiler_env=
   local env_spec="${env_cfg%.yaml}"
   env_spec="${env_spec##*/}"
@@ -525,8 +529,10 @@ _process_environment() {
   #   2. a compiler environment
   #
   # then note that fact.
-  (( num_environments > ++env_idx )) \
-    && [[ "$env_spec"  =~ ^$known_compilers_re([~+@%[:space:]].*)?$ ]] \
+  (( ++env_idx ))
+  [[ "$env_spec"  =~ ^$known_compilers_re([~+@%[:space:]].*)?$ ]] \
+    && is_compiler_env=1 \
+    && (( num_environments > env_idx )) \
     && is_nonterminal_compiler_env=1
   ####################################
 
@@ -558,7 +564,7 @@ _process_environment() {
                 _cmd $DEBUG_1 $PROGRESS spack \
                      -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-                     mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack/spack-source-mirror"
+                     mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack/spack-source-cache"
          }
     } \
       && _do_build_and_test \
@@ -575,7 +581,13 @@ _process_environment() {
   ####################################
   # Store all successfully-built packages in the buildcache
   if [ "${cache_write_binaries:-none}" != none ]; then
-    _report $PROGRESS "caching $cache_write_binaries binary packages for environment $env_name in local mirror"
+    local binary_mirror=
+    if (( is_compiler_env )); then
+      binary_mirror=compiler
+    else
+      binary_mirror=binary
+    fi
+    _report $PROGRESS "caching $cache_write_binaries binary packages for environment $env_name to local $binary_mirror build cache"
     for env_json in "$env_name"_*.json; do
       _cmd $DEBUG_1 $PROGRESS \
            spack \
@@ -583,26 +595,30 @@ _process_environment() {
            ${__verbose_spack_buildcache:+-v} \
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
            buildcache create -a --deptype=all \
-           ${extra_buildcache_opts[*]:+"${extra_buildcache_opts[@]}"} \
-           -d "$working_dir/copyBack/spack-binary-mirror" \
+           ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
+           ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
+           -d "$working_dir/copyBack/spack-$binary_mirror-cache" \
            -r --spec-file "$env_json"
     done
-    if [ "$cache_write_binaries" = "no_roots" ]; then
+    if [ "$cache_write_binaries" = "no_roots" ] && ! (( is_compiler_env )); then
       _report $PROGRESS "removing roots of environment $env_name from binary cache"
       for env_json in "$env_name"_*.json; do
         spec="$(spack buildcache get-buildcache-name --spec-file "$env_json")"
         _report $DEBUG_1 "removing package for root spec $spec from binary cache"
-        find "$working_dir/copyBack/spack-binary-mirror" \
-             -type f \
-             \( -name "$spec.spack" -o -name "$spec.json" -o -name "$spec.json.sig" \) \
-             -exec rm -f \{\} \;
+        _cmd $DEBUG_1 \
+             find "$working_dir/copyBack/spack-$binary_mirror-cache" \
+             \( -type d -empty \) -o \
+             \( -type f \
+                \( -name "$spec.spack" -o -name "$spec.spec.json" -o -name "$spec.spec.json.sig" \) \
+             \) \
+             -delete
       done
     fi  >/dev/null 2>&1
     _report $PROGRESS "updating local build cache index"
     _cmd $DEBUG_1 $PROGRESS \
          spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         buildcache update-index -k -d "$working_dir/copyBack/spack-binary-mirror"
+         buildcache update-index -k -d "$working_dir/copyBack/spack-$binary_mirror-cache"
   fi
   ####################################
 
@@ -787,7 +803,7 @@ while (( $# )); do
     --color=*) color="${1#*=}";;
     --debug-spack-*|--verbose-spack-*) eval "${1//-/_}=1";;
     --help|-h|-\?) usage 2; exit 1;;
-    --no-cache-write-binaries) cache_write_binaries=none;;
+    --no-cache-write-binaries) _set_cache_write_binaries "none";;
     --no-cache-write-bootstrap) unset cache_write_bootstrap;;
     --no-cache-write-sources) unset cache_write_sources;;
     --no-safe-concretize) unset concretize_safely;;
@@ -880,8 +896,8 @@ fi
 #    `spack buildcache create`
 case ${cache_write_binaries:=none} in
   all|none|no_roots) : ;;
-  roots) extra_buildcache_opts+=(--only package);;
-  dep*) extra_buildcache_opts+=(--only dependencies);;
+  roots) buildcache_package_opts+=(--only package);;
+  dep*) buildcache_package_opts+=(--only dependencies);;
   *) _die $EXIT_CONFIG_FAILURE "unknown --cache-write-binaries argument $cache_write_binaries\n$(usage)"
 esac
 ####################################
@@ -897,8 +913,8 @@ if (( failed == 1 )) && [ \"${cache_write_binaries:-none}\" != none ]; then \
   _cmd $ERROR $PIPE spack \
       \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
       buildcache create -a --deptype=all \
-      \${extra_buildcache_opts[*]:+\"\${extra_buildcache_opts[@]}\"} \
-      -d \"$working_dir/copyBack/spack-binary-mirror\" \
+      \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
+      -d \"$working_dir/copyBack/spack-emergency-cache\" \
       -r --rebuild-index \$(spack find --no-groups); \
   tag_text=ALERT _report $ERROR \"emergency buildcache dump COMPLETE\"; \
 fi; \
@@ -1008,8 +1024,10 @@ for cache_spec in ${cache_urls[*]:+"${cache_urls[@]}"}; do
 done
 
 # Add mirror as buildcache for locally-built packages.
-_cmd $DEBUG_1 spack mirror add --scope=site __local_binaries "$working_dir/copyBack/spack-binary-mirror"
-_cmd $DEBUG_1 spack mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-mirror"
+_cmd $DEBUG_1 spack mirror add --scope=site __local_binaries "$working_dir/copyBack/spack-binary-cache"
+_cmd $DEBUG_1 spack mirror add --scope=site __local_bootstrap "$working_dir/copyBack/spack-bootstrap-cache"
+_cmd $DEBUG_1 spack mirror add --scope=site __local_compilers "$working_dir/copyBack/spack-compiler-cache"
+_cmd $DEBUG_1 spack mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-cache"
 
 # Make a cut-down mirror configuration for safe concretization.
 if (( concretize_safely )); then
@@ -1049,10 +1067,10 @@ if [ -n "$SPACK_BUILDCACHE_SECRET" ]; then
     gpg trust "$SPACK_BUILDCACHE_SECRET"
   # Handle older Spack installations that need the long-format keyid.
   keyid="$(gpg2 --list-secret-keys --keyid-format long --homedir "${SPACK_GNUPGHOME:-$SPACK_ROOT/opt/spack/gpg}" | sed -Ene '/^sec/{s&^[^/]+/([A-F0-9]+).*$&\1&p; q}')"
-  extra_buildcache_opts+=(--key "$keyid")
+  buildcache_key_opts+=(--key "$keyid")
 else
   # Enable insecure mirror use.
-  extra_buildcache_opts+=(-u)
+  buildcache_key_opts+=(-u)
   extra_install_opts+=(--no-check-signature)
 fi
 ####################################
@@ -1066,7 +1084,7 @@ if (( cache_write_bootstrap )); then \
     ${__verbose_spack_buildcache:+-v} \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
     bootstrap mirror --binary-packages --dev \
-    "$working_dir/copyBack/spack-bootstrap-mirror" \
+    "$working_dir/copyBack/spack-bootstrap-cache" \
     || _report $WARNING "unable to write bootstrap packages to local cache"
 fi
 ####################################
