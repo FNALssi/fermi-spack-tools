@@ -176,7 +176,7 @@ get_from_bootstrap() {
 parse_args() {
     spack_repo=https://github.com/FNALssi/spack.git
 
-    spack_release=$(get_from_boostrap default_spack_version)
+    spack_release=$(get_from_bootstrap default_spack_version)
     use_buildcache=true
     minimal=false
     upgrading=false
