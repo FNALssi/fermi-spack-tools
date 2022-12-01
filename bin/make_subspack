@@ -15,7 +15,7 @@ usage() {
 
 parse_args() {
     spack_release=$(get_from_bootstrap  default_spack_version)
-    padding=true
+    padding=false
 
     eval set : $(getopt --longoptions with_padding,spack_release: --options tu -- "$@")
     shift

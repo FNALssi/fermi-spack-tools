@@ -115,7 +115,6 @@ perl:perl:perl-devel
 pkgconfig:pkgconf:pkgconfig
 pkgconf-pkg-config:pkg-config:pkgconf-pkg-config
 python.*:python:python.*-devel
-python.*-setuptools:py-setuptools:python.*-setuptools
 readline:readline:readline-devel
 rhash:rhash:rhash-devel
 sqlite:sqlite:sqlite-devel
