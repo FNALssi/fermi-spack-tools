@@ -606,11 +606,10 @@ _process_environment() {
         _report $DEBUG_1 "removing package for root spec $spec from binary cache"
         _cmd $DEBUG_1 \
              find "$working_dir/copyBack/spack-$binary_mirror-cache" \
-             \( -type d -empty \) -o \
+             -d \
              \( -type f \
                 \( -name "$spec.spack" -o -name "$spec.spec.json" -o -name "$spec.spec.json.sig" \) \
-             \) \
-             -delete
+             \) -o \( -type d -empty \) -delete
       done
     fi  >/dev/null 2>&1
     _report $PROGRESS "updating local build cache index"
