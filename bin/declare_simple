@@ -78,11 +78,9 @@ a
     def install(self, spec, prefix):
         raise NotImplementedError
 
-    def setup_environment(self, spack_env, run_env):
+    def setup_run_environment(self, run_env):
         run_env.set('%(NAME)s_DIR', self.prefix)
         run_env.prepend_path('%(PATHVAR)s', self.prefix)
-        spack_env.set('%(NAME)s_DIR', self.prefix)
-        spack_env.prepend_path('%(PATHVAR)s', self.prefix)
 .
 wq
 """ % dict)
