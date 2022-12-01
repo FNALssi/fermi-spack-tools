@@ -104,6 +104,9 @@ else
 cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml
 fi
 
+echo "installing packages.yaml"
+cp $src/etc/spack/packages.yaml $SPACK_ROOT/etc/spack/packages.yaml
+
 if $padding 
 then 
     echo "turning on padding." 
