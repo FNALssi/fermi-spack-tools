@@ -180,10 +180,10 @@ parse_args() {
     use_buildcache=true
     minimal=false
     upgrading=false
-    padding=true
+    padding=false
     layout=unified
 
-    eval set : $(getopt --longoptions with_padding,upgrade,spack_release,minimal,no_buildcache --options uct -- : "$@")
+    eval set : $(getopt --longoptions with_padding,upgrade,spack_release:,minimal,no_buildcache --options uct -- : "$@")
     shift
     while echo x$1 | grep x-- > /dev/null
     do
