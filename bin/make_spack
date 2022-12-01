@@ -218,7 +218,12 @@ main() {
             echo "FAILED" >&2
             exit 1
         fi
-        add_config=:
+        if $padding
+        then
+            add_config='printf "config:\n  install_tree:\n" > $SPACK_ROOT/etc/spack/config.yaml'
+        else
+            add_config=:
+        fi
         ;;
     traditional)
         echo "make_spack: INFO: setting up for traditional ups layout under $2"
