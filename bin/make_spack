@@ -114,7 +114,9 @@ create_spack() {
             eval "$add_config"
             case $spack_release in
             rollout*|0.1[67]*) ;;
-            *) $padding && echo "turning on padding." && echo "    padded_length: 255" >> $SPACK_ROOT/etc/spack/config.yaml;;
+            *) $padding && 
+               echo "turning on padding." && 
+               echo "    padded_length: 255" >> $SPACK_ROOT/etc/spack/config.yaml;;
             esac
             export plat="target=`uname -i` os=`spack arch --operating-system`"
             spack mirror add --scope site fnal $binary_cache
@@ -204,6 +206,53 @@ parse_args() {
 
 main() {
     parse_args "$@"
+
+    case $layout in
+    plain)
+        echo "make_spack: INFO: Setting up for plain spack..."
+        export SPACK_ROOT=`make_absolute $2`
+        mkdir -p "$SPACK_ROOT" 
+        if [ ! -d "$SPACK_ROOT" -o ! -w "$SPACK_ROOT" ]
+        then
+            echo "make_spack: ERROR: Unable to make writable directory '$SPACK_ROOT'" >&2
+            echo "FAILED" >&2
+            exit 1
+        fi
+        add_config=:
+        ;;
+    traditional)
+        echo "make_spack: INFO: setting up for traditional ups layout under $2"
+        do_setup_env=true
+        dir=`make_absolute "$2"`
+        mkdir -p "$dir" 
+        if [ ! -d "$dir" -o ! -w "$dir" ]
+        then
+            echo "make_spack: ERROR: Unable to make writable directory '$dir'" >&2
+            echo "FAILED" >&2
+            exit 1
+        fi
+        export SPACK_ROOT=$dir/prd/spack/$spack_release/NULL
+
+        export add_config="cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml"
+        add_config="$add_config; cp $spackbindir/../templates/modules.yaml.unified $SPACK_ROOT/etc/spack/modules.yaml"
+        ;;
+     unified)
+        echo "make_spack: INFO: setting up for unified layout under $dir"
+        do_setup_env=true
+        dir=`make_absolute "$2"`
+        mkdir -p "$dir" 
+        if [ ! -d "$dir" -o ! -w "$dir" ]
+        then
+            echo "make_spack: ERROR: Unable to make writable directory '$dir'" >&2
+            echo "FAILED" >&2
+            exit 1
+        fi
+        export SPACK_ROOT=$dir/spack/$spack_release/NULL
+
+        export add_config="cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml"
+        add_config="$add_config; cp $spackbindir/../templates/modules.yaml.unified $SPACK_ROOT/etc/spack/modules.yaml"
+      ;;
+    esac
 
     export PATH=$SPACK_ROOT/bin:$PATH
     create_spack
