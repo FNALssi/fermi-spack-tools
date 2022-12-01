@@ -205,15 +205,6 @@ parse_args() {
 main() {
     parse_args "$@"
 
-            exit 1
-        fi
-        export SPACK_ROOT=$dir/spack/$spack_release/NULL
-
-        export add_config="cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml"
-        add_config="$add_config; cp $spackbindir/../templates/modules.yaml.unified $SPACK_ROOT/etc/spack/modules.yaml"
-        ;;
-    esac
-
     export PATH=$SPACK_ROOT/bin:$PATH
     create_spack
 
