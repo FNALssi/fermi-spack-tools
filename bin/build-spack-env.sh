@@ -336,8 +336,8 @@ _copy_back_logs() {
         | _cmd $DEBUG_1 tar -C "$tar_tmp/installed/$env_spec" -x
     fi
   done
-  _cmd $DEBUG_1 $PIPE tar -C "$tar_tmp" -jcf "$working_dir/copyBack/${BUILD_TAG:-spack-output}.tar.bz2" .
-  _debug $DEBUG_1 rm -rf "$tar_tmp"
+  _cmd $DEBUG_1 tar -C "$tar_tmp" -jcf "$working_dir/copyBack/${BUILD_TAG:-spack-output}.tar.bz2" .
+  _cmd $DEBUG_1 rm -rf "$tar_tmp"
 } 2>/dev/null
 
 # Print a message and exit with the specifed numeric first argument or 1
