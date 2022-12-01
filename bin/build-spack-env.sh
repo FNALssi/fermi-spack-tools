@@ -914,7 +914,7 @@ if (( failed == 1 )) && [ \"${cache_write_binaries:-none}\" != none ]; then \
       -r --rebuild-index \$(spack find --no-groups); \
   tag_text=ALERT _report $ERROR \"emergency buildcache dump COMPLETE\"; \
 fi; \
-eval exec \"$STDOUT>&-\" \"$STDERR>&-\"\
+exec $STDOUT>&- $STDERR>&-\
 " EXIT
 ####################################
 
