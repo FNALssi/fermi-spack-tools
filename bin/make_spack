@@ -187,7 +187,7 @@ parse_args() {
 
     eval set : $(getopt --longoptions with_padding,upgrade,spack_release:,minimal,no_buildcache --options uct -- : "$@")
     shift
-    while echo x$1 | grep x-- > /dev/null
+    while echo x$1 | grep x- > /dev/null
     do
         case "x$1" in
         x--with_padding)        padding=true; shift ;;
@@ -199,9 +199,11 @@ parse_args() {
         x-t)                    layout=traditional; shift;;
         x-p)                    layout=plain; shift;;
         x-m)                    minimal=true; shift;;
-        *)  break;;
+        x--)                    shift; break;;
         esac
     done
+
+    dir=$2
 }
 
 main() {
@@ -209,8 +211,8 @@ main() {
 
     case $layout in
     plain)
-        echo "make_spack: INFO: Setting up for plain spack..."
-        export SPACK_ROOT=`make_absolute $2`
+        echo "make_spack: INFO: Setting up for plain spack in $dir..."
+        export SPACK_ROOT=`make_absolute $dir`
         mkdir -p "$SPACK_ROOT" 
         if [ ! -d "$SPACK_ROOT" -o ! -w "$SPACK_ROOT" ]
         then
@@ -226,9 +228,9 @@ main() {
         fi
         ;;
     traditional)
-        echo "make_spack: INFO: setting up for traditional ups layout under $2"
+        echo "make_spack: INFO: setting up for traditional ups layout under $dir"
         do_setup_env=true
-        dir=`make_absolute "$2"`
+        dir=`make_absolute "$dir"`
         mkdir -p "$dir" 
         if [ ! -d "$dir" -o ! -w "$dir" ]
         then
@@ -244,7 +246,7 @@ main() {
      unified)
         echo "make_spack: INFO: setting up for unified layout under $dir"
         do_setup_env=true
-        dir=`make_absolute "$2"`
+        dir=`make_absolute "$dir"`
         mkdir -p "$dir" 
         if [ ! -d "$dir" -o ! -w "$dir" ]
         then
