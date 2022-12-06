@@ -1,23 +1,51 @@
-#!/bin/bash -x
+#!/bin/bash 
 
-# pull down spack-infrastructure
-# use it to install
-dest=${1:-$PWD}
-ver=${2:-v2_18_00_01}
-spackver=${3:-v0.18.0.fermi}
+# pull down spack-infrastructure and use it to install spack
 
-mkdir -p $dest/spack-infrastructure/$ver
-cd $dest
+usage() {
+  cat <<EOF
+usage: bootstrap [--with_padding] [--help] [dest_dir] [spack_infrastructure_version] [spack_version]
+EOF
+}
+default_spack_infrastructure_version=v2_19_00
+default_spack_version=v0.19.fermi
 
-git clone -b $ver https://github.com/FNALssi/spack-infrastructure.git spack-infrastructure/$ver/NULL/
+parse_args() {
+    with_padding=""
+    eval set : $(getopt --longoptions with_padding,help -- x "$@")
+    shift
+    while [ "${1:0:2}" = "--" ]
+    do
+        case "x$1" in
+        x--with_padding) with_padding="--with_padding"; shift; continue;;
+        x--help) usage; exit;;
+        x--) shift; break;;
+        esac
+    done
+    echo "after while: args $*"
+    dest=${1:-$PWD}
+    ver=${2:-$default_spack_infrastructure_version}
+    spackver=${3:-$default_spack_version}
+}
 
-PATH=$dest/spack-infrastructure/$ver/NULL/bin:$PATH
+main() {
+    parse_args "$@"
 
-make_spack --spack_release $spackver --minimal -u $dest
+    mkdir -p $dest/spack-infrastructure/$ver
+    cd $dest
 
-source $dest/setup-env.sh
+    git clone -b $ver https://github.com/FNALssi/spack-infrastructure.git spack-infrastructure/$ver/NULL/
 
-spack compiler find --scope=site
+    PATH=$dest/spack-infrastructure/$ver/NULL/bin:$PATH
 
-cd $dest/spack-infrastructure/$ver/NULL && bin/declare_simple spack-infrastructure $ver
+    make_spack --spack_release $spackver $with_padding --minimal -u $dest
+
+    source $dest/setup-env.sh
+
+    spack compiler find --scope=site
+
+    cd $dest/spack-infrastructure/$ver/NULL && bin/declare_simple spack-infrastructure $ver
+}
+
+main "$@"
 

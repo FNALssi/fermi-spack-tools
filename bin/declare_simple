@@ -9,10 +9,11 @@ sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
 sys.path.insert(1, "%s/lib/spack" % os.environ["SPACK_ROOT"])
 
 import ruamel.yaml
+import spack.main
 import spack.spec
 import spack.store
 import spack.hooks
-import spack.platforms
+import spack.hooks.module_file_generation
 
 def get_tuple():
     host_platform = spack.platforms.host()
@@ -77,11 +78,9 @@ a
     def install(self, spec, prefix):
         raise NotImplementedError
 
-    def setup_environment(self, spack_env, run_env):
+    def setup_run_environment(self, run_env):
         run_env.set('%(NAME)s_DIR', self.prefix)
         run_env.prepend_path('%(PATHVAR)s', self.prefix)
-        spack_env.set('%(NAME)s_DIR', self.prefix)
-        spack_env.prepend_path('%(PATHVAR)s', self.prefix)
 .
 wq
 """ % dict)
@@ -134,7 +133,9 @@ def make_spec(name, version):
     sp = spack.spec.Spec.from_yaml(st)
     hashstr = sp.dag_hash()
 
-    properdir = "%s/../../../%s/%s/%s-%s-%s" % (os.environ['SPACK_ROOT'], name, version, platform, compiler.replace('@','-'), hashstr)
+    root = spack.store.root
+
+    properdir = "%s/%s/%s/%s-%s-%s" % (root, name, version, platform, compiler.replace('@','-'), hashstr)
     
     if not os.path.exists(os.path.dirname(properdir)):
         os.makedirs(os.path.dirname(properdir))
@@ -143,7 +144,9 @@ def make_spec(name, version):
     # add spec to index directly -- 
     # NOTE: should do some sort of locking here
     #
-    dbpath = "%s/../../../.spack-db/index.json" % os.environ['SPACK_ROOT']
+    #dbpath = "%s/../../../.spack-db/index.json" % os.environ['SPACK_ROOT']
+    # find db with spack.store in case of padding..
+    dbpath = "%s/.spack-db/index.json" % root
     dbf = open(dbpath, 'r')
     db = json.load(dbf)
     dbf.close()
@@ -155,10 +158,9 @@ def make_spec(name, version):
     json.dump(db,dbf)
     dbf.close()
 
+
     run_command("spack reindex")
-    #run_command("spack module ups_table refresh")
-    #run_command("spack module ups_version refresh")
-    #run_command("spack module tcl refresh")
-    #run_command("spack module lmod refresh")
+    # try to generate module files(?)
+    spack.hooks.module_file_generation.post_install(sp)
 
 make_spec(sys.argv[1], sys.argv[2])

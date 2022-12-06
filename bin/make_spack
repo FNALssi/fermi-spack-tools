@@ -112,6 +112,12 @@ create_spack() {
         then 
             echo "make_spack: INFO: running: $add_config"
             eval "$add_config"
+            case $spack_release in
+            rollout*|0.1[67]*) ;;
+            *) $padding && 
+               echo "turning on padding." && 
+               echo "    padded_length: 255" >> $SPACK_ROOT/etc/spack/config.yaml;;
+            esac
             export plat="target=`uname -i` os=`spack arch --operating-system`"
             spack mirror add --scope site fnal $binary_cache
             spack buildcache update-index  -d $binary_cache
@@ -148,123 +154,133 @@ make_absolute() {
 # where to git clone spack from, and what branch/release
 #
 #spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
-spack_repo=https://github.com/FNALssi/spack.git
 
-spack_release=v0.18.0.fermi
-use_buildcache=true
-minimal=false
-upgrading=false
+usage(){
+        echo "Usage: $0 [options] -[utp] /base/directory"
+        echo " options:"
+        echo "  --upgrade"
+        echo "  --no-buildcache"
+        echo "  --spack_release ver"
+        echo "  --minimal"
+        echo "  make a spack instance with given layout"
+        echo ""
+        echo "  -u fermi 'unified' layout"
+        echo "  -t fermi 'traditional' layout"
+        echo "  -p plain spack default layout"
+        echo "  -m minimal setup"
+        exit 1
+}
 
-while echo x$1 | grep x-- > /dev/null
-do
-    case "x$1" in
-    x--upgrade)
-       upgrading=true
-       shift
-       ;;
-    x--spack_release)
-       spack_release=$2
-       shift; shift
-       ;;
-    x--minimal)
-       minimal=true
-       shift
-       ;;
-    x--no-buildcache)
-       use_buildcache=false
-       shift
-       ;;
-    *)
-        echo "unknown option $1"
-        shift
-        exit
+get_from_bootstrap() {
+    grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//'
+}
+
+parse_args() {
+    spack_repo=https://github.com/FNALssi/spack.git
+
+    spack_release=$(get_from_bootstrap default_spack_version)
+    use_buildcache=true
+    minimal=false
+    upgrading=false
+    padding=false
+    layout=unified
+
+    eval set : $(getopt --longoptions with_padding,upgrade,spack_release:,minimal,no_buildcache --options uct -- : "$@")
+    shift
+    while echo x$1 | grep x- > /dev/null
+    do
+        case "x$1" in
+        x--with_padding)        padding=true; shift ;;
+        x--upgrade)             upgrading=true; shift;;
+        x--spack_release)       spack_release=$2; shift; shift ;;
+        x--minimal)             minimal=true; shift ;;
+        x--no-buildcache)       use_buildcache=false; shift;;
+        x-u)                    layout=unified; shift;;
+        x-t)                    layout=traditional; shift;;
+        x-p)                    layout=plain; shift;;
+        x-m)                    minimal=true; shift;;
+        x--)                    shift; break;;
+        esac
+    done
+
+    dir=$2
+}
+
+main() {
+    parse_args "$@"
+
+    case $layout in
+    plain)
+        echo "make_spack: INFO: Setting up for plain spack in $dir..."
+        export SPACK_ROOT=`make_absolute $dir`
+        mkdir -p "$SPACK_ROOT" 
+        if [ ! -d "$SPACK_ROOT" -o ! -w "$SPACK_ROOT" ]
+        then
+            echo "make_spack: ERROR: Unable to make writable directory '$SPACK_ROOT'" >&2
+            echo "FAILED" >&2
+            exit 1
+        fi
+        if $padding
+        then
+            add_config='printf "config:\n  install_tree:\n" > $SPACK_ROOT/etc/spack/config.yaml'
+        else
+            add_config=:
+        fi
         ;;
+    traditional)
+        echo "make_spack: INFO: setting up for traditional ups layout under $dir"
+        do_setup_env=true
+        dir=`make_absolute "$dir"`
+        mkdir -p "$dir" 
+        if [ ! -d "$dir" -o ! -w "$dir" ]
+        then
+            echo "make_spack: ERROR: Unable to make writable directory '$dir'" >&2
+            echo "FAILED" >&2
+            exit 1
+        fi
+        export SPACK_ROOT=$dir/prd/spack/$spack_release/NULL
+
+        export add_config="cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml"
+        add_config="$add_config; cp $spackbindir/../templates/modules.yaml.unified $SPACK_ROOT/etc/spack/modules.yaml"
+        ;;
+     unified)
+        echo "make_spack: INFO: setting up for unified layout under $dir"
+        do_setup_env=true
+        dir=`make_absolute "$dir"`
+        mkdir -p "$dir" 
+        if [ ! -d "$dir" -o ! -w "$dir" ]
+        then
+            echo "make_spack: ERROR: Unable to make writable directory '$dir'" >&2
+            echo "FAILED" >&2
+            exit 1
+        fi
+        export SPACK_ROOT=$dir/spack/$spack_release/NULL
+
+        export add_config="cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml"
+        add_config="$add_config; cp $spackbindir/../templates/modules.yaml.unified $SPACK_ROOT/etc/spack/modules.yaml"
+      ;;
     esac
-done
 
+    export PATH=$SPACK_ROOT/bin:$PATH
+    create_spack
 
-case "$spack_release" in
-rollout*) extra="";;
-*)        extra=".new";;
-esac
-
-if [ "x$1" = "x-p" ]
-then
-    echo "make_spack: INFO: Setting up for plain spack..."
-    export SPACK_ROOT=`make_absolute $2`
-    mkdir -p "$SPACK_ROOT" 
-    if [ ! -d "$SPACK_ROOT" -o ! -w "$SPACK_ROOT" ]
-    then
-        echo "make_spack: ERROR: Unable to make writable directory '$SPACK_ROOT'" >&2
-        echo "FAILED" >&2
-        exit 1
+    if [ -n "$dir" ]; then
+      rm -f $dir/spack/current
+      ln -s $dir/spack/$spack_release $dir/spack/current
     fi
-    add_config=:
-elif [ "x$1" = "x-t" ]
-then
-    echo "make_spack: INFO: setting up for traditional ups layout under $2"
-    do_setup_env=true
-    dir=`make_absolute "$2"`
-    mkdir -p "$dir" 
-    if [ ! -d "$dir" -o ! -w "$dir" ]
-    then
-        echo "make_spack: ERROR: Unable to make writable directory '$dir'" >&2
-        echo "FAILED" >&2
-        exit 1
+
+    # save setup-env creation/update till the end so if we're upgrading and it
+    # dies, we don't change it until the end.
+
+    if [ -n "$do_setup_env" ]; then
+        echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $dir/setup-env.sh
+        echo "export SPACK_DISABLE_LOCAL_CONFIG=true" >> $dir/setup-env.sh
+        echo "export SPACK_USER_CACHE_PATH=$dir/tmp" >> $dir/setup-env.sh
+
+        echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $dir/setup-env.csh
+        echo "setenv SPACK_DISABLE_LOCAL_CONFIG true" >> $dir/setup-env.csh
+        echo "setenv SPACK_USER_CACHE_PATH $dir/tmp" >> $dir/setup-env.csh
+        mkdir -p $dir/tmp
     fi
-    export SPACK_ROOT=$dir/prd/spack/$spack_release/NULL
-
-    export add_config="cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml"
-    add_config="$add_config; cp $spackbindir/../templates/modules.yaml.unified $SPACK_ROOT/etc/spack/modules.yaml"
-elif [ "x$1" = "x-u"  ]
-then
-    echo "make_spack: INFO: setting up for unified layout under $dir"
-    do_setup_env=true
-    dir=`make_absolute "$2"`
-    mkdir -p "$dir" 
-    if [ ! -d "$dir" -o ! -w "$dir" ]
-    then
-        echo "make_spack: ERROR: Unable to make writable directory '$dir'" >&2
-        echo "FAILED" >&2
-        exit 1
-    fi
-    export SPACK_ROOT=$dir/spack/$spack_release/NULL
-
-    export add_config="cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml"
-    add_config="$add_config; cp $spackbindir/../templates/modules.yaml.unified $SPACK_ROOT/etc/spack/modules.yaml"
-else
-    echo "Usage: $0 [options] -[utp] /base/directory"
-    echo " options:"
-    echo "  --upgrade"
-    echo "  --no-buildcache"
-    echo "  --spack_release ver"
-    echo "  --minimal"
-    echo "  make a spack instance with given layout"
-    echo "  -u fermi 'unified' layout"
-    echo "  -t fermi 'traditional' layout"
-    echo "  -p plain spack default layout"
-    echo "  -m minimal setup"
-    exit 1
-fi
-
-export PATH=$SPACK_ROOT/bin:$PATH
-create_spack
-
-if [ -n "$dir" ]; then
-  rm -f $dir/spack/current
-  ln -s $dir/spack/$spack_release $dir/spack/current
-fi
-
-# save setup-env creation/update till the end so if we're upgrading and it
-# dies, we don't change it until the end.
-
-if [ -n "$do_setup_env" ]; then
-    echo ". $SPACK_ROOT/share/spack/setup-env.sh" > $dir/setup-env.sh
-    echo "export SPACK_DISABLE_LOCAL_CONFIG=true" >> $dir/setup-env.sh
-    echo "export SPACK_USER_CACHE_PATH=$dir/tmp" >> $dir/setup-env.sh
-
-    echo "source $SPACK_ROOT/share/spack/setup-env.csh" > $dir/setup-env.csh
-    echo "setenv SPACK_DISABLE_LOCAL_CONFIG true" >> $dir/setup-env.csh
-    echo "setenv SPACK_USER_CACHE_PATH $dir/tmp" >> $dir/setup-env.csh
-    mkdir -p $dir/tmp
-fi
+}
+main "$@"
