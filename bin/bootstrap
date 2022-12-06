@@ -7,7 +7,7 @@ usage() {
 usage: bootstrap [--with_padding] [--help] [dest_dir] [spack_infrastructure_version] [spack_version]
 EOF
 }
-default_spack_infrastructure_version=v2_19_00
+default_spack_infrastructure_version=v2.19.00
 default_spack_version=v0.19.fermi
 
 parse_args() {
