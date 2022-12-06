@@ -1045,9 +1045,7 @@ _cmd $DEBUG_1 spack buildcache keys
 # Initialize signing key for binary packages.
 if [ -n "$SPACK_BUILDCACHE_SECRET" ]; then
   _report $PROGRESS "initializing configured signing key"
-  spack \
-    ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-    gpg trust "$SPACK_BUILDCACHE_SECRET"
+  spack gpg trust "$SPACK_BUILDCACHE_SECRET" >/dev/null 2>&1
   # Handle older Spack installations that need the long-format keyid.
   keyid="$(gpg2 --list-secret-keys --keyid-format long --homedir "${SPACK_GNUPGHOME:-$SPACK_ROOT/opt/spack/gpg}" | sed -Ene '/^sec/{s&^[^/]+/([A-F0-9]+).*$&\1&p; q}')"
   buildcache_key_opts+=(--key "$keyid")
