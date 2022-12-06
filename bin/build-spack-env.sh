@@ -621,9 +621,9 @@ _process_environment() {
   ####################################
 
   ####################################
-  # If we just built a non-terminal compiler environment, add the
+  # If we just built a compiler environment, add the
   # compiler to the list of available compilers.
-  if (( is_nonterminal_compiler_env )); then
+  if (( is_compiler_env )); then
     compiler_path="$( ( spack \
                     -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
