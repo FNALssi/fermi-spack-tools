@@ -627,7 +627,7 @@ _process_environment() {
     compiler_path="$( ( spack \
                     -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-                     location --install-dir "$env_spec" ) )" \
+                     location --install-dir "${env_spec/clang/llvm}" ) )" \
       || _die $EXIT_PATH_FAILURE "failed to extract path info for new compiler $env_spec"
     _report $DEBUG_1 "registering compiler at $compiler_path with Spack"
     _cmd $DEBUG_1 spack \
