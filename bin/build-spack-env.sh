@@ -1042,18 +1042,6 @@ _cmd $DEBUG_1 spack buildcache keys
 ####################################
 
 ####################################
-# Execute bootstrap explicitly.
-_report $PROGRESS "bootstrapping Spack's tools"
-_cmd $PROGRESS $INFO \
-     spack \
-     ${__debug_spack_bootstrap:+-d} \
-     ${__verbose_spack_bootstrap:+-v} \
-     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-     bootstrap now \
-  || _die $EXIT_BOOTSTRAP_FAILURE "unable to bootstrap safely with base configuration"
-####################################
-
-####################################
 # Initialize signing key for binary packages.
 if [ -n "$SPACK_BUILDCACHE_SECRET" ]; then
   _report $PROGRESS "initializing configured signing key"
