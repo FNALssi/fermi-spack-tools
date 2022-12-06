@@ -37,7 +37,6 @@ gsl:gsl:gsl-devel
 help2man:help2man:help2man
 condor:htcondor:condor
 htgettoken:htgettoken:htgettoken
-hwloc:hwloc:hwloc-devel
 libicu:icu4c:libicu-devel
 jemalloc:jemalloc:jemalloc-devel
 krb5-libs:krb5:krb5-devel
