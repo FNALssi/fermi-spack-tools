@@ -930,7 +930,7 @@ if [[ "${spack_config_files[*]}" =~ (^|/)packages\.yaml([[:space:]]|$) ]]; then
 else
   # Don't want externals from CVMFS.
   _report $DEBUG_2 "externals in CVMFS will be excluded from generated packages.yaml"
-  _cmd $DEBUG_2 sed -Ei'' -e 's&^([[:space:]]+cprefix=).*$&\1'"''"'&' "$TMP/bin/make_packages_yaml"
+  _cmd $DEBUG_2 sed -Ei'' -e 's&^([[:space:]]+(cvmfsversions|cprefix)=).*$&\1'"''"'&' "$TMP/bin/make_packages_yaml"
 fi
 ####################################
 
