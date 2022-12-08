@@ -11,8 +11,7 @@ os=${2:-`spack arch -o`}
 cvmfs_area=/cvmfs/fermilab.opensciencegrid.org/packages/external
 src=$dir/templates/packagelist
 optf=$dir/templates/package_opts
-#dst=$1/etc/spack/$os/packages.yaml
-dst=$1/etc/spack/packages.yaml
+dst=$1/etc/spack/$os/packages.yaml
 
 # packages to make not buildable...
 force_system='^(bdftopf|bzip2|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|glew|libbsd|libc|libdrm|libffi|libfontenc|libgcrypt|libice|libjpeg-turbo|libpciaccess|libpthread-stubs|libseigsegv|libsm|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libuuid|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|lbixxf86vm|lz4|mesa|mesa-glu|ncurses|openssl|openssh|pcre|pcre2|pkgconf|pkg-config|tar|tcl|texlive|tk|unzip|util-macros|xextproto|xproxymanagementprotocol|xrandr|xtrans|xz|zlib)$'
