@@ -279,7 +279,7 @@ EOF
 #    echo "    compiler: [$compiler]"  >&3
 #fi
 
-for p in `cat $src`
+for p in `grep -Eve '^[[:space:]]*#' "$src"`
 do
     did_externals=false
 
