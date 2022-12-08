@@ -332,7 +332,7 @@ do
   fi
 
   # also find any cvmfs versions
-  cvmfsversions=
+  cvmfsversions=`get_cvmfs_spack_versions $spp`
 
   for pkg in $p
   do
