@@ -117,7 +117,7 @@ getv2() {
   esac
   if [ "$x" = "" ]
   then
-      pkf="/usr/share/pkgconfig/$lp.pc"
+      pkf="/usr/share/pkgconfig/$2.pc"
       if [ -r "$pkf" ]
       then
           x=`grep Version: $pkf | sed -e 's/Version: //'`
