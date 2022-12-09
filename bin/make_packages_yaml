@@ -11,15 +11,14 @@ os=${2:-`spack arch -o`}
 cvmfs_area=/cvmfs/fermilab.opensciencegrid.org/packages/external
 src=$dir/templates/packagelist
 optf=$dir/templates/package_opts
-#dst=$1/etc/spack/$os/packages.yaml
-dst=$1/etc/spack/packages.yaml
+dst=$1/etc/spack/$os/packages.yaml
 
 # packages to make not buildable...
-force_system='^(bdftopf|bzip2|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|glew|libbsd|libc|libdrm|libffi|libfontenc|libgcrypt|libice|libjpeg-turbo|libpciaccess|libpthread-stubs|libseigsegv|libsm|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libuuid|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|lbixxf86vm|lz4|mesa|mesa-glu|ncurses|openssl|openssh|pcre|pcre2|pkgconf|pkg-config|tar|tcl|texlive|tk|unzip|util-macros|xextproto|xproxymanagementprotocol|xrandr|xtrans|xz|zlib)$'
-
-no_devel='^(diffutils|findutils|pkg-config|pkgconfig|tar)$'
+force_system='^(bdftopf|bzip2|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|glew|libbsd|libc|libdrm|libffi|libfontenc|libgcrypt|libice|libjpeg-turbo|libpthread-stubs|libsm|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libuuid|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|lbixxf86vm|lz4|mesa|mesa-glu|ncurses|openssl|openssh|pcre|pcre2|pkgconf|pkg-config|tar|tcl|texlive|tk|unzip|xextproto|xproxymanagementprotocol|xrandr|xtrans|xz|zlib)$'
 
 force_x86_64='^(asciidoc|autoconf|autogen|automake|binutils|bison|bzip2|cmake|conv|curl|damageproto|davix|diffutils|environment-modules|expat|findutils|fixesproto|flex|font-util|fontconfig|font-util|ftgl|hwloc|libfontenc|libxfont|mkfontdir|mkfontscale|freeglut|freetype|gdb|gdbm|gettext|git|gl2ps|glew|gmake|gawk|help2man|icu4c|jemalloc|libbsd|libdrm|libedit|libevent|libffi|libice|libiconv|libjpeg|libjpeg-turbo|libgcrypt|libpciaccess|libpng|libpthread-stubs|libsigsegv|libsm|libtool|libunistring|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxft|libxi|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|libyaml|lua|lz4|m4|matplotlib|mesa|mesa-glu|mpich|mysql|nasm|ncurses|openblas|openssl|patchelf|pcre|pcre2|perl|perl-data-dumper|pkgconf|pkg-config|readline|sqlite|swig|tar|tcl|texinfo|texlive|tk|unuran|unzip|util-macros|xextproto|xproto|xxhash|xz|zlib|zstd)$'
+
+force_target=x86_64_v2
 
 teeit="cat"
 #debugging
@@ -117,7 +116,7 @@ getv2() {
   esac
   if [ "$x" = "" ]
   then
-      pkf="/usr/share/pkgconfig/$lp.pc"
+      pkf="/usr/share/pkgconfig/$2.pc"
       if [ -r "$pkf" ]
       then
           x=`grep Version: $pkf | sed -e 's/Version: //'`
@@ -266,165 +265,172 @@ cat <<EOF >&3
       ziglang:
         - zig
   libiconv:
-    buildable: false
-  util-macros:
-    buildable: false
+    buildable: False
 EOF
 
-# don't put the compiler tag in, we may not want to build
-# with the system compiler by default...
-#if [ "x$compiler" != x ]
-#then
-#    echo "  all:"                     >&3
-#    echo "    compiler: [$compiler]"  >&3
-#fi
+preamble() {
+  $did_preamble && return
+  did_preamble=true
+  echo "  $spp:"               >&3
+  $want_force_target || return 0
+  echo "    target:"     >&3
+  echo "      - $force_target"     >&3
+  [ "x$compiler$compiler2" = x ] && return # Compiler hints
+  echo "    compiler:" >&3
+  [ -z "$compiler"  ] || echo "      - $compiler" >&3
+  [ -z "$compiler2" ] || echo "      - $compiler2" >&3
+}
 
-for p in `cat $src`
+for p in `grep -Eve '^[[:space:]]*#' "$src"`
 do
-    did_externals=false
+  did_preamble=false
+  did_externals=false
+  want_force_target=false
+  dv="$(echo $p | sed -Ee 's/^[^:]*:[^:]*:([^:]*)/\1/')"
+  spp="$(echo $p | sed -Ee 's/^[^:]*:([^:]*):[^:]*/\1/')"
+  p="$(echo $p | sed -Ee 's/^([^:]*):[^:]*:[^:]*/\1/')"
+  case "$p" in
+    *[][*+?\(\)]*)
+      pr="$p"
+      p=`rpm -qa | sed -Ene '/-devel-/ b; s&^('"$p"')-.*&\1&p' | sort -u`
+      ;;
+    *) pr=
+  esac
 
-    case $p in
-    *:*:*) 
-           dv=$(echo $p | sed -e 's/.*:.*:\(.*\)/\1/') 
-           spp=$(echo $p | sed -e 's/.*:\(.*\):.*/\1/')
-           p=$(echo $p | sed -e 's/\(.*\):.*:.*/\1/') 
-           ;;
-    *)
-           spp=`echo $p | tr '[A-Z]' '[a-z]' | sed -e 's/imagemagick/image-magick/' -e 's/^python-/py-/' -e 's/pkgconfig/pkgconf/' -e 's/glibc/libc/' -e 's/libdb/berkeley-db/'`
-           dv="$spp"'-devel'
-    esac
+  # Check if we wish to constrain the target/compilers.
+  echo $spp | egrep "$force_x86_64" > /dev/null &&
+    want_force_target=true
 
-    # if its a wildcarded rpm name, look for it
-    case "$p" in
-    *\**) 
-         p=`rpm -qa | grep "$p" | tail -1` 
-         dv=`rpm -qa | grep "$dv" |  tail -1`
-         ;;
-    esac
-
-    # debug individual packages here
-    # debug_pkg=gettext
-    debug_pkg=
-    if [ "$debug_pkg" != "" ] 
+  # debug individual packages here
+  # debug_pkg=gettext
+  debug_pkg=
+  if [ "$debug_pkg" != "" ]
+  then
+    if [ "$spp" = "$debug_pkg" ]
     then
-        if [ "$spp" = "$debug_pkg" ]
-        then
-            set -x
-        else
-            set +x
-        fi
-    fi
-
-    # some packages aren't on SL7 but are on SL8...
-    if [ "$os" = "scientific7" -a "$dv" = "z3-devel" ]
-    then
-        continue
-    fi
-
-    # find local version if any...
-    v=`getv2 $p $spp`
-    # also find any cvmfs versions
-    cvmfsversions=`get_cvmfs_spack_versions $spp`
-    if [ "x$v" = x ]
-    then
-        if [ "$spp" = "$dv" ] || rpm -q "$dv"  > /dev/null 
-        then
-            echo "Notice: no devel headers/libraries found for package $p"
-            echo "May want to install rpm: $p"
-        else
-            echo "Notice: no devel headers/libraries found for package $p"
-            echo "May want to install rpms: $spp and  $dv"
-        fi
-        if [ "x$cvmfsversions" = x ]
-        then
-            echo "Notice: no system version or cvmfs versions found for package $p"
-            # also no cvmfs versions, so skip...
-            continue
-        fi
-    fi
-
-    # check for installed devel rpm, otherwise warn
-
-    echo "  $spp:"               >&3
-    if echo $spp | egrep "$force_x86_64" > /dev/null
-    then
-        echo "    target:"     >&3
-        echo "      - x86_64"     >&3
-        echo "    compiler:" >&3
-        [ -z "$compiler"  ] || echo "      - $compiler" >&3
-        [ -z "$compiler2" ] || echo "      - $compiler2" >&3
-    fi
-
-    sysprefix='/usr'
-    # mpich is goofy on RedHat/Centos
-    case "$p" in
-    mpich-3*)
-        tp=`echo $p | sed -e 's/\([0-9]\)-.*/\1/'`
-        sysprefix="/usr/lib64/$tp/" 
-        ;;
-    esac
-
-    #variants from known variants list
-    opts=`grep "^$spp[ \t]" $optf | sed -e "s/^$spp[ \t]*//"`
-
-    #dependencies, one needed so far on gettext
-    if [ "$spp" = "gettext" ]
-    then
-        deps=" ^libc"
+      set -x
     else
-        deps=""
+      set +x
+    fi
+  fi
+
+  #variants from known variants list
+  opts=`grep "^$spp[ \t]" $optf | sed -e "s/^$spp[ \t]*//"`
+
+  #dependencies, one needed so far on gettext
+  if [ "$spp" = "gettext" ]
+  then
+    deps=" ^libc"
+  else
+    deps=""
+  fi
+
+  # some packages aren't on SL7 but are on SL8...
+  if [ "$os" = "scientific7" -a "$p" = "z3" ]
+  then
+    continue
+  fi
+
+  # also find any cvmfs versions
+  cvmfsversions=`get_cvmfs_spack_versions $spp`
+
+  for pkg in $p
+  do
+    ##################
+    # Ascertain the devel RPM name.
+    #
+    # Substitute RPM base name...
+    case "$dv" in
+      *\$0*) dpkg=$(echo "$dv" | sed -Ee 's&\$0&'"$pkg"'&');;
+      *) dpkg=$dv
+    esac
+    # and apply any regex substitutions.
+    case "$dpkg" in
+      *\\[1-9]*) dpkg=$(echo "$pkg" | sed -Ee 's&'"$pr"'&'"$dpkg"'&');;
+    esac
+    ##################
+    # find local version if any...
+    v=`getv2 $pkg $spp`
+    if [ "x$v" = x ] # No base rpm
+    then
+      echo "Notice: no system-installed versions found for $pkg (Spack package $spp)"
+      if [ "$pkg" = "$dpkg" ]
+      then
+        echo "        May want to install rpm: $pkg"
+      else
+        echo "        May want to install rpms: $pkg and $dpkg"
+      fi
+    elif [ "$pkg" = "$dpkg" ] || rpm -q "$dpkg" > /dev/null # Check for installed devel rpm
+    then
+      :
+    else
+      echo "Notice: no development headers/libraries installed for $pkg (Spack package $spp)"
+      echo "        May want to install rpm: $dpkg"
+      v=
     fi
 
     if [ "x$v" != x ]
     then 
-
-    # use the right external syntax based on spack version in path
-    case $SPACK_ROOT in
-    *rollout*)
-        echo "    paths:"           >&3
-        echo "      \"${spp}$opts @$v $comp$deps\": $sysprefix"    >&3
-        ;;
-    *)
-        echo "    externals:" >&3
-        echo "    - spec: \"${spp}$opts @$v $comp os=$os$deps\"" >&3
-        echo "      prefix: $sysprefix" >&3
-    esac
-
-    did_externals=true
-
-    fi
-
-    for v in $cvmfsversions
-    do
-        #printf "cvmfs $spp $v $os: " > /dev/tty
-        # should get info from spack here, not this way...
-        cprefix=`ls -d ${cvmfs_area}/$spp/$v/* 2>/dev/null | grep $os | head -1`
-
-        if [ "x$cprefix" = "x" ]
-        then
-            continue
-        fi
-
-        # if we have it in cvmfs, use that one
-        case $SPACK_ROOT in
+      preamble
+      sysprefix='/usr'
+      # mpich is goofy on RedHat/Centos
+      case "$pkg" in
+        mpich-*)
+          sysprefix="/usr/lib64/$pkg/"
+          ;;
+      esac
+      # use the right external syntax based on spack version in path
+      case $SPACK_ROOT in
         *rollout*)
-            $did_externals ||
+          $did_externals ||
             echo "    paths:"           >&3
-            echo "      \"$spp @$v $comp$deps\": $cprefix"    >&3
-            ;;
+          echo "      \"$spp$opts @$v $comp$deps\": $sysprefix"    >&3
+          ;;
         *)
-            $did_externals ||
+          $did_externals ||
             echo "    externals:" >&3
-            echo "    - spec: \"${spp}$opts @$v $comp os=$os$deps\"" >&3
-            echo "      prefix: $cprefix" >&3
-            ;;
-        esac
-        did_externals=true
-    done
-
-    if echo $spp | egrep "$force_system" > /dev/null
-    then
-        echo "    buildable: False"           >&3
+          echo "    - spec: \"$spp$opts @$v $comp os=$os$deps\"" >&3
+          echo "      prefix: $sysprefix" >&3
+      esac
+      did_externals=true
     fi
-done
+  done
+  for v in $cvmfsversions
+  do
+    preamble
+    #printf "cvmfs $spp $v $os: " > /dev/tty
+    # should get info from spack here, not this way...
+    cprefix=`ls -d ${cvmfs_area}/$spp/$v/* 2>/dev/null | grep $os | head -1`
 
+    if [ "x$cprefix" = "x" ]
+    then
+      continue
+    fi
+
+    # if we have it in cvmfs, use that one
+    case $SPACK_ROOT in
+      *rollout*)
+        $did_externals ||
+          echo "    paths:"           >&3
+        echo "      \"$spp @$v $comp$deps\": $cprefix"    >&3
+        ;;
+      *)
+        $did_externals ||
+          echo "    externals:" >&3
+        echo "    - spec: \"$spp$opts @$v $comp os=$os$deps\"" >&3
+        echo "      prefix: $cprefix" >&3
+        ;;
+    esac
+    did_externals=true
+  done
+
+  if $did_externals
+  then
+    echo $spp | egrep "$force_system" > /dev/null &&
+    echo "    buildable: False"           >&3
+  else
+    echo "Notice: no cvmfs versions found for Spack package $spp"
+    # Ensure we have an entry if we wish to constrain the target.
+    $want_force_target && preamble
+  fi
+done
