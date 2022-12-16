@@ -431,13 +431,13 @@ _make_concretize_mirrors_yaml() {
     && cp "$default_mirrors" "$mirrors_cfg" \
     && spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site __local_binaries "$working_dir/copyBack/spack-binary-cache" \
+         mirror add --scope=site __local_binaries "file://$working_dir/copyBack/spack-binary-cache" \
     && spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site __local_compilers "$working_dir/copyBack/spack-compiler-cache" \
+         mirror add --scope=site __local_compilers "file://$working_dir/copyBack/spack-compiler-cache" \
     && spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-cache" \
+         mirror add --scope=site __local_sources "file://$working_dir/copyBack/spack-source-cache" \
     && cp "$mirrors_cfg" "$out_file" \
     && mv -f "$mirrors_cfg"{~,} \
       || _die $EXIT_SPACK_CONFIG_FAILURE "unable to generate concretization-specific mirrors.yaml at \"$out_file\""
@@ -1012,6 +1012,7 @@ for cache_spec in ${cache_urls[*]:+"${cache_urls[@]}"}; do
   else
     cache_name="buildcache_$((++cache_count))"
   fi
+  [ "${cache_spec: 0:1}" = "/" ] && cache_spec="file://$cache_spec"
   _cmd $DEBUG_1 spack \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
     mirror add --scope=site "$cache_name" "$cache_spec" \
@@ -1019,10 +1020,10 @@ for cache_spec in ${cache_urls[*]:+"${cache_urls[@]}"}; do
 done
 
 # Add mirror as buildcache for locally-built packages.
-_cmd $DEBUG_1 spack mirror add --scope=site __local_binaries "$working_dir/copyBack/spack-binary-cache"
-_cmd $DEBUG_1 spack mirror add --scope=site __local_bootstrap "$working_dir/copyBack/spack-bootstrap-cache"
-_cmd $DEBUG_1 spack mirror add --scope=site __local_compilers "$working_dir/copyBack/spack-compiler-cache"
-_cmd $DEBUG_1 spack mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-cache"
+_cmd $DEBUG_1 spack mirror add --scope=site __local_binaries "file://$working_dir/copyBack/spack-binary-cache"
+_cmd $DEBUG_1 spack mirror add --scope=site __local_bootstrap "file://$working_dir/copyBack/spack-bootstrap-cache"
+_cmd $DEBUG_1 spack mirror add --scope=site __local_compilers "file://$working_dir/copyBack/spack-compiler-cache"
+_cmd $DEBUG_1 spack mirror add --scope=site __local_sources "file://$working_dir/copyBack/spack-source-cache"
 
 # Make a cut-down mirror configuration for safe concretization.
 if (( concretize_safely )); then
