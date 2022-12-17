@@ -13,12 +13,13 @@ src=$dir/templates/packagelist
 optf=$dir/templates/package_opts
 dst=$1/etc/spack/$os/packages.yaml
 
-# packages to make not buildable...
-force_system='^(bdftopf|bzip2|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|glew|libbsd|libc|libdrm|libffi|libfontenc|libgcrypt|libice|libjpeg-turbo|libpthread-stubs|libsm|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libuuid|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|lbixxf86vm|lz4|mesa|mesa-glu|ncurses|openssl|openssh|pcre|pcre2|pkgconf|pkg-config|tar|tcl|texlive|tk|unzip|xextproto|xproxymanagementprotocol|xrandr|xtrans|xz|zlib)$'
+# packages to make not buildable
+force_system='^(bdftopcf|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|libc|libfontenc|libice|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|mesa-glu|mkfontdir|mkfontscale|openssl|pkg-config|tar|tcl|tk|xextproto|xorg-server|xproto|xproxymanagementprotocol|xrandr|xtrans|zlib)$'
 
-force_x86_64='^(asciidoc|autoconf|autogen|automake|binutils|bison|bzip2|cmake|conv|curl|damageproto|davix|diffutils|environment-modules|expat|findutils|fixesproto|flex|font-util|fontconfig|font-util|ftgl|hwloc|libfontenc|libxfont|mkfontdir|mkfontscale|freeglut|freetype|gdb|gdbm|gettext|git|gl2ps|glew|gmake|gawk|help2man|icu4c|jemalloc|libbsd|libdrm|libedit|libevent|libffi|libice|libiconv|libjpeg|libjpeg-turbo|libgcrypt|libpciaccess|libpng|libpthread-stubs|libsigsegv|libsm|libtool|libunistring|libuuid|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxft|libxi|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|libyaml|lua|lz4|m4|matplotlib|mesa|mesa-glu|mpich|mysql|nasm|ncurses|openblas|openssl|patchelf|pcre|pcre2|perl|perl-data-dumper|pkgconf|pkg-config|readline|sqlite|swig|tar|tcl|texinfo|texlive|tk|unuran|unzip|util-macros|xextproto|xproto|xxhash|xz|zlib|zstd)$'
+# packages to force target (instead of merely preferred)
+force_x86_64='^(hwloc|libpciaccess|libsigsegv)$'
 
-force_target=x86_64_v2
+preferred_target=x86_64_v2
 
 teeit="cat"
 #debugging
@@ -181,91 +182,58 @@ echo "packages:" >&3
 
 cat <<EOF >&3
   all:
+    compiler:
+      - gcc
+      - clang
+    target:
+      - $preferred_target
     providers:
-      awk:
-        - gawk
-      blas:
-        - openblas
-      D:
-        - ldc
-      daal:
-        - intel-daal
-      elf:
-        - elfutils
-      fftw-api:
-        - fftw
-      flame:
-        - libflame
-      fuse:
-        - libfuse
-      gl:
-        - glx
-      glu:
-        - mesa-glu
-      golang:
-        - go
-      go-external-or-gccgo-bootstrap:
-        - go-bootstrap
-      iconv:
-        - libc
-      ipp:
-        - intel-ipp
-      java:
-        - openjdk
-      jpeg:
-        - libjpeg-turbo
-      lapack:
-        - openblas
-      libglx:
-        - mesa+glx
-      libllvm:
-        - llvm
-      libosmesa:
-        - mesa+osmesa
-      lua-lang:
-        - lua
-      luajit:
-        - lua-luajit-openresty
-      mariadb-client:
-        - mariadb-c-client
-      mkl:
-        - intel-mkl
-      mpe:
-        - mpe2
-      mpi:
-        - openmpi
-      mysql-client:
-        - mariadb-client
-      opencl:
-        - pocl
-      onedal:
-        - intel-oneapi-dal
       pbs:
         - torque
-      pil:
-        - py-pillow
       pkgconfig:
         - pkg-config
-      rpc:
-        - libc
-      scalapack:
-        - netlib-scalapack
-      sycl:
-        - libaec
-      tbb:
-        - intel-tbb-oneapi
-      unwind:
-        - libunwind
-      uuid:
-        - libuuid
-      xxd:
-        - xxd-standalone
-      yacc:
-        - bison
-      ziglang:
-        - zig
-  libiconv:
+  blas:
+    require: openblas
+  fftw-api:
+    require: fftw
+  go-external-or-gccgo-bootstrap:
+    require: go-bootstrap
+  gl:
+    require: glx
+  glu:
+    require: mesa-glu
+  golang:
+    require: go
+  iconv:
     buildable: False
+    require: libc
+  java:
+    require: openjdk
+  jpeg:
+    require: libjpeg-turbo
+  lapack:
+    require: openblas
+  libglx:
+    require: mesa+glx
+  libllvm:
+    require: llvm
+  libosmesa:
+    require: mesa+osmesa
+  mariadb-client:
+    require: mariadb-c-client
+  mysql-client:
+    require:  mariadb-client
+  rpc:
+    buildable: False
+    require: libc
+  tbb:
+    require: intel-tbb-oneapi
+  unwind:
+    require: libunwind
+  uuid:
+    require: libuuid
+  yacc:
+    require: bison
 EOF
 
 preamble() {
@@ -273,12 +241,12 @@ preamble() {
   did_preamble=true
   echo "  $spp:"               >&3
   $want_force_target || return 0
-  echo "    target:"     >&3
-  echo "      - $force_target"     >&3
+  echo "    require:"     >&3
+  echo "      - one_of: [\"target=$preferred_target\"]"     >&3
   [ "x$compiler$compiler2" = x ] && return # Compiler hints
-  echo "    compiler:" >&3
-  [ -z "$compiler"  ] || echo "      - $compiler" >&3
-  [ -z "$compiler2" ] || echo "      - $compiler2" >&3
+  echo "      - one_of:" >&3
+  [ -z "$compiler"  ] || echo "        - \"%$compiler\"" >&3
+  [ -z "$compiler2" ] || echo "        - \"%$compiler2\"" >&3
 }
 
 for p in `grep -Eve '^[[:space:]]*#' "$src"`
