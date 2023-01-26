@@ -58,7 +58,7 @@ Linux)
            apt list $1 2>/dev/null | grep '\[installed\]'| sed -e 's/[^ ]* //' -e 's/.*://' -e 's/[+-].*//' || runversion $1
         }
     ;;
-    *Scientific*|*Centos*|*RedHat*)
+    *Scientific*|*Centos*|*CentOS*|*RedHat*|*Alma*)
         if [ x$RPMCACHE != x ]
         then
         getv() {

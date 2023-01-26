@@ -10,8 +10,8 @@ esac
 #
 # binary cache to use
 #
-
 binary_cache=https://spack-cache-1.fnal.gov/binaries/
+binary_cache_bak=https://scisoft.fnal.gov/spack-mirror/
 
 install_latest() {
     pkg="$1"
@@ -49,7 +49,7 @@ bootstrap_patchelf() {
     export pdir
     mkdir $pdir
     PATH="$pdir:$PATH"
-    wget https://spack-cache-1.fnal.gov/binaries/bootstrap/patchelf.linux-scientific7-x86_64
+    (curl -OJL --max-redirs 0 --silent --fail $binary_cache/bootstrap/patchelf.linux-scientific7-x86_64 || curl -OJL --max-redirs 0 --silent --fail  $binary_cache_bak/patchelf.linux-scientific7-x86_64) || (echo "patchelf bootstrap download failed"; exit 111)
     mv patchelf.linux-scientific7-x86_64 $pdir/patchelf
 
     chmod +x $pdir/patchelf
@@ -121,6 +121,8 @@ create_spack() {
             export plat="target=`uname -i` os=`spack arch --operating-system`"
             spack mirror add --scope site fnal $binary_cache
             spack buildcache update-index  -d $binary_cache
+            spack mirror add --scope site scisoft $binary_cache_bak
+            spack buildcache update-index  -d $binary_cache_bak
             spack -k buildcache keys --install --trust --force
             add_recipe_repos
             if $upgrading
