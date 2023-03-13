@@ -6,10 +6,41 @@ x*/*) dir=`echo $0 | sed -e 's;\(.*\)/\([^/]*\);\1/..;'` ;;
 x*)   dir=.. ;;
 esac
 
+src=$dir/templates/packagelist
+want_cvmfs=false
+case "x$1" in
+x--help|x)
+    echo "Usage: make_packages_yaml [options] spack_root [os]"
+    echo "  options:"
+    echo "   --help               print this message"
+    echo "   --with-externals     include /cvmfs/fermilab.opensciencegrid.org/packages/external packages"
+    echo "   --with-cvmfs=/a/b/c  include other cvmfs externals"
+    echo "   --debug              turn on debugging messages"
+    echo "   --packagelist=/a/b/c use custom package list"
+    exit 0
+    ;;
+x--with-externals)  
+    want_cvmfs=true
+    cvmfs_area=/cvmfs/fermilab.opensciencegrid.org/packages/external
+    shift
+    ;;
+x--with-cvmfs=*)  
+    want_cvmfs=true
+    cvmfs_area=`echo $1 | sed -e 's/--with-cvmfs=//'`
+    shift
+    ;;
+x--debug)
+    set -x
+    shift
+    ;;
+x--packagelist=*)
+    src=`echo $1 | sed -e 's/--packagelist=//'`
+    shift
+    ;;
+esac
+
 os=${2:-`spack arch -o`}
 
-cvmfs_area=/cvmfs/fermilab.opensciencegrid.org/packages/external
-src=$dir/templates/packagelist
 optf=$dir/templates/package_opts
 dst=$1/etc/spack/$os/packages.yaml
 
@@ -148,8 +179,7 @@ getv2() {
 }
 
 get_cvmfs_spack_versions() {
-  #printf "get_cvmfs_spack_versions($1): " > /dev/tty
-  if [ -d ${cvmfs_area} ]
+  if $want_cvmfs && [ -d ${cvmfs_area} ]
   then
       csr=${cvmfs_area}/spack/current/NULL/ 
       SPACK_ROOT=$csr $csr/bin/spack find $1 | grep -v '^[=-]' | sed -e 's/[^ ]*@//'| sort -u # | tee /dev/tty

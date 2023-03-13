@@ -7,7 +7,7 @@ usage() {
 usage: bootstrap [--with_padding] [--help] [dest_dir] [spack_infrastructure_version] [spack_version]
 EOF
 }
-default_spack_infrastructure_version=v2.19.00
+default_spack_infrastructure_version=master
 default_spack_version=v0.19.fermi
 
 parse_args() {
@@ -28,23 +28,82 @@ parse_args() {
     spackver=${3:-$default_spack_version}
 }
 
+detail_log() {
+    logfile=/tmp/bootstrap$$.log 
+    # use fd 3 for messages to user, send stdout and stderr to log
+    # redirect stdin from /dev/null, so anything that tries to prompt
+    # for input will fail and not hang because no message gets to the user
+    exec 3>&1 > $logfile 2>&1 < /dev/null
+    echo "Putting detail log in /tmp/bootstrap$$.log" >&3 
+}
+
+monitor() {
+   f=$1
+   sd=$2
+   box="[                                                  ]"
+   lin="[==================================================]"
+
+   printf "%3d%%$box\r" 0 >&3
+   while :
+   do
+       duf=$(du -b $f)
+       ds="${duf%$f}"
+       dpp1=$(expr $ds / $sd )
+       dpp2=$(expr $dpp1 / 2 + 1)
+       printf "%3d%%${lin:0:$dpp2}\r" $dpp1 >&3
+       sleep 2
+   done
+}
+start_monitor() {
+  monitor $* &
+  monitor_pid=$!
+}
+stop_monitor() {
+ [ -n "$monitor_pid" ] && kill $monitor_pid 
+ clr="                                                         "
+ printf "\r$clr\r" >&3
+}
+message() {
+    stop_monitor
+    echo $* >&3
+    start_monitor $logfile 458
+}
+
+check_bootstrap() {
+    if [ `spack find | egrep 'patchelf|spack-infrastructure' | wc -l` = 2 ]
+    then
+        :
+    else
+        message "Bootstrap did NOT complete properly, please attach logfile to a Servicedesk ticket"
+        exit 1
+    fi
+}
+
 main() {
     parse_args "$@"
 
+    detail_log
     mkdir -p $dest/spack-infrastructure/$ver
     cd $dest
 
+    message "Cloning FNALssi spack-infrastructure repository"
     git clone -b $ver https://github.com/FNALssi/spack-infrastructure.git spack-infrastructure/$ver/NULL/
 
     PATH=$dest/spack-infrastructure/$ver/NULL/bin:$PATH
 
+    message "Setting up with make_spack"
     make_spack --spack_release $spackver $with_padding --minimal -u $dest
 
+    message "Finding compilers"
     source $dest/setup-env.sh
 
     spack compiler find --scope=site
 
     cd $dest/spack-infrastructure/$ver/NULL && bin/declare_simple spack-infrastructure $ver
+
+    stop_monitor
+   
+    check_bootstrap
 }
 
 main "$@"

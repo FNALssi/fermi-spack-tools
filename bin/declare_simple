@@ -40,7 +40,8 @@ def make_repo_if_needed( name ):
     for line in f:
         if line.find(name+" ") == 0:
              f.close()
-             return
+             rd = line[line.rfind(" "):].strip()
+             return rd
     f.close()
     rd="%s/var/spack/repos/%s" % (os.environ["SPACK_ROOT"], name)
     run_command("spack repo create %s %s" % (rd, name))
@@ -48,21 +49,23 @@ def make_repo_if_needed( name ):
     return rd
 
 
-def make_recipe_if_needed( namespace, name, pathvar='IGNORE'):
-
-    res = run_command('spack info %s > /dev/null 2>/dev/null' % name);
-    if res == 0:
-         return
+def make_recipe( namespace, name, version, tarfile,  pathvar='IGNORE'):
 
     rd = make_repo_if_needed(namespace)
 
+    # rewrite recipe if present with new tarfile...
+
+    print( "pfile: %s/packages/%s/package.py" % (rd, name))
     if os.path.exists( "%s/packages/%s/package.py" % (rd, name)):
-         return
+        print("unlinking")
+        os.unlink( "%s/packages/%s/package.py" % (rd, name))
 
     f = os.popen("unset VISUAL; EDITOR=/bin/ed spack create -N %s --template generic --name %s" % (namespace, name), "w")
     dict = {
        'name': name, 
        'NAME': name.upper().replace('-','_'), 
+       'version': version,
+       'tarfile': tarfile,
        'PATHVAR' : pathvar
     }
     f.write("""
@@ -71,96 +74,40 @@ g/FIXME:/d
     '''declare-simple %(name)s locally declared bundle of files you do not really build'''
 .
 /homepage *=/s;=.*;= 'https://nowhere.org/nosuch/';
-/url *=/s;=.*;= 'https://nowhere.org/nosuch'
+/url *=/s;=.*;= 'file://%(tarfile)s'
 /url *=/+2,\$d
 a
 
+    version('%(version)s')
+
+    def url_for_version(self,version):
+        url = 'file:///tmp/%(name)s.v{0}.tgz'
+        return url.format(version)
+
+
     def install(self, spec, prefix):
-        raise NotImplementedError
+        install_tree(self.stage.source_path, prefix)
 
     def setup_run_environment(self, run_env):
         run_env.set('%(NAME)s_DIR', self.prefix)
         run_env.prepend_path('%(PATHVAR)s', self.prefix)
 .
+.+1,$d
 wq
 """ % dict)
     f.close()
 
 
-def make_spec(name, version):
+def make_tarfile(name,version):
+    tfn = "/tmp/%s.v%s.tgz" % (name, version)
+    os.system("tar czvf %s ." % tfn)
+    return tfn
 
-    curdir = os.getcwd()
-    specfile = "%s/.spack/spec.yaml" % curdir
-    try:
-       os.mkdir(".spack")
-    except:
-       pass
-
-    tfl = get_tuple()
-    platform = '-'.join(tfl)
-
+def make_instance(name, version):
     namespace = "local"
-    make_recipe_if_needed(namespace, name, 'PATH')
-    compiler = get_compiler()
-    compiler_l = compiler.split("@")
-
-    spec = {
-        "spec": [
-            {
-                name: {
-                    "version": version,
-                    "arch": {
-                        "platform": tfl[0],
-                        "platform_os": tfl[1],
-                        "target": tfl[2],
-                    },
-                    "compiler": {
-                        "name": compiler_l[0],
-                        "version": compiler_l[1],
-                    },
-                    "namespace": namespace,
-                    "parameters": {},
-                }
-            }
-        ]
-    }
-
-    sf = open(specfile, "w")
-    sf.write(ruamel.yaml.dump(spec, default_style="1"))
-    sf.close()
-
-    st = open(specfile, "r")
-    sp = spack.spec.Spec.from_yaml(st)
-    hashstr = sp.dag_hash()
-
-    root = spack.store.root
-
-    properdir = "%s/%s/%s/%s-%s-%s" % (root, name, version, platform, compiler.replace('@','-'), hashstr)
-    
-    if not os.path.exists(os.path.dirname(properdir)):
-        os.makedirs(os.path.dirname(properdir))
-    os.rename(curdir, properdir)
-
-    # add spec to index directly -- 
-    # NOTE: should do some sort of locking here
-    #
-    #dbpath = "%s/../../../.spack-db/index.json" % os.environ['SPACK_ROOT']
-    # find db with spack.store in case of padding..
-    dbpath = "%s/.spack-db/index.json" % root
-    dbf = open(dbpath, 'r')
-    db = json.load(dbf)
-    dbf.close()
-    # need to not have a list at that layer unlike spec.yaml...
-    if (isinstance(spec['spec'], list)):
-        spec['spec'] = spec['spec'][0]
-    db['database']['installs'][hashstr] = spec
-    dbf = open(dbpath, 'w')
-    json.dump(db,dbf)
-    dbf.close()
+    tfn = make_tarfile(name,version)
+    make_recipe(namespace, name, version, tfn,  'PATH')
+    os.system("spack install --no-checksum %s@%s" % (name, version))
 
 
-    run_command("spack reindex")
-    # try to generate module files(?)
-    spack.hooks.module_file_generation.post_install(sp)
-
-make_spec(sys.argv[1], sys.argv[2])
+make_instance(sys.argv[1], sys.argv[2])

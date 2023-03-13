@@ -112,6 +112,7 @@ create_spack() {
         then 
             echo "make_spack: INFO: running: $add_config"
             eval "$add_config"
+            spack config --scope=site update  --yes-to-all config
             case $spack_release in
             rollout*|0.1[67]*) ;;
             *) $padding && 
