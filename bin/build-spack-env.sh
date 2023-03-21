@@ -335,11 +335,11 @@ _config_recipe_repos() {
       local url=
       local url_type="${BASH_REMATCH[1]}"
       local url_remainder="${BASH_REMATCH[2]}"
-      local branch_etc="${url_remainder##*:}"
+      local branch_etc="${url_remainder##*|}"
       if [ "$branch_etc" = "$url_remainder" ]; then
         url="$url_type://$url_remainder"
       else
-        url="$url_type://${url_remainder%:*}"
+        url="$url_type://${url_remainder%|*}"
       fi
       local path="${url%.git}" rpath=
       path="$SPACK_ROOT/${path##*/}"
