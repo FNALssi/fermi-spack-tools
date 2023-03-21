@@ -70,17 +70,27 @@ EOF
 BRIEF OPTIONS
 
   --cache-write-(sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots)) \
-  --no-cache-write-(sources|binaries) --clear-mirrors \
+  --no-cache-write-(sources|binaries) \
+  --clear-mirrors \
   --color[= ](auto|always|never) \
   --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install) \
-  --(no-)?safe-concretize --spack-python[= ]<python-exec> \
+  --(no-)?fail-fast \
+  --(no-)?safe-concretize \
+  --spack-python[= ]<python-exec> \
   --spack-config-cmd[= ]<config-cmd-string>+ \
   --spack-config-file[= ](<cache-name>\|)?<config-file>+ \
   --spack-infrastructure-root[= ]<repo> \
-  --spack-infrastructure-version[= ]<version> --spack-root[= ]<repo> \
-  --spack-version[= ]<version> --test[= ](all|none|root) -q --quiet [+-]v+ \
+  --spack-infrastructure-version[= ]<version> \
+  --spack-repo[= ]<path>|<repo>(\|<version|branch>)? \
+  --spack-root[= ]<repo> \
+  --spack-version[= ]<version> -\
+  -test[= ](all|none|root) \
+  -q \
+  --quiet \
+  [+-]v+ \
   --verbosity[= ](-?[0-9]+|INFO|WARNING|(FATAL_|INTERNAL_)?ERROR|INFO|PROGRESS|DEBUG_[1-9][0-9]*) \
-  --no-ups --ups[= ](plain|traditional|unified|-[ptu]) \
+  --no-ups \
+  --ups[= ](plain|traditional|unified|-[ptu]) \
   --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+ \
   --working-dir[= ]<dir>
 
@@ -157,6 +167,8 @@ SPACK CONFIGURATION OPTIONS
     Control the use of mirrors from which to obtain sources and/or
     pre-built binary packages.
 
+  --(no-)?fail-fast
+
   --(no-)?safe-concretize
 
     Control whether to concretize environments with only a minimal set
@@ -174,6 +186,16 @@ SPACK CONFIGURATION OPTIONS
 
     Import the specified YAML configuration file into Spack's
     configuration.
+
+  --spack-repo[= ]<path>
+  --spack-repo[= ]<repo>(\|<version|branch>)?
+
+    Configure an external source of Spack recipes from the specified
+    path or repository. If a Spack recipe repo is already configured
+    with the same namespace as that incoming, it will be
+    deconfigured. If there is an existing directory in var/spack/repos
+    that would conflict with a cloned `<repo>`, the cloned repo's top
+    level directory will be amended with `-_n_`.
 
   --test[= ](all|none|root)
 
@@ -303,23 +325,69 @@ _cmd() {
   eval '"$@"' $redirect
 }
 
+# Configure specified Spack recipe repos.
+_config_recipe_repos() {
+  local configured_repos=($(_cmd $DEBUG_1 $PIPE spack repo list | \
+                              _cmd $DEBUG_1 $PIPE sed -Ene 's&^([A-Za-z0-9_.-]+).*$&\1&p'))
+  for repo_element in ${recipe_repos[*]:+"${recipe_repos[@]}"}; do
+    local path=
+    if [[ "$repo_element" =~ ^(file|https?)://(.*)$ ]]; then
+      local url=
+      local url_type="${BASH_REMATCH[1]}"
+      local url_remainder="${BASH_REMATCH[2]}"
+      local branch_etc="${url_remainder##*:}"
+      if [ "$branch_etc" = "$url_remainder" ]; then
+        url="$url_type://$url_remainder"
+      else
+        url="$url_type://${url_remainder%:*}"
+      fi
+      local path="${url%.git}" rpath=
+      path="$SPACK_ROOT/${path##*/}"
+      local bnum=0
+      if [ -f "$path" ]; then
+        while read -r rpath < <(_cmd $DEBUG_2 $PIPE ls -1 "$path"-*); do
+          [[ "$rpath" =~ -([0-9]+)$ ]] &&
+            (( "${BASH_REMATCH[1]}" > bnum )) &&
+            (( bnum = "${BASH_REMATCH[1]}" ))
+        done
+        path="$path-$((bnum + 1))"
+      fi
+      _cmd $DEBUG_1 git clone ${branch_etc:+-b "$branch_etc"} "$url" "$path" ||
+        _die "unable to clone $url to $path to configure Spack recipe repo"
+    else
+      path="$repo_element"
+    fi
+    local namespace="$(_cmd $DEBUG_1 $PIPE sed -Ene 's&^[[:space:]]*namespace[[:space:]]*:[[:space:]]*'"'([^']+)'"'$&\1&p' "$path/repo.yaml")"
+    for rrepo in ${configured_repos[*]:+"${configured_repos[@]}"}; do
+      [ "$namespace" = "$rrepo" ] || continue
+      _report $PROGRESS "deactivating existing repo $rrepo"
+      _cmd $DEBUG_1 spack repo rm $rrepo ||
+        _die "unable to unconfigure existing repo $rrepo"
+    done
+    _report $INFO "configuring Spack recipe repo $namespace at $path"
+    _cmd $DEBUG_1 spack repo add "$path" ||
+      _die "unable to add repo $namespace at $path"
+  done
+}
+
 _copy_back_logs() {
   local tar_tmp="$working_dir/copyBack/tmp"
   local spack_env= env_spec= install_prefix=
+  _report $INFO "end-of-job copy-back..."
   mkdir -p "$tar_tmp/"{spack_env,spack-stage}
   cd "$spack_env_top_dir"
-  _cmd $DEBUG_1 spack clean -dmp
-  _cmd $DEBUG_1 $PIPE tar -c *.log *-out.txt *.yaml etc var/spack/environments \
-    | _cmd $DEBUG_1 tar -C "$tar_tmp/spack_env" -x
-  _cmd $DEBUG_1 $PIPE tar -C "$(spack location -S)" -c . \
-    | _cmd $DEUBG_1 tar -C "$tar_tmp/spack-stage" -x
+  _cmd $DEBUG_3 spack clean -dmp
+  _cmd $DEBUG_3 $PIPE tar -c *.log *-out.txt *.yaml etc var/spack/environments \
+    | _cmd $DEBUG_3 tar -C "$tar_tmp/spack_env" -x
+  _cmd $DEBUG_3 $PIPE tar -C "$(spack location -S)" -c . \
+    | _cmd $DEBUG_3 tar -C "$tar_tmp/spack-stage" -x
   for spack_env in $(spack env list); do
-    _cmd $DEBUG_1 $PIPE spack -e $spack_env \
+    _cmd $DEBUG_3 $PIPE spack -e $spack_env \
           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
           --color=never \
           spec --format '{fullname}{/hash}' \
       | while read root_spec; do
-      _cmd $DEBUG_1 $PIPE spack \
+      _cmd $DEBUG_3 $PIPE spack \
         ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
         --color=never \
         find -d --no-groups \
@@ -332,12 +400,13 @@ _copy_back_logs() {
     | while read env_spec install_prefix; do
     if [ -d "$install_prefix/.spack" ]; then
       mkdir -p "$tar_tmp/installed/$env_spec"
-      _cmd $DEBUG_1 $PIPE tar -C "$install_prefix/.spack" -c . \
-        | _cmd $DEBUG_1 tar -C "$tar_tmp/installed/$env_spec" -x
+      _cmd $DEBUG_3 $PIPE tar -C "$install_prefix/.spack" -c . \
+        | _cmd $DEBUG_3 tar -C "$tar_tmp/installed/$env_spec" -x
     fi
   done
-  _cmd $DEBUG_1 tar -C "$tar_tmp" -jcf "$working_dir/copyBack/${BUILD_TAG:-spack-output}.tar.bz2" .
-  _cmd $DEBUG_1 rm -rf "$tar_tmp"
+  _cmd $DEBUG_3 tar -C "$tar_tmp" -jcf "$working_dir/copyBack/${BUILD_TAG:-spack-output}.tar.bz2" .
+  _cmd $DEBUG_3 rm -rf "$tar_tmp"
+  _report $INFO "end-of-job copy-back COMPLETE"
 } 2>/dev/null
 
 # Print a message and exit with the specifed numeric first argument or 1
@@ -357,43 +426,36 @@ _do_build_and_test() {
     ${__verbose_spack_install:+-v}
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"}
     install
-    --fail-fast
+    ${fail_fast:+--fail-fast}
     --only-concrete
     ${extra_install_opts[*]:+"${extra_install_opts[@]}"}
   )
-  local extra_cmd_opts=()
-  (( is_nonterminal_compiler_env )) || extra_cmd_opts+=(${tests_arg:+"$tests_arg"})
+  local extra_cmd_opts=(${env_tests_arg:+"$env_tests_arg"})
   if ! (( is_nonterminal_compiler_env )) && [ "$tests_type" = "root" ]; then
     extra_cmd_opts+=(--no-cache) # Ensure roots are built even if in cache.
     # Identify and install non-root dependencies first.
     local root_spec_args=()
-    # Identify all concrete specs
-    OIFS="$IFS"; IFS=$'\n'
-    local all_specs=(
-      $(IFS="$OIFS" \
-           spack -e $env_name \
-           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-          --color=never \
-           spec -NL \
-          | sed -Ene '/^Concretized$/,/^$/ { /^(Concretized|-+)?$/ b; p;  }')
-    )
-    IFS="$OIFS"
     # Split each spec into hash and indent (=dependency) level,
     # identifying root hashes (level==0).
     local hashes=() root_hashes=() installed_deps=() levels=() \
-          regex='^([^[:space:]]+)  (( *)\^)?([^[:space:]@+~%]*)'
-    for specline in ${all_specs[*]:+"${all_specs[@]}"}; do
-      [[ "$specline" =~ $regex ]] || continue
-      local hash="${BASH_REMATCH[4]}/${BASH_REMATCH[1]}"
+          regex='^([^[:space:]]+) ( *)([^[:space:]@+~%]*)' \
+          n_speclines=${#all_concrete_specs[@]} specline_idx=0
+    while (( specline_idx < n_speclines )); do
+      _report $DEBUG_3 "examining line $specline_idx/$n_speclines: ${all_concrete_specs[$specline_idx]}"
+      [[ "${all_concrete_specs[$((specline_idx++))]}" =~ $regex ]] || continue
+      local hash="${BASH_REMATCH[3]}/${BASH_REMATCH[1]}"
+      local level=$(( ${#BASH_REMATCH[2]} / 4 ))
+      (( level )) || root_hashes+=("$hash")
       hashes+=("$hash")
-      levels+=(${#BASH_REMATCH[3]})
-      (( ${#BASH_REMATCH[3]} == 0 )) && root_hashes+=("$hash")
+      levels+=($level)
     done
     # Sort root hashes for efficient checking.
     OIFS="$IFS"; IFS=$'\n'; root_hashes=($(echo "${root_hashes[*]}" | sort -u)); IFS="$OIFS"
-    # Loop through all specs in reverse order (i.e. generally up each
-    # dependency tree).
+    _report $DEBUG_2 "root_hashes=\n             ${root_hashes[@]/%/$'\n'  }"
     local idx=${#hashes[@]}
+    _report $DEBUG_1 "examined $specline_idx speclines and found $idx hashes and ${#root_hashes[@]} root hashes"
+    # Build non-root dependencies.
+    local deps_tranche_counter=0
     while (( idx > 0 )); do
       _piecemeal_build || return
     done
@@ -406,6 +468,28 @@ _do_build_and_test() {
     )
     _cmd $PROGRESS $INFO "${spack_build_env_cmd[@]}"
   fi
+}
+
+_identify_concrete_specs() {
+  # Identify all concrete specs
+  all_concrete_specs=()
+  { spack \
+      -e $env_name \
+      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+      --color=never \
+      find  --no-groups --show-full-compiler -cfNdvpL \
+      > "$TMP/$env_name-concrete.txt"
+    sed -Ene '/^==> (\[.*\] )?Concretized roots$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; p; }' \
+        "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt"
+    sed -Ene 's&^([^[:space:]]+)[[:space:]]*(\^?[a-z].*)$&\1 \2&; t WORKING; b; : WORKING; s&^([^[:space:]]+ )builtin\.(.*[^[:space:]])[[:space:]]+/usr$&\1external.\2&; s&[[:space:]]+/scratch.*$&&; s&^([^[:space:]]+) ([^.]+)\.([^@]+)@([^%]+).*$&"\1","\2","\3","\4"&; p' "$TMP/$env_name-concrete-filtered.txt" | sort -u -t, -k 3 > "$env_name.csv"
+  } 2>/dev/null
+  _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt") lines"
+  while IFS='' read -r line; do
+    all_concrete_specs+=("$line")
+  done < "$TMP/$env_name-concrete-filtered.txt"
+  local status=$?
+  _report $DEBUG_1 "found ${#all_concrete_specs[@]} concrete specs"
+  return $status
 }
 
 _internal_error() {
@@ -445,6 +529,7 @@ _make_concretize_mirrors_yaml() {
 
 _piecemeal_build() {
   local buildable_dep_hashes=() build_root_hash=
+  _report $DEBUG_2 "started piecemeal build analysis with $idx entries remaining"
   while (( idx-- )); do
     if _in_sorted_hashlist "${hashes[$idx]}" ${root_hashes[*]:+"${root_hashes[@]}"}; then
       build_root_hash="${hashes[$idx]}"
@@ -452,23 +537,38 @@ _piecemeal_build() {
       break;
     fi
     # This is a dependency we should build if we haven't already.
-    _in_sorted_hashlist "${hashes[$idx]}" ${installed_deps[*]:+"${installed_deps[@]}"}\
-      || buildable_dep_hashes+=("${hashes[$idx]}")
+    buildable_dep_hashes+=("${levels[$idx]}/${hashes[$idx]}")
   done
+  _report $DEBUG_1 "found ${#buildable_dep_hashes[@]} dependencies buildable at this time"
+  _report $DEBUG_2 "finished piecemeal build analysis with $idx entries remaining"
   # Uniquify hashes.
+  local sorted_buildable_dep_hashes=()
   OIFS="$IFS"; IFS=$'\n'
-  buildable_dep_hashes=($(echo "${buildable_dep_hashes[*]}" | sort -u))
+  while IFS='' read -r dep_hash; do
+    sorted_buildable_dep_hashes+=("$dep_hash")
+  done < <(echo "${buildable_dep_hashes[*]}" | sort -ut / -k 1nr -k 2,3)
   IFS="$OIFS"
   # Build identified dependencies.
-  if (( ${#buildable_dep_hashes[@]} )); then
-    _report $PROGRESS "building ${#buildable_dep_hashes[@]} dependencies of root packages in environment $env_name (tranche #$(( ++deps_tranche_counter )))"
+  local dep_idx=-1 ndeps=${#sorted_buildable_dep_hashes[@]}
+  _report $DEBUG_1 "sorted $ndeps buildable dependencies"
+  while (( dep_idx++ < ndeps )); do
+    local same_level_deps=()
+    local dep_level=${sorted_buildable_dep_hashes[$dep_idx]%%/*}
+    while (( dep_idx < ndeps )) && (( ${sorted_buildable_dep_hashes[$dep_idx]%%/*} == dep_level )); do
+      local dep=${sorted_buildable_dep_hashes[$((dep_idx++))]#*/}
+      _in_sorted_hashlist "$dep" ${installed_deps[*]:+"${installed_deps[@]}"} \
+        || same_level_deps+=("$dep")
+    done
+    (( ++deps_tranche_counter ))
+    _report $PROGRESS "building ${#same_level_deps[@]} dependencies of root packages in environment $env_name (tranche #$deps_tranche_counter)"
+    _report $DEBUG_2 "  ${same_level_deps[@]/%/$'\n'              }"
     _cmd $DEBUG_1 $INFO \
          "${spack_install_cmd[@]}" \
-         ${buildable_dep_hashes[*]:+--no-add "${buildable_dep_hashes[@]//*\///}"} \
+         ${same_level_deps[*]:+--no-add "${same_level_deps[@]//*\///}"} \
       || return
     # Add deps to list of installed deps.
-    installed_deps+=(${buildable_dep_hashes[*]:+"${buildable_dep_hashes[@]}"})
-  fi
+    installed_deps+=(${same_level_deps[*]:+"${same_level_deps[@]##*/}"})
+  done
   # Build identified root or the whole environment if we've run out of
   # intermediate roots to build.
   _report $PROGRESS "building${build_root_hash:+ root package $build_root_hash in} environment $env_name"
@@ -479,7 +579,7 @@ _piecemeal_build() {
   )
   _cmd $DEBUG_1 $INFO "${spack_build_root_cmd[@]}" || return
   installed_deps+=(${build_root_hash:+"$build_root_hash"})
-  if (( ${#buildable_dep_hashes[@]} + ${#build_root_hash} )); then
+  if (( ndeps )) || [ -n "$build_root_hash" ]; then
     OIFS="$IFS"; IFS=$'\n'
     installed_deps=($(echo "${installed_deps[*]}" | sort -u))
     IFS="$OIFS"
@@ -496,7 +596,7 @@ _process_environment() {
   fi
   env_name="${env_cfg##*/}"
   env_name="${env_name%.yaml}"
-  env_name="${env_name//[^A-Za-z0-9_-.]/-}"
+  env_name="${env_name//[^A-Za-z0-9_-]/-}"
   env_name="${env_name##-}"
   spack \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
@@ -507,7 +607,7 @@ _process_environment() {
     env create --without-view $env_name "$env_cfg" \
     || _die $EXIT_SPACK_ENV_FAILURE "unable to create environment $env_name from $env_cfg"
   # Save logs and attempt to cache successful builds before we're killed.
-  trap 'interrupt=$?; _copy_back_logs' HUP INT QUIT TERM
+  trap 'interrupt=$?; _report $INFO "user interrupt"; _copy_back_logs' HUP INT QUIT TERM
   # Copy our concretization-specific mirrors configuration into place to
   # prevent undue influence of external mirrors on the concretization
   # process.
@@ -543,21 +643,19 @@ _process_environment() {
   # 3. Download and save sources to copyBack for mirroring.
   # 4. Install the environment.
   _report $PROGRESS "concretizing environment $env_name${concretize_safely:+ safely}"
+  local all_concrete_specs=()
+  local concretize_tests_arg=
+  (( is_nonterminal_compiler_env )) ||
+    env_tests_arg=${tests_arg:+"$tests_arg"}
   _cmd $DEBUG_1 $PROGRESS \
        spack \
        -e $env_name \
        ${__debug_spack_concretize:+-d} \
        ${__verbose_spack_concretize:+-v} \
        ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-       concretize ${tests_arg:+"$tests_arg"} \
+       concretize ${env_tests_arg:+"$env_tests_arg"} \
+    && _identify_concrete_specs \
     && { ! (( concretize_safely )) || mv -f "$mirrors_cfg"{~,}; } \
-    && _report $DEBUG_1 "saving concretized spec as ${env_name}_nnn.json" \
-    && _cmd $DEBUG_1 $PIPE spack \
-            -e $env_name \
-            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-          --color=never \
-         spec -j \
-      | csplit -f "$env_name" -b "_%03d.json" -z -s - '/^\}$/+1' '{*}' \
     && { ! (( cache_write_sources )) \
            || { _report $PROGRESS "caching sources in local mirror"
                 _cmd $DEBUG_1 $PROGRESS spack \
@@ -624,11 +722,13 @@ _process_environment() {
   # If we just built a compiler environment, add the
   # compiler to the list of available compilers.
   if (( is_compiler_env )); then
-    compiler_path="$( ( spack \
+    local compiler_spec=${env_spec%%-*}
+    compiler_build_spec=${compiler_spec/clang/llvm}
+    local compiler_path="$(_cmd $DEBUG_2 $PIPE spack \
                     -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-                     location --install-dir "${env_spec/clang/llvm}" ) )" \
-      || _die $EXIT_PATH_FAILURE "failed to extract path info for new compiler $env_spec"
+                     location --install-dir "${compiler_build_spec}" )" \
+      || _die $EXIT_PATH_FAILURE "failed to extract path info for new compiler $compiler_spec"
     _report $DEBUG_1 "registering compiler at $compiler_path with Spack"
     _cmd $DEBUG_1 spack \
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
@@ -776,11 +876,13 @@ fi
 
 color=
 concretize_safely=1
+fail_fast=1
 si_root=https://github.com/FNALssi/spack-infrastructure.git
 si_ver=master
 spack_ver=v0.19.0-dev.fermi
 spack_config_files=()
 spack_config_cmds=()
+recipe_repos=()
 cache_urls=()
 ups_opt=-u
 
@@ -798,9 +900,11 @@ while (( $# )); do
     --color) color="$2"; shift;;
     --color=*) color="${1#*=}";;
     --debug-spack-*|--verbose-spack-*) eval "${1//-/_}=1";;
+    --fail-fast) fail_fast=1;;
     --help|-h|-\?) usage 2; exit 1;;
     --no-cache-write-binaries) _set_cache_write_binaries "none";;
     --no-cache-write-sources) unset cache_write_sources;;
+    --no-fail-fast) unset fail_fast;;
     --no-safe-concretize) unset concretize_safely;;
     --no-ups) ups_opt=-p;;
     --quiet|-q) (( VERBOSITY = WARNING ));;
@@ -815,6 +919,8 @@ while (( $# )); do
     --spack-infrastructure-version=*) si_ver="${1#*=}";;
     --spack-python) spack_python="$2"; shift;;
     --spack-python=*) spack_python="${1#*=}";;
+    --spack-repo) recipe_repos+=("$2"); shift;;
+    --spack-repo=*) recipe_repos+=("${1#*=}");;
     --spack-root) spack_root="$2"; shift;;
     --spack-root=*) spack_root="${1#*=}";;
     --spack-version) spack_ver="$2"; shift;;
@@ -1012,12 +1118,13 @@ for cache_spec in ${cache_urls[*]:+"${cache_urls[@]}"}; do
   else
     cache_name="buildcache_$((++cache_count))"
   fi
-  [ "${cache_spec: 0:1}" = "/" ] && cache_spec="file://$cache_spec"
   _cmd $DEBUG_1 spack \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
     mirror add --scope=site "$cache_name" "$cache_spec" \
     || _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site $cache_name \"$cache_spec"
 done
+# 4. Spack recipe repos.
+_config_recipe_repos
 
 # Add mirror as buildcache for locally-built packages.
 _cmd $DEBUG_1 spack mirror add --scope=site __local_binaries "file://$working_dir/copyBack/spack-binary-cache"
