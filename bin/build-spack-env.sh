@@ -312,6 +312,31 @@ ENVIRONMENT VARIABLES
 EOF
 }
 
+# Split each spec into hash and indent (=dependency) level, identifying
+# root hashes (level==0).
+_classify_hashes() {
+  local regex='^([^[:space:]]+) ( *)([^[:space:]@+~%]*)'
+  local n_speclines=${#all_concrete_specs[@]} specline_idx=0
+  while (( specline_idx < n_speclines )); do
+    _report $DEBUG_3 "examining line $specline_idx/$n_speclines: ${all_concrete_specs[$specline_idx]}"
+    [[ "${all_concrete_specs[$((specline_idx++))]}" =~ $regex ]] || continue
+    local hash="${BASH_REMATCH[3]}/${BASH_REMATCH[1]}"
+    local level=$(( ${#BASH_REMATCH[2]} / 4 ))
+    if (( level )); then
+      non_root_hashes+=("$hash")
+    else
+      root_hashes+=("$hash")
+    fi
+    hashes+=("$hash")
+    levels+=($level)
+  done
+  # Sort root hashes for efficient checking.
+  OIFS="$IFS"; IFS=$'\n'; root_hashes=($(echo "${root_hashes[*]}" | sort -u)); IFS="$OIFS"
+  _report $DEBUG_2 "root_hashes=\n             ${root_hashes[@]/%/$'\n'  }"
+  idx=${#hashes[@]}
+  _report $DEBUG_1 "examined $specline_idx speclines and found $idx hashes and ${#root_hashes[@]} root hashes"
+}
+
 # Report and execute this command.
 _cmd() {
   local cmd_severity=$VERBOSITY
@@ -433,27 +458,7 @@ _do_build_and_test() {
   local extra_cmd_opts=(${env_tests_arg:+"$env_tests_arg"})
   if ! (( is_nonterminal_compiler_env )) && [ "$tests_type" = "root" ]; then
     extra_cmd_opts+=(--no-cache) # Ensure roots are built even if in cache.
-    # Identify and install non-root dependencies first.
-    local root_spec_args=()
-    # Split each spec into hash and indent (=dependency) level,
-    # identifying root hashes (level==0).
-    local hashes=() root_hashes=() installed_deps=() levels=() \
-          regex='^([^[:space:]]+) ( *)([^[:space:]@+~%]*)' \
-          n_speclines=${#all_concrete_specs[@]} specline_idx=0
-    while (( specline_idx < n_speclines )); do
-      _report $DEBUG_3 "examining line $specline_idx/$n_speclines: ${all_concrete_specs[$specline_idx]}"
-      [[ "${all_concrete_specs[$((specline_idx++))]}" =~ $regex ]] || continue
-      local hash="${BASH_REMATCH[3]}/${BASH_REMATCH[1]}"
-      local level=$(( ${#BASH_REMATCH[2]} / 4 ))
-      (( level )) || root_hashes+=("$hash")
-      hashes+=("$hash")
-      levels+=($level)
-    done
-    # Sort root hashes for efficient checking.
-    OIFS="$IFS"; IFS=$'\n'; root_hashes=($(echo "${root_hashes[*]}" | sort -u)); IFS="$OIFS"
-    _report $DEBUG_2 "root_hashes=\n             ${root_hashes[@]/%/$'\n'  }"
-    local idx=${#hashes[@]}
-    _report $DEBUG_1 "examined $specline_idx speclines and found $idx hashes and ${#root_hashes[@]} root hashes"
+    local installed_deps=()
     # Build non-root dependencies.
     local deps_tranche_counter=0
     while (( idx > 0 )); do
@@ -529,11 +534,12 @@ _make_concretize_mirrors_yaml() {
 
 _piecemeal_build() {
   local buildable_dep_hashes=() build_root_hash=
+  local remaining_root_hashes="${root_hashes[@]}"
   _report $DEBUG_2 "started piecemeal build analysis with $idx entries remaining"
   while (( idx-- )); do
-    if _in_sorted_hashlist "${hashes[$idx]}" ${root_hashes[*]:+"${root_hashes[@]}"}; then
+    if _in_sorted_hashlist "${hashes[$idx]}" ${remaining_root_hashes[*]:+"${remaining_root_hashes[@]}"}; then
       build_root_hash="${hashes[$idx]}"
-      _remove_root_hash "${hashes[$idx]}"
+      _remove_hash remaining_root_hashes "${hashes[$idx]}"
       break;
     fi
     # This is a dependency we should build if we haven't already.
@@ -645,8 +651,8 @@ _process_environment() {
   _report $PROGRESS "concretizing environment $env_name${concretize_safely:+ safely}"
   local all_concrete_specs=()
   local concretize_tests_arg=
-  (( is_nonterminal_compiler_env )) ||
-    env_tests_arg=${tests_arg:+"$tests_arg"}
+  local hashes=() non_root_hashes=() remaining_root_hashes=() root_hashes=() levels=() idx=
+  (( is_nonterminal_compiler_env )) || env_tests_arg=${tests_arg:+"$tests_arg"}
   _cmd $DEBUG_1 $PROGRESS \
        spack \
        -e $env_name \
@@ -654,8 +660,9 @@ _process_environment() {
        ${__verbose_spack_concretize:+-v} \
        ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
        concretize ${env_tests_arg:+"$env_tests_arg"} \
-    && _identify_concrete_specs \
     && { ! (( concretize_safely )) || mv -f "$mirrors_cfg"{~,}; } \
+    && _identify_concrete_specs \
+    && _classify_hashes \
     && { ! (( cache_write_sources )) \
            || { _report $PROGRESS "caching sources in local mirror"
                 _cmd $DEBUG_1 $PROGRESS spack \
@@ -684,8 +691,15 @@ _process_environment() {
     else
       binary_mirror=binary
     fi
-    _report $PROGRESS "caching $cache_write_binaries binary packages for environment $env_name to local $binary_mirror build cache"
-    for env_json in "$env_name"_*.json; do
+    local hashes_to_cache=() msg_extra=
+    if [ "$cache_write_binaries" = "no_roots" ] && ! (( is_compiler_env )); then
+      hashes_to_cache=(${non_root_hashes[*]:+"${non_root_hashes[@]//*\///}"})
+      msg_extra=" $cache_write_binaries"
+    else
+      hashes_to_cache=(${hashes[*]:+"${hashes[@]//*\///}"})
+    fi
+    _report $PROGRESS "caching$msg_extra binary packages for environment $env_name to local $binary_mirror build cache"
+    if (( ${#hashes_to_cache[@]} )); then
       _cmd $DEBUG_1 $PROGRESS \
            spack \
            ${__debug_spack_buildcache:+-d} \
@@ -694,27 +708,15 @@ _process_environment() {
            buildcache create -a --deptype=all \
            ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
-           -r --spec-file "$env_json" \
-           "$working_dir/copyBack/spack-$binary_mirror-cache"
-    done
-    if [ "$cache_write_binaries" = "no_roots" ] && ! (( is_compiler_env )); then
-      _report $PROGRESS "removing roots of environment $env_name from binary cache"
-      for env_json in "$env_name"_*.json; do
-        spec="$(spack buildcache get-buildcache-name --spec-file "$env_json")"
-        _report $DEBUG_1 "removing package for root spec $spec from binary cache"
-        _cmd $DEBUG_1 \
-             find "$working_dir/copyBack/spack-$binary_mirror-cache" \
-             -d \
-             \( -type f \
-                \( -name "$spec.spack" -o -name "$spec.spec.json" -o -name "$spec.spec.json.sig" \) \
-             \) -o \( -type d -empty \) -delete
-      done
-    fi  >/dev/null 2>&1
-    _report $PROGRESS "updating local build cache index"
-    _cmd $DEBUG_1 $PROGRESS \
-         spack \
-         ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         buildcache update-index -k -d "$working_dir/copyBack/spack-$binary_mirror-cache"
+           -r "$working_dir/copyBack/spack-$binary_mirror-cache" \
+           ${hashes_to_cache[*]:+"${hashes_to_cache[@]}"}
+      _report $PROGRESS "updating local build cache index"
+      _cmd $DEBUG_1 $PROGRESS \
+           spack \
+           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+           buildcache update-index -k -d "$working_dir/copyBack/spack-$binary_mirror-cache"
+    fi
+    unset hashes_to_cache
   fi
   ####################################
 
@@ -758,13 +760,15 @@ _quote() {
 }
 fi
 
-_remove_root_hash() {
-  local handled_root="$1"
-  local filtered_root_hashes=()
-  for hash in ${root_hashes[*]:+"${root_hashes[@]}"}; do
-    [ "$handled_root" = "$hash" ] || filtered_root_hashes+=("$hash")
+_remove_hash() {
+  local hashes_var="$1" handled_hash="$2"
+  eval local "hashes=(\${$hashes_var[*]:+\"\${$hashes_var\[@\]}\"})"
+  (( ${#hashes[@]} )) || return
+  local filtered_hashes=()
+  for hash in ${hashes[*]:+"${hashes[@]}"}; do
+    [ "$handled_hash" = "$hash" ] || filtered_hashes+=("$hash")
   done
-  root_hashes=(${filtered_root_hashes[*]:+"${filtered_root_hashes[@]}"})
+  eval $hashes_var="(\${filtered_hashes[*]:+\"\${filtered_hashes[@]}\"})"
 }
 
 # Print a message with the specifed numeric first argument or 0 as
