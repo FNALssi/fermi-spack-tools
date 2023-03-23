@@ -456,6 +456,7 @@ _do_build_and_test() {
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"}
     install
     ${fail_fast:+--fail-fast}
+    --no-add
     --only-concrete
     ${extra_install_opts[*]:+"${extra_install_opts[@]}"}
   )
