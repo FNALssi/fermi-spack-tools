@@ -169,6 +169,10 @@ SPACK CONFIGURATION OPTIONS
 
   --(no-)?fail-fast
 
+    Control whether to abort an installation at the first failure or
+    continue to install as many packages as possible before exit
+    (default --fail-fast).
+
   --(no-)?safe-concretize
 
     Control whether to concretize environments with only a minimal set
