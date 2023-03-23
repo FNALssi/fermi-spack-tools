@@ -719,7 +719,7 @@ _process_environment() {
       _cmd $DEBUG_1 $PROGRESS \
            spack \
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-           buildcache update-index -k -d "$working_dir/copyBack/spack-$binary_mirror-cache"
+           buildcache update-index -k "$working_dir/copyBack/spack-$binary_mirror-cache"
     fi
     unset hashes_to_cache
   fi
