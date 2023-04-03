@@ -50,6 +50,7 @@ force_system='^(bdftopcf|damageproto|diffutils|expat|findutils|font-util|gdbm|ge
 # packages to force target (instead of merely preferred)
 force_x86_64='^(hwloc|libpciaccess|libsigsegv)$'
 
+# Global preferred target
 preferred_target=x86_64_v2
 
 teeit="cat"
@@ -138,6 +139,7 @@ getv2() {
   # This has some chance of finding, say, UPS packges you have setup, but
   # does help with the whole pkgconf/pkg-config silliness..
 
+  [ -n "$1" ] || return
 
   # some xyzproto packages are rolled up into the xorgproto RPM, but have documented versions...
   case "$2" in
@@ -179,11 +181,9 @@ getv2() {
 }
 
 get_cvmfs_spack_versions() {
-  if $want_cvmfs && [ -d ${cvmfs_area} ]
-  then
-      csr=${cvmfs_area}/spack/current/NULL/ 
-      SPACK_ROOT=$csr $csr/bin/spack find $1 | grep -v '^[=-]' | sed -e 's/[^ ]*@//'| sort -u # | tee /dev/tty
-  fi
+  $want_cvmfs && [ -d "$cvmfs_area" ] || return
+  csr="$cvmfs_area/spack/current/NULL/"
+  SPACK_ROOT="$csr" "$csr/bin/spack" find "$1" | grep -v '^[=-]' | sed -e 's/[^ ]*@//'| sort -u # | tee /dev/tty
 }
 
 mkdir -p `dirname $dst`
@@ -208,11 +208,16 @@ export compiler2
 
 echo "make_packages_yaml: INFO: creating $dst"
 exec 3>$dst
-echo "packages:" >&3
-
 cat <<EOF >&3
+packages:
   all:
     compiler:
+EOF
+[ -n "$compiler" ] &&
+  echo "      - $compiler" >&3
+[ -n "$compiler2" ] &&
+  echo "      - $compiler2" >&3
+cat <<EOF >&3
       - gcc
       - clang
     target:
@@ -270,13 +275,15 @@ preamble() {
   $did_preamble && return
   did_preamble=true
   echo "  $spp:"               >&3
-  $want_force_target || return 0
-  echo "    require:"     >&3
-  echo "      - one_of: [\"target=$preferred_target\"]"     >&3
-  [ "x$compiler$compiler2" = x ] && return # Compiler hints
-  echo "      - one_of:" >&3
-  [ -z "$compiler"  ] || echo "        - \"%$compiler\"" >&3
-  [ -z "$compiler2" ] || echo "        - \"%$compiler2\"" >&3
+  if $want_force_target; then
+    echo "    require:"     >&3
+    echo "      - one_of:" >&3
+    echo "        - \"target=$preferred_target\"" >&3
+    [ "x$compiler$compiler2" = x ] && return # Compiler hints
+    echo "      - one_of:" >&3
+    [ -z "$compiler"  ] || echo "        - \"%$compiler\"" >&3
+    [ -z "$compiler2" ] || echo "        - \"%$compiler2\"" >&3
+  fi
 }
 
 for p in `grep -Eve '^[[:space:]]*#' "$src"`
@@ -314,6 +321,7 @@ do
 
   #variants from known variants list
   opts=`grep "^$spp[ \t]" $optf | sed -e "s/^$spp[ \t]*//"`
+  [ -n "$opts" ] && opts=" $opts"
 
   #dependencies, one needed so far on gettext
   if [ "$spp" = "gettext" ]
@@ -321,12 +329,6 @@ do
     deps=" ^libc"
   else
     deps=""
-  fi
-
-  # some packages aren't on SL7 but are on SL8...
-  if [ "$os" = "scientific7" -a "$p" = "z3" ]
-  then
-    continue
   fi
 
   # also find any cvmfs versions
@@ -348,7 +350,7 @@ do
     esac
     ##################
     # find local version if any...
-    v=`getv2 $pkg $spp`
+    v=`getv2 "$pkg" "$spp"`
     if [ "x$v" = x ] # No base rpm
     then
       echo "Notice: no system-installed versions found for $pkg (Spack package $spp)"
@@ -427,8 +429,8 @@ do
     echo $spp | egrep "$force_system" > /dev/null &&
     echo "    buildable: False"           >&3
   else
-    echo "Notice: no cvmfs versions found for Spack package $spp"
-    # Ensure we have an entry if we wish to constrain the target.
+    echo "Notice: no external versions found for Spack package $spp"
+    # Ensure we have an entry if we have target requirements.
     $want_force_target && preamble
   fi
 done
