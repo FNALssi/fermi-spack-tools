@@ -830,9 +830,9 @@ endif()
 
         if not thash:
             self.make_recipe(pkg)
+            self.convert_table(pkg)
             nhash = self.install(pkg)
             self.add_cached_hash(pkg, nhash)
-            self.convert_table(pkg, nhash)
         else:
             nhash = thash
             logging.debug("already done (elsewhere): %s" % pkg)
@@ -853,8 +853,6 @@ endif()
             repolist[v[-1]] = v[0]
         f.close()
         return repolist
-
-
 
     @log_call
     def get_namespace(self, pkg):
@@ -968,6 +966,7 @@ endif()
         else:
             # UPS packages can be empty, spack wants *something* there...
             os.system("echo Converted empty UPS package > {0}/README".format(prefix))
+        os.system("cd {0} && ln -s . .%(prodpath)s".format(prefix))
         
 """ % {"prodarea":prodarea, "prodpath":prodpath})
 
@@ -978,12 +977,10 @@ endif()
                     "coroutine", "exception", "fiber", "filesystem", "graph", "graph_parallel",
                     "iostreams", "json", "locale", "log", "math", "mpi", "nowide", "program_options",
                     "python", "random", "regex", "serialization", "signals", "stacktrace", "system",
-                    "test", "thread", "timer", "type_erasure", "wave" ],
+                    "test", "thread", "timer", "type_erasure", "wave"],
                 "libxml2": ["python"],
-                "python": [ "bz2", "ctypes", "dbm", "debug", "libxml2", "lzma", "nis", "optimizations",
-                    "pic", "pyexpat", "pythoncmd", "readline", "shared", "sqlite3", "ssl", "tix",
-                    "tkinter", "ucs4", "uuid", "zlib" ],
-                "sqlite": ["column_metadata"],
+                "python": ["shared"],
+                "sqlite": ["column_metadata"]
             }
 
             if pkg.prod in vmap:
@@ -1116,14 +1113,15 @@ endif()
     def fix_ups_vars(self, tline, pkg):
         """ replace common ups table file variables """
         tline = (tline
-            .replace("${UPS_PROD_DIR}", self.do_pdr(pkg.prod_dir))
-            .replace("${UPS_UPS_DIR}", self.do_pdr(pkg.prod_dir) + "/ups")
+            .replace("${UPS_PROD_DIR}","{prefix}"  )
+            .replace("${UPS_UPS_DIR}", "{prefix}/ups")
             .replace("${UPS_PROD_VERSION}", pkg.ver)
             .replace("${UPS_SOURCE}", "source")
             .replace("${UPS_PROD_FLAVOR}", pkg.flav)
             .replace("${UPS_PROD_QUALIFIERS}", canon_quals(pkg.quals))
             .replace("${UPS_PROD_NAME_UC}", pkg.prod.upper().replace('-','_'))
-            .replace("${UPS_THIS_DB}", PROOT))
+            .replace("${UPS_THIS_DB}", PROOT)
+            )
         return tline
 
 
@@ -1141,11 +1139,17 @@ endif()
         if val.find("$") >= 0:
             val = re.sub("\\$\\{(\\w+)\\}","%(\\1)s",val)
             val = val + "% self.env_get(env)"
+
+        # also generic-ify
+        val = val.replace("{prefix}",'"+str(self.spec.prefix)+"')
         val = val.replace(pkg.dotver,'"+str(self.spec.version)+"')
         val = val.replace(pkg.ver,'v"+str(self.spec.version.underscored)+"')
         val = val.replace(pkg.prod,'"+self.spec.name+"')
+        # and clean up artifactas of above
         val = val.replace('+""+','+')
         val = val.replace('+""+','+')
+        val = val.replace('""+','')
+        val = val.replace('+""','')
         logging.debug("val %s pkg %s" % (val,pkg))
         return val
 
@@ -1172,6 +1176,7 @@ endif()
         if val.find("$") >= 0:
             val = re.sub("\\$\\{(\\w+)\\}","[getenv \\1]",val)
             val = re.sub("\\$(\\w+)","[getenv \\1]",val)
+        val = val.replace("{prefix}","[prefix]")
 
         return val
 
@@ -1185,6 +1190,7 @@ endif()
             val = 'string.gsub(%s, "`(.+)`", backquote)' % val
         if val.find("$") >= 0:
             val = 'string.gsub(string.gsub(%s, "%%${(%%w+)}", os.getenv),"%%$(%%w+)", os.getenv)' % val
+        val = val.replace("{prefix}","[prefix]")
         return val
 
     def clean_colon(self, s):
@@ -1221,44 +1227,19 @@ endif()
             f.close()
 
     @log_call
-    def convert_table(self, pkg, thash):
+    def convert_table(self, pkg):
         global known_cycle_deps
 
         tclbase = os.environ["SPACK_ROOT"] + "/share/spack/modules"
         lmodbase = os.environ["SPACK_ROOT"] + "/share/spack/lmod"
 
-        if not thash:
-            raise AssertionError("must call convert_table with thash")
-
-        shorthash = thash[:7]
 
         logging.debug("Handling: %s" % pkg)
         logging.info("Converting %s:" % pkg.table_file)
 
-        logging.debug("thash: %s, shorthash %s" % (thash, shorthash))
 
         pkg.prodbits()
         pkg.topbits()
-
-        tclmodulefile = "%s/%s/%s-%s-%s-%s" % (
-            tclbase,
-            pkg.spack_arch(),
-            pkg.prod,
-            pkg.dotver,
-            pkg.spack_comp(),
-            shorthash,
-        )
-        lmodmodulefile = "%s/%s/%s/%s/%s/%s-%s.lua" % (
-            lmodbase,
-            pkg.spack_arch(),
-            pkg.spack_comp(0),
-            pkg.spack_comp(1),
-            pkg.prod,
-            pkg.dotver,
-            shorthash,
-        )
-
-        self.update_tcl_module_index(tclbase, thash, tclmodulefile)
 
         recipefile=  "%s/var/spack/repos/ups_to_spack/packages/%s/package.py" % (
             os.environ["SPACK_ROOT"],
@@ -1315,46 +1296,6 @@ endif()
             """)
         # we're already in a class
 
-        tcl_out = outfile_tcl(tclmodulefile)
-        tcl_out.raw_write(
-            """#%%Module1.0
-
-    # $pkg.prod modulefile
-    # generated by %s 
-
-    set pkg.ver %s
-    set prefix  %s
-
-proc getenv { x } {
-  if { [catch {set v $::env($x)}] } {
-     set v ''
-  }
-  return $v
-}
-
-    """
-            % (sys.argv[0], pkg.dotver, self.do_pdr(pkg.prod_dir))
-        )
-
-        lmod_out = outfile_lua(lmodmodulefile)
-        lmod_out.raw_write(
-            """-- -*- lua -*-
-    -- Module file created by %s
-    --
-
-    whatis([[Name : %s]])
-    whatis([[Version : %s]])
-
-    function backquote(s)
-       f=io.popen(s,"r"); 
-       res=f:read("*all");
-       f:close(); 
-       return res;
-    end
-
-    """
-            % (sys.argv[0], pkg.prod, pkg.dotver)
-        )
 
         flavor_ok = True
         in_action = False
@@ -1391,13 +1332,9 @@ proc getenv { x } {
 
             if re.search("action\\s*=", line, flags=re.IGNORECASE):
                 if in_action:
-                    lmod_out.write("end\n\n")
-                    tcl_out.write("}\n\n")
                     recipe_out.write("\n\n")
                     recipe_out.end_block()
                 name = re.sub(".*action\\s*=\\s*", "", line, flags=re.IGNORECASE)
-                tcl_out.write("\n  proc %s {} {\n" % name.lower())
-                lmod_out.write("\n  function %s ()\n" % name.lower())
                 recipe_out.write("\n")
                 recipe_out.write("def tf_%s(self,env):\n" % name.lower())
                 recipe_out.write("pass\n")
@@ -1408,8 +1345,6 @@ proc getenv { x } {
             if re.search("flavor\\s*=\\s*ANY", line, flags=re.IGNORECASE):
                 flavor_ok = True
                 if in_action:
-                    lmod_out.write("end\n\n")
-                    tcl_out.write("}\n\n")
                     recipe_out.end_block()
                     in_action = False
                 continue
@@ -1423,8 +1358,6 @@ proc getenv { x } {
             if re.search("flavor\\s*=", line, flags=re.IGNORECASE):
                 flavor_ok = False
                 if in_action:
-                    lmod_out.write("end\n\n")
-                    tcl_out.write("}\n\n")
                     recipe_out.write("\n\n")
                     in_action = False
                 continue
@@ -1434,17 +1367,11 @@ proc getenv { x } {
             if m and canon_quals(m.group(1)) == canon_quals(pkg.quals):
                 logging.debug("qualifier match")
                 if in_action:
-                    lmod_out.write("end\n\n")
-                    tcl_out.write("}\n\n")
                     recipe_out.write("\n\n")
                     in_action = False
                 if flavor_ok:
-                    lmod_out.enable()
-                    tcl_out.enable()
                     recipe_out.enable()
                 else:
-                    lmod_out.disable()
-                    tcl_out.disable()
                     recipe_out.disable()
                 continue
             if re.search("qualifiers\\s*=", line, flags=re.IGNORECASE):
@@ -1453,21 +1380,13 @@ proc getenv { x } {
                 else:
                     logging.debug("qualifier mismatch")
                 if in_action:
-                    lmod_out.write("end\n\n")
-                    tcl_out.write("}\n\n")
                     recipe_out.write("\n\n")
                     in_action = False
-                lmod_out.disable()
-                tcl_out.disable()
                 recipe_out.disable()
             if re.search("common:", line, flags=re.IGNORECASE):
                 if in_action:
-                    lmod_out.write("end\n\n")
-                    tcl_out.write("}\n\n")
                     recipe_out.write("\n\n")
                     in_action = False
-                lmod_out.enable()
-                tcl_out.enable()
                 recipe_out.enable()
                 continue
             if re.search("dodefaults\s*\(", line, flags=re.IGNORECASE):
@@ -1479,27 +1398,6 @@ proc getenv { x } {
                     # to set it; since ups actions defer evaluating $var
                     # to the shell they use them inline, so we need to
                     # both set them in tcl and generate them...
-                    tcl_out.write(
-                        "setenv %s_DIR %s\n" % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir))
-                    )
-                    tcl_out.write(
-                        "set  ::env(%s_DIR) %s\n" % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir))
-                    )
-                    tcl_out.write(
-                        "set  ::env(%s_FQ_DIR) %s\n" % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir))
-                    )
-                    tcl_out.write(
-                        "setenv %s_DIR %s\n" % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir))
-                    )
-                    tcl_out.write(
-                        "setenv %s_FQ_DIR %s\n" % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir))
-                    )
-                    lmod_out.write(
-                        'setenv("%s_DIR","%s");\n' % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir))
-                    )
-                    lmod_out.write(
-                        'setenv("%s_FQ_DIR","%s");\n' % (pkg.prod.upper().replace('-','_'), self.do_pdr(pkg.prod_dir))
-                    )
                 continue
 
             if re.search("(env|path)Set\s*\(", line, flags=re.IGNORECASE):
@@ -1510,9 +1408,6 @@ proc getenv { x } {
                         # case it hoses the path...
                         continue
                     recipe_out.write("env.set('%s',%s)\n" % (d["var"], self.fix_env_vars_python(pkg, d["value"])))
-                    tcl_out.write("set ::env(%s) %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
-                    tcl_out.write("setenv %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
-                    lmod_out.write('setenv("%s","%s");\n' % (d["var"], self.fix_env_vars_lua(d["value"])))
                 continue
 
             if re.search("prodDir\s*\(", line, flags=re.IGNORECASE):
@@ -1522,28 +1417,19 @@ proc getenv { x } {
                     if d['var'] == "":
                         d['var'] = "_DIR"
                     if d['value'] == "":
-                        d['value'] = self.do_pdr(pkg.prod_dir)
+                        d['value'] = '{prefix}'
                     else:
-                        d['value'] = "%s/%s" % (self.do_pdr(pkg.prod_dir),d['value'])
+                        d['value'] = "%s/%s" % ('{prefix}',d['value'])
 
                     recipe_out.write("env.set('%s%s',%s)\n" % (pkg.prod.upper().replace('-','_'),d["var"], self.fix_env_vars_python(pkg, d["value"])))
-                    tcl_out.write("set ::env(%s%s) %s\n" % (pkg.prod.upper().replace('-','_'),d["var"], self.fix_env_vars_tcl(d["value"])))
-                    tcl_out.write("setenv %s%s %s\n" % (pkg.prod.upper().replace('-','_'),d["var"], self.fix_env_vars_tcl(d["value"])))
-                    lmod_out.write('setenv("%s%s","%s");\n' % (pkg.prod.upper().replace('-','_'), d["var"], self.fix_env_vars_lua(d["value"])))
                 continue
             if re.search("source(Required|Optional)\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
-                if in_action:
-                    tcl_out.write("puts \"source %s\"\n" % self.fix_env_vars_tcl(d["args"]).strip('"'))
-                    lmod_out.write('execute("source %s");\n' % self.fix_env_vars_lua(d["args"]))
-                    # XXX can we do this in a recipe action?
                    
             if re.search("(env|path)unSet\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
                     recipe_out.write("env.unset('%s')\n" % d["var"])
-                    tcl_out.write("unsetenv %s\n" % (d["var"]))
-                    lmod_out.write('unsetenv("%s");\n' % (d["var"]))
                 continue
             if re.search("(env|path)prepend", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
@@ -1558,37 +1444,21 @@ proc getenv { x } {
 
                 if in_action:
                     recipe_out.write("env.%spend_path('%s', %s)\n" % (pdir, d["var"], self.fix_env_vars_python(pkg, d["value"])))
-                    tcl_out.write("%spend-path %s %s\n" % (pdir, d["var"], self.fix_env_vars_tcl(d["argl"][1])))
-                    lmod_out.write(
-                        '%spend_path("%s",%s);\n' % (pdir, d["var"], self.fix_env_vars_lua(d["argl"][1]))
-                    )
                 continue
             if re.search("(env|path)append", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
                     recipe_out.write("env.append_path('%s',%s)\n" % (d["var"], self.fix_env_vars_python(pkg, d["value"])))
-                    tcl_out.write("append-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
-                    lmod_out.write(
-                        'append_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
-                    )
                 continue
             if re.search("(env|path)remove\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
                     recipe_out.write("env.remove_path('%s',%s)\n" % (d["var"], self.fix_env_vars_python(pkg, d["value"])))
-                    tcl_out.write("remove-path %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
-                    lmod_out.write(
-                        'remove_path("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
-                    )
                 continue
             if re.search("addAlias\s*\(", line, flags=re.IGNORECASE):
                 if in_action:
                     d = self.unpack(line)
                     recipe_out.write("#env.add_alias('%s',%s)\n" % (d["var"], self.fix_env_vars_python(pkg, d["value"])))
-                    tcl_out.write("set-alias %s %s\n" % (d["var"], self.fix_env_vars_tcl(d["value"])))
-                    lmod_out.write(
-                        'set_alias("%s",%s);\n' % (d["var"], self.fix_env_vars_lua(d["value"]))
-                    )
                 continue
 
             if re.search("setup(required|optional)\s*\(", line, flags=re.IGNORECASE):
@@ -1599,73 +1469,36 @@ proc getenv { x } {
                     continue
 
                 cdep = self.convert_dependency(d["args"], pkg.top_flav, pkg.top_quals)
-                if in_action and cdep:
-                    # punting on dependencies for python; use spack load -r
-                    tcl_out.write("module load %s \n" % cdep)
-                    lmod_out.write('load("%s");\n' % cdep)
-                continue
-
             if re.search("exeAction(Required|Optional)\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack(line)
                 if in_action:
                     recipe_out.write("self.tf_%s(env)\n" % d["var"].lower())
-                    tcl_out.write("%s\n" % d["var"].lower())
-                    lmod_out.write("%s()\n" % d["var"].lower())
-                
 
             if re.search("execute\s*\(", line, flags=re.IGNORECASE):
                 d = self.unpack_execute(line)
                 if in_action:
                     if d["flags"] == "UPS_ENV":
                         recipe_out.write("env.set('UPS_PROD_NAME','%s')\n" % pkg.prod)
-                        tcl_out.write("set ::env(UPS_PROD_NAME) %s\n" % pkg.prod)
-                        tcl_out.write("set ::env(UPS_PROD_DIR) %s\n" % self.do_pdr(pkg.prod_dir))
-                        tcl_out.write("setenv UPS_PROD_NAME %s\n" % pkg.prod)
-                        tcl_out.write("setenv UPS_PROD_DIR %s\n" % self.do_pdr(pkg.prod_dir))
-                        recipe_out.write("env.set('UPS_UPS_DIR','%s')\n" %  self.do_pdr(pkg.prod_dir))
-                        tcl_out.write("set ::env(UPS_UPS_DIR) %s/ups\n" % self.do_pdr(pkg.prod_dir))
-                        tcl_out.write("setenv UPS_UPS_DIR %s/ups\n" % self.do_pdr(pkg.prod_dir))
-                        recipe_out.write("env.set('VERSION','%s')\n" %  self.do_pdr(pkg.prod_dir))
-                        tcl_out.write("set ::env(VERSION) %s\n" % pkg.dotver)
-                        tcl_out.write("setenv VERSION %s\n" % pkg.dotver)
-
+                        recipe_out.write("env.set('UPS_UPS_DIR','%s')\n" %  '{prefix}')
+                        recipe_out.write("env.set('VERSION','%s')\n" %  '{prefix}')
                         recipe_out.write("env.set('UPS_PROD_NAME','%s')\n" %  pkg.prod)
-                        lmod_out.write('setenv("UPS_PROD_NAME","%s");\n' % pkg.prod)
-                        recipe_out.write("env.set('UPS_PROD_DIR','%s')\n" %  self.do_pdr(pkg.prod_dir))
-                        lmod_out.write('setenv("UPS_PROD_DIR","%s");\n' % self.do_pdr(pkg.prod_dir))
-                        recipe_out.write("env.set('UPS_UPS_DIR','%s')\n" %  self.do_pdr(pkg.prod_dir))
-                        lmod_out.write('setenv("UPS_UPS_DIR","%s/ups");\n' % self.do_pdr(pkg.prod_dir))
-                        lmod_out.write('setenv("VERSION","%s");\n' % pkg.dotver)
+                        recipe_out.write("env.set('UPS_PROD_DIR','%s')\n" %  '{prefix}')
+                        recipe_out.write("env.set('UPS_UPS_DIR','%s')\n" %  '{prefix}')
 
                     if d["envvar"]:
                         if d["envvar"] == "PATH":
                             continue
                         recipe_out.write('env.set("%s", self.backquote(%s, env))\n' % (d["envvar"], self.fix_env_vars_python(pkg, d["cmd"]).strip()))
-                        tcl_out.write(
-                            'set ::env(%s) [eval "exec /bin/sh -c {" %s "}"]\n' % (d["envvar"], self.fix_env_vars_tcl(d["cmd"]))
-                        )
-                        tcl_out.write(
-                            'setenv %s $::env(%s)\n' % (d["envvar"],d["envvar"])
-                        )
-                        lmod_out.write(
-                            'setenv("%s",backquote(%s));\n' % ( d["envvar"], self.fix_env_vars_lua(d["cmd"]))
-                        )
                     else:
                         recipe_out.write("self.backquote(%s, env)\n" % self.fix_env_vars_python(pkg, d["cmd"]))
-                        tcl_out.write('eval "exec /bin/sh -c {" %s "}"\n' % self.fix_env_vars_tcl(d["cmd"]))
-                        lmod_out.write('os.execute(%s);\n' % self.fix_env_vars_lua(d["cmd"]))
                     continue
 
             if re.search("end(if|unless)", line, flags=re.IGNORECASE):
                 if in_action:
-                    tcl_out.write("}\n\n")
-                    lmod_out.write("end\n\n")
                     recipe_out.end_block()
                 continue
             if re.search("\\belse\\b", line, flags=re.IGNORECASE):
                 if in_action:
-                    tcl_out.write("} else {\n")
-                    lmod_out.write("else\n")
                     recipe_out.write("else:\n")
                     recipe_out.write("pass\n")
                 continue
@@ -1678,10 +1511,6 @@ proc getenv { x } {
                     if m:
                        d["args"] = "test -d %s/%s" % (m.group(2), m.group(1))
 
-                    tcl_out.write(
-                         "if {![eval \"catch {exec /bin/sh -c {%s}} results options\"]} {\n" % d["args"].replace('[','\\[').replace(']','\\]').replace('"','\\"').replace('$','\\$')
-                    )
-                    lmod_out.write('if (!os.execute("%s")) then\n' % d["args"].replace('"','\\"'))
                     recipe_out.write('if not self.system("%s", env):\n' % d["args"].replace('"','\\"'))
                     recipe_out.write('pass\n')
                 continue
@@ -1693,29 +1522,19 @@ proc getenv { x } {
                     if m:
                        d["args"] = "test -d %s/%s" % (m.group(2), m.group(1))
                     
-                    tcl_out.write(
-                        "if {[catch {exec %s} results options]} {\n" % self.fix_env_vars_tcl(d["args"].strip())
-                    )
-                    lmod_out.write('if (os.execute(%s)) then\n' % self.fix_env_vars_lua(d["args"]))
                     recipe_out.write('if self.system(%s)):\n' % self.fix_env_vars_python(pkg, d["args"]))
                 continue
             if re.search("\\bend\\b", line, flags=re.IGNORECASE):
                 if in_action:
-                    tcl_out.write("\n}\n")
-                    lmod_out.write("\nend\n")
                     recipe_out.end_block()
                     in_action = False
                 continue
 
-        tcl_out.enable()
-        lmod_out.enable()
         recipe_out.enable()
 
         logging.debug("on the way out, in_action %s" % in_action)
 
         if in_action:
-            tcl_out.write("\n}\n")
-            lmod_out.write("\nend\n")
             in_action = False
             recipe_out.end_block()
 
@@ -1728,12 +1547,7 @@ proc getenv { x } {
         recipe_out.raw_write("        self.tf_setup(env)\n")
         recipe_out.raw_write("        env.prepend_path('CMAKE_PREFIX_PATH',self.prefix)\n")
      
-        tcl_out.raw_write("\nsetup\n")
-        lmod_out.raw_write("\nsetup();\n")
-
         tff.close()
-        tcl_out.close()
-        lmod_out.close()
         recipe_out.close()
 
     def get_dep_vers(self, prod):
