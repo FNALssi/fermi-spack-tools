@@ -121,9 +121,9 @@ create_spack() {
             esac
             export plat="target=`uname -i` os=`spack arch --operating-system`"
             spack mirror add --scope site fnal $binary_cache
-            spack buildcache update-index  -d $binary_cache
+            spack buildcache update-index -k fnal
             spack mirror add --scope site scisoft $binary_cache_bak
-            spack buildcache update-index  -d $binary_cache_bak
+            spack buildcache update-index -k scisoft
             spack -k buildcache keys --install --trust --force
             add_recipe_repos
             if $upgrading
