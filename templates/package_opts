@@ -1,10 +1,13 @@
 binutils +gas+gold+ld
-doxygen	+graphviz
-pcre +jit+utf
-zlib +optimize+pic+shared
-libc +iconv+rpc
-mesa +opengl
+cmake ~ownlibs
+doxygen +graphviz
+font-util fonts=encodings
 gettext ~bzip2+curses~git+libunistring+libxml2~tar+xz
-pkg-config	+internal_glib
-ncurses	~symlinks+termlib
-font-util	fonts=encodings
+libarchive crypto=openssl
+libc +iconv+rpc
+mesa +glx~osmesa swr=none
+mesa-glu gl=glx
+ncurses ~symlinks+termlib
+pcre +jit+utf
+pkg-config +internal_glib
+zlib +optimize+pic+shared
