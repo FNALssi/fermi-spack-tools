@@ -6,6 +6,7 @@ import json
 
 # we want to use the ruamel.yaml package from spack
 sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
+sys.path.insert(1, "%s/lib/spack/external/_vendoring" % os.environ["SPACK_ROOT"])
 sys.path.insert(1, "%s/lib/spack" % os.environ["SPACK_ROOT"])
 
 import ruamel.yaml
