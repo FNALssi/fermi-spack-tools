@@ -693,10 +693,26 @@ _maybe_register_compiler() {
   fi
 }
 
+# Restore previously-saved mirrors.yaml (see
+# _maybe_swap_mirror_config()).
 _maybe_restore_mirror_config() {
-  (( concretize_safely )) && return
-  _report $PROGRESS "restoring cache configuration post-concretization"
-  mv -f "$mirrors_cfg"{~,}
+  if (( concretize_safely )); then
+    _report $PROGRESS "restoring cache configuration post-concretization"
+    mv -f "$mirrors_cfg"{~,} ||
+      _die $EXIT_PATH_FAILURE "failed to restore original \"$mirrors_cfg\""
+  fi
+}
+
+# Copy our concretization-specific mirrors configuration into place to
+# prevent undue influence of external mirrors on the concretization
+# process.
+_maybe_swap_mirror_config() {
+  if (( concretize_safely )); then
+    _report $PROGRESS "applying temporary minimal cache configuration for safe concretization"
+    cp -p "$mirrors_cfg"{,~} \
+      && cp "$concretize_mirrors" "$mirrors_cfg" \
+        || _die $EXIT_PATH_FAILURE "failed to install \"$concretize_mirrors\" prior to concretizing $env_name"
+  fi
 }
 
 _piecemeal_build() {
@@ -783,15 +799,6 @@ _process_environment() {
   # Save logs and attempt to cache successful builds before we're killed.
   trap 'interrupt=$?; _report $INFO "user interrupt"; _copy_back_logs' HUP INT QUIT TERM
 
-  # Copy our concretization-specific mirrors configuration into place to
-  # prevent undue influence of external mirrors on the concretization
-  # process.
-  if (( concretize_safely )); then
-    _report $PROGRESS "applying temporary minimal cache configuration for safe concretization"
-    cp -p "$mirrors_cfg"{,~} \
-      && cp "$concretize_mirrors" "$mirrors_cfg" \
-        || _die $EXIT_PATH_FAILURE "failed to install \"$concretize_mirrors\" prior to concretizing $env_name"
-  fi
   local is_compiler_env=
   local is_nonterminal_compiler_env=
   local env_spec="${env_cfg%.yaml}"
@@ -822,13 +829,14 @@ _process_environment() {
   local env_tests_arg=
   (( is_nonterminal_compiler_env )) || env_tests_arg=${tests_arg:+"$tests_arg"}
   local hashes=() non_root_hashes=() root_hashes=() levels=() idx=
-  _cmd $DEBUG_1 $PROGRESS \
-       spack \
-       -e $env_name \
-       ${__debug_spack_concretize:+-d} \
-       ${__verbose_spack_concretize:+-v} \
-       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-       concretize ${env_tests_arg:+"$env_tests_arg"}  &&
+  _maybe_swap_mirror_config &&
+    _cmd $DEBUG_1 $PROGRESS \
+         spack \
+         -e $env_name \
+         ${__debug_spack_concretize:+-d} \
+         ${__verbose_spack_concretize:+-v} \
+         ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+         concretize ${env_tests_arg:+"$env_tests_arg"}  &&
     _maybe_restore_mirror_config &&
     _classify_concretized_specs &&
     _maybe_cache_sources &&
