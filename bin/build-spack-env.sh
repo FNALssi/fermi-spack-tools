@@ -71,6 +71,7 @@ BRIEF OPTIONS
 
   --cache-write-(sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots)) \
   --no-cache-write-(sources|binaries) \
+  --extra-(sources|binaries)-write-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+ \
   --clear-mirrors \
   --color[= ](auto|always|never) \
   --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install) \
@@ -92,6 +93,7 @@ BRIEF OPTIONS
   --no-ups \
   --ups[= ](plain|traditional|unified|-[ptu]) \
   --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+ \
+  --with-concretiz(e|ing|ation)-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+ \
   --working-dir[= ]<dir>
 
   [ Options suffixed with + are repeatable and cumulative ]
@@ -163,14 +165,21 @@ SPACK CONFIGURATION OPTIONS
     Control whether sources or binary packages are written to local
     caches under <working-dir>/copyBack.
 
+  --extra-(sources|binaries)-write-cache[= ]<cache-path>|<cache-url>)(,...)+
+
+    Extra source/binary cache locations for built products. Incompatible
+    with --no-cache-write-(sources|binaries).
+
   --clear-mirrors
 
     Remove bootstrapped mirrors/caches from configuration.
 
   --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
+  --with-concretiz(e|ing|ation)-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
 
     Add a read-only mirror/cache. If --safe-concretize is set, added
-    caches will be ignored during the concretizaton process.
+    caches will be ignored during the concretizaton process unless the
+    second form is used.
 
 
  Other Spack Configuration
@@ -657,32 +666,39 @@ _maybe_cache_binaries() {
     hashes_to_cache=(${hashes[*]:+"${hashes[@]//*\///}"})
   fi
   if (( ${#hashes_to_cache[@]} )); then
-    _report $PROGRESS "caching$msg_extra binary packages for environment $env_name to local $binary_mirror build cache"
-    _cmd $DEBUG_1 $PROGRESS \
-         spack \
-         ${__debug_spack_buildcache:+-d} \
-         ${__verbose_spack_buildcache:+-v} \
-         ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         buildcache create -a --deptype=all \
-         ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
-         ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
-         -r "$working_dir/copyBack/spack-$binary_mirror-cache" \
-         ${hashes_to_cache[*]:+"${hashes_to_cache[@]}"}
-    _report $PROGRESS "updating local build cache index"
-    _cmd $DEBUG_1 $PROGRESS \
-         spack \
-         ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         buildcache update-index -k "$working_dir/copyBack/spack-$binary_mirror-cache"
+    local cache=
+    for cache in "$working_dir/copyBack/spack-$binary_mirror-cache" \
+                 ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
+      _report $PROGRESS "caching$msg_extra binary packages for environment $env_name to $cache"
+      _cmd $DEBUG_1 $PROGRESS \
+           spack \
+           ${__debug_spack_buildcache:+-d} \
+           ${__verbose_spack_buildcache:+-v} \
+           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+           buildcache create -a --deptype=all \
+           ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
+           ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
+           -r "$cache" \
+           ${hashes_to_cache[*]:+"${hashes_to_cache[@]}"}
+      _report $PROGRESS "updating build cache index"
+      _cmd $DEBUG_1 $PROGRESS \
+           spack \
+           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+           buildcache update-index -k "$cache"
+    done
   fi
 }
 
 _maybe_cache_sources() {
   (( cache_write_sources )) && return
-  _report $PROGRESS "caching sources in local mirror"
+  local cache
+  for cache in "$working_dir/copyBack/spack-source-cache" \
+                 ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
+    _report $PROGRESS "caching sources in mirror $cache"
   _cmd $DEBUG_1 $PROGRESS spack \
        -e $env_name \
        ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-       mirror create -aD --skip-unstable-versions -d "$working_dir/copyBack/spack-source-cache"
+       mirror create -aD --skip-unstable-versions -d "$cache"
 }
 
 _maybe_register_compiler() {
@@ -1018,6 +1034,9 @@ spack_config_files=()
 spack_config_cmds=()
 recipe_repos=()
 cache_urls=()
+concretizing_cache_urls=()
+extra_sources_write_cache=()
+extra_binaries_write_cache=()
 ups_opt=-u
 
 cache_write_binaries=all
@@ -1027,9 +1046,13 @@ common_spack_opts=(--backtrace --timestamp)
 eval "$ssi_split_options"
 while (( $# )); do
   case $1 in
-    --cache-write-binaries=*) _set_cache_write_binaries "${1#*=}";;
     --cache-write-binaries) _set_cache_write_binaries "$2"; shift;;
+    --cache-write-binaries=*) _set_cache_write_binaries "${1#*=}";;
+    --extra-binaries-write-cache) extra_binaries_write_cache+=("$2"); shift;;
+    --extra-binaries-write-cache=*) extra_binaries_write_cache+=("${1#*=}");;
     --cache-write-sources) cache_write_sources=1;;
+    --extra-sources-write-cache) extra_sources_write_cache+=("$2");;
+    --extra-sources-write-cache=*) extra_sources_write_cache+=("${1#*=}");;
     --clear-mirrors) clear_mirrors=1;;
     --color) color="$2"; shift;;
     --color=*) color="${1#*=}";;
@@ -1067,8 +1090,22 @@ while (( $# )); do
     -v) (( ++VERBOSITY ));;
     --verbosity) eval "(( VERBOSITY = $2 ))"; shift;;
     --verbosity=*) eval "(( VERBOSITY = ${1#*=} ))";;
-    --with-cache) optarg="$2"; shift; OIFS="$IFS"; IFS=","; cache_urls+=($optarg); IFS="$OIFS";;
-    --with-cache=*) optarg="${1#*=}"; OIFS="$IFS"; IFS=","; cache_urls+=($optarg); IFS="$OIFS";;
+    --with-cache)
+      optarg="$2"; shift; OIFS="$IFS"; IFS=","
+      cache_urls+=($optarg); IFS="$OIFS"
+      ;;
+    --with-cache=*)
+      optarg="${1#*=}"; OIFS="$IFS"; IFS=","
+      cache_urls+=($optarg); IFS="$OIFS"
+      ;;
+    --with-concretize-cache|--with-concretizing-cache|--with-concretization-cache)
+      optarg="$2"; shift; OIFS="$IFS"; IFS=","
+      concretizing_cache_urls+=($optarg); IFS="$OIFS"
+      ;;
+    --with-concretize-cache=*|--with-concretizing-cache=*|--with-concretization-cache=*)
+      optarg="${1#*=}"; OIFS="$IFS"; IFS=","
+      concretizing_cache_urls+=($optarg); IFS="$OIFS"
+      ;;
     --working-dir=*) working_dir="${1#*=}";;
     --working_dir) working_dir="$2"; shift;;
     --) shift; break;;
