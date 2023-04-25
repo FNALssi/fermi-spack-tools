@@ -155,6 +155,8 @@ LOCATION AND VERSION OPTIONS
 
 SPACK CONFIGURATION OPTIONS
 
+ Mirror/Cache Options
+
   --cache-write-(sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots))
   --no-cache-write-(sources|binaries)
 
@@ -162,21 +164,27 @@ SPACK CONFIGURATION OPTIONS
     caches under <working-dir>/copyBack.
 
   --clear-mirrors
+
+    Remove bootstrapped mirrors/caches from configuration.
+
   --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
 
-    Control the use of mirrors from which to obtain sources and/or
-    pre-built binary packages.
+    Add a read-only mirror/cache. If --safe-concretize is set, added
+    caches will be ignored during the concretizaton process.
+
+
+ Other Spack Configuration
+
+  --(no-)?safe-concretize
+
+    Control whether to concretize environments with only a minimal set
+    of mirrors configured to improve reproducibility (default yes).
 
   --(no-)?fail-fast
 
     Control whether to abort an installation at the first failure or
     continue to install as many packages as possible before exit
     (default --fail-fast).
-
-  --(no-)?safe-concretize
-
-    Control whether to concretize environments with only a minimal set
-    of mirrors configured to improve reproducibility (default yes).
 
   --spack-python[= ]<python-exec>
 
