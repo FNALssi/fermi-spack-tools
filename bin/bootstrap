@@ -4,28 +4,44 @@
 
 usage() {
   cat <<EOF
-usage: bootstrap [--with_padding] [--help] [dest_dir] [spack_infrastructure_version] [spack_version]
+usage: bootstrap [options] [dest_dir] 
+  options:
+        --help                              Print this message
+        --with_padding                      Set padding in spack config
+        --spack_infrastructure_release ver  fetch the labeled version of spack_infrastructure
+        --spack_infrastructure_repo url     ...from this git reposity
+        --spack_release ver                 fetch the labeled version of spack_infrastructure
+        --spack_repo url                    ...from this git repository
+   dest_dir defaults to current directory
 EOF
 }
+# note, other scripts pull these values for defaults
 default_spack_infrastructure_version=master
 default_spack_version=v0.19.fermi
+default_spack_repo=https://github.com/FNALssi/spack.git
+default_spack_infrastructure_repo=https://github.com/FNALssi/spack-infrastructure.git
 
 parse_args() {
     with_padding=""
-    eval set : $(getopt --longoptions with_padding,help -- x "$@")
+    eval set : $(getopt --longoptions with_padding,help,spack_infrastructure_release:,spack_release:,spack_repo:,spack_infrastructure_repo: -- x "$@")
     shift
+    spack_repo=$default_spack_repo
+    spack_infrastructure_repo=$default_spack_infrastructure_repo
+    ver=$default_spack_infrastructure_version
+    spack_version=$default_spack_version
     while [ "${1:0:2}" = "--" ]
     do
         case "x$1" in
-        x--with_padding) with_padding="--with_padding"; shift; continue;;
+        x--with_padding)                 with_padding="--with_padding"; shift;;
+        x--spack_release)                spack_version=$2; shift; shift ;;
+        x--spack_repo)                   spack_repo=$2; shift; shift ;;
+        x--spack_infrastructure_release) ver=$2; shift; shift ;;
+        x--spack_infrastructure_repo)    spack_infrastructure_repo=$2; shift; shift ;;
         x--help) usage; exit;;
         x--) shift; break;;
         esac
     done
-    echo "after while: args $*"
     dest=${1:-$PWD}
-    ver=${2:-$default_spack_infrastructure_version}
-    spackver=${3:-$default_spack_version}
 }
 
 detail_log() {
@@ -90,12 +106,12 @@ main() {
     cd $dest
 
     message "Cloning FNALssi spack-infrastructure repository"
-    git clone -b $ver https://github.com/FNALssi/spack-infrastructure.git spack-infrastructure/$ver/NULL/
+    git clone -b $ver $spack_infrastructure_repo spack-infrastructure/$ver/NULL/
 
     PATH=$dest/spack-infrastructure/$ver/NULL/bin:$PATH
 
     message "Setting up with make_spack"
-    make_spack --spack_release $spackver $with_padding --minimal -u $dest
+    make_spack --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
 
     message "Finding compilers"
     source $dest/setup-env.sh

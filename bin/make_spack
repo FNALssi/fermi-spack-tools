@@ -164,6 +164,7 @@ usage(){
         echo "  --upgrade"
         echo "  --no-buildcache"
         echo "  --spack_release ver"
+        echo "  --spack_repo url"
         echo "  --minimal"
         echo "  make a spack instance with given layout"
         echo ""
@@ -179,8 +180,7 @@ get_from_bootstrap() {
 }
 
 parse_args() {
-    spack_repo=https://github.com/FNALssi/spack.git
-
+    spack_repo=$(get_from_bootstrap default_spack_repo)
     spack_release=$(get_from_bootstrap default_spack_version)
     use_buildcache=true
     minimal=false
@@ -188,7 +188,7 @@ parse_args() {
     padding=false
     layout=unified
 
-    eval set : $(getopt --longoptions with_padding,upgrade,spack_release:,minimal,no_buildcache --options mptu -- : "$@")
+    eval set : $(getopt --longoptions with_padding,upgrade,spack_release:,minimal,no_buildcache,spack_repo: --options mptu -- : "$@")
     shift
     while echo x$1 | grep x- > /dev/null
     do
@@ -196,6 +196,7 @@ parse_args() {
         x--with_padding)        padding=true; shift ;;
         x--upgrade)             upgrading=true; shift;;
         x--spack_release)       spack_release=$2; shift; shift ;;
+        x--spack_repo)          spack_repo=$2; shift; shift;;
         x--minimal)             minimal=true; shift ;;
         x--no_buildcache)       use_buildcache=false; shift;;
         x-u)                    layout=unified; shift;;

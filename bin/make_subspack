@@ -3,21 +3,22 @@
 # make a sub-spack repository
 # ...but make it unified layout...
 
-spack_repo=https://github.com/FNALssi/spack.git
 
 get_from_bootstrap() {
     grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//'
 }
 
+
 usage() {
-    echo "usage: make_subspack [--spack_release ver] [-t|-u] /path/to/existing/spack /path/to/new/area"
+    echo "usage: make_subspack [--spack_release ver] [--spack_repo url] [-t|-u] /path/to/existing/spack /path/to/new/area"
 }
 
 parse_args() {
+    spack_repo=$(get_from_bootstrap default_spack_repo)
     spack_release=$(get_from_bootstrap  default_spack_version)
     padding=false
 
-    eval set : $(getopt --longoptions with_padding,spack_release: --options tu -- "$@")
+    eval set : $(getopt --longoptions with_padding,spack_release:,spack_repo --options tu -- "$@")
     shift
 
     while echo x$1 | grep x- > /dev/null
@@ -25,6 +26,7 @@ parse_args() {
         case "x$1" in
         x--with_padding)  padding=true; shift ;;
         x--spack_release) spack_release=$2; shift; shift;;
+        x--spack_repo)    spack_repo=$2; shift; shift;;
         x-t) unified=false; shift ;;
         x-u) unified=true; shift ;;
         x--) shift; break;;
