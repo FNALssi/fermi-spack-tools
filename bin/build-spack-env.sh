@@ -634,7 +634,7 @@ _make_concretize_mirrors_yaml() {
       || _die $EXIT_SPACK_CONFIG_FAILURE "unable to generate concretization-specific mirrors.yaml at \"$out_file\""
 }
 
-_maybe_cache_sources() {
+_maybe_cache_binaries() {
   [ "${cache_write_binaries:-none}" == "none" ] && return
   local binary_mirror= hashes_to_cache=() msg_extra=
   if (( is_compiler_env )); then
