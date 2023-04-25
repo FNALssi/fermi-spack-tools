@@ -38,18 +38,19 @@ detail_log() {
 }
 
 monitor() {
-   f=$1
-   sd=$2
-   box="[                                                  ]"
-   lin="[==================================================]"
+   local f=$1
+   local sd=$2
+   local box="[                                                  ]"
+   local lin="[==================================================]"
 
    printf "%3d%%$box\r" 0 >&3
    while :
    do
-       duf=$(du -b $f)
-       ds="${duf%$f}"
-       dpp1=$(expr $ds / $sd )
-       dpp2=$(expr $dpp1 / 2 + 1)
+       local duf=$(du -b $f)
+       local ds="${duf%$f}"
+       dpp1=$(( ds / sd ))
+       (( dpp1 > 99 )) && dpp1=99
+       dpp2=$(( dpp1 / 2 + 1 ))
        printf "%3d%%${lin:0:$dpp2}\r" $dpp1 >&3
        sleep 2
    done
@@ -57,12 +58,13 @@ monitor() {
 start_monitor() {
   monitor $* &
   monitor_pid=$!
+  trap "stop_monitor" EXIT
 }
 stop_monitor() {
- [ -n "$monitor_pid" ] && kill $monitor_pid 
- wait
- clr="                                                         "
- printf "\r$clr\r" >&3
+  (( monitor_pid )) && kill $monitor_pid
+  wait
+  clr="                                                         "
+  printf "\r$clr\r" >&3
 }
 message() {
     stop_monitor
@@ -76,7 +78,6 @@ check_bootstrap() {
         :
     else
         message "Bootstrap did NOT complete properly, please attach logfile to a Servicedesk ticket"
-        stop_monitor
         exit 1
     fi
 }
@@ -103,10 +104,10 @@ main() {
 
     cd $dest/spack-infrastructure/$ver/NULL && bin/declare_simple spack-infrastructure $ver
 
-    stop_monitor
-   
     check_bootstrap
 }
 
 main "$@"
-
+status=$?
+stop_monitor
+exit $status
