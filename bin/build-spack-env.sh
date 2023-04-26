@@ -699,6 +699,7 @@ _maybe_cache_sources() {
        -e $env_name \
        ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
        mirror create -aD --skip-unstable-versions -d "$cache"
+  done
 }
 
 _maybe_register_compiler() {
