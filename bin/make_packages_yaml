@@ -8,6 +8,8 @@ esac
 
 src=$dir/templates/packagelist
 want_cvmfs=false
+while :
+do
 case "x$1" in
 x--help|x)
     echo "Usage: make_packages_yaml [options] spack_root [os]"
@@ -37,7 +39,10 @@ x--packagelist=*)
     src=`echo $1 | sed -e 's/--packagelist=//'`
     shift
     ;;
+x*)
+    break;;
 esac
+done
 
 os=${2:-`spack arch -o`}
 
