@@ -1050,11 +1050,6 @@ spack_config_files=()
 spack_config_cmds=()
 recipe_repos=()
 cache_specs=()
-local_caches=(
-  "__local_binaries|$working_dir/copyBack/spack-binary-cache"
-  "__local_compilers|$working_dir/copyBack/spack-compiler-cache"
-  "__local_sources|$working_dir/copyBack/spack-source-cache"
-)
 concretizing_cache_specs=()
 extra_sources_write_cache=()
 extra_binaries_write_cache=()
@@ -1155,6 +1150,13 @@ if [ -z "$TMPDIR" ]; then
   mkdir -p "$TMPDIR"
 fi
 ####################################
+
+# Local cache locations are derived from $working_dir.
+local_caches=(
+  "__local_binaries|$working_dir/copyBack/spack-binary-cache"
+  "__local_compilers|$working_dir/copyBack/spack-compiler-cache"
+  "__local_sources|$working_dir/copyBack/spack-source-cache"
+)
 
 spack_env_top_dir="$working_dir/spack_env"
 
