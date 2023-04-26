@@ -72,7 +72,7 @@ runversion() {
        then
            cmd=`ls /usr/bin/python* | grep -v config | tail -1`
        fi
-       ($cmd --version || $cmd -v) < /dev/null 2>&1 | 
+       (PATH=/bin:/usr/bin; $cmd --version || $cmd -v) < /dev/null 2>&1 | 
           strings | 
           sed -e 's/\+*//' -e 's/64.bit//' | 
           grep -i $1 | 
