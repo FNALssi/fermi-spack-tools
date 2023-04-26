@@ -449,7 +449,7 @@ _configure_spack() {
   _report $PROGRESS "applying user-specified Spack configuration commands"
   local config_cmd
   for config_cmd in ${spack_config_cmds[*]:+"${spack_config_cmds[@]}"}; do
-    eval _cmd $DEBUG_1 spack \
+    _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
          config $config_cmd \
       || _die $EXIT_SPACK_CONFIG_FAILURE "executing spack config command \"$config_cmd\""
