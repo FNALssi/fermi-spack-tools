@@ -333,6 +333,15 @@ ENVIRONMENT VARIABLES
 EOF
 }
 
+_cache_info() {
+  if [[ "$cache_spec" =~ ^([^|]+)\|(.*)$ ]]; then
+    cache_name="${BASH_REMATCH[1]}"
+    cache_url="${BASH_REMATCH[2]}"
+  else
+    cache_name="buildcache_$((++cache_count))"
+  fi
+}
+
 # Split each spec into hash and indent (=dependency) level, identifying
 # root hashes (level==0).
 _classify_concretized_specs() {
@@ -456,18 +465,16 @@ _configure_spack() {
   done
   # 3. Caches
   _report $PROGRESS "configuring user-specified cache locations"
-  local cache_spec cache_name
-  for cache_spec in ${cache_urls[*]:+"${cache_urls[@]}"}; do
-    if [[ "$cache_spec" =~ ^([^|]+)\|(.*)$ ]]; then
-      cache_name="${BASH_REMATCH[1]}"
-      cache_spec="${BASH_REMATCH[2]}"
-    else
-      cache_name="buildcache_$((++cache_count))"
-    fi
+  local cache_spec cache_url cache_name
+  for cache_spec in \
+    ${cache_specs[*]:+"${cache_specs[@]}"} \
+    ${concretizing_cache_specs[*]:+"${concretizing_cache_specs[@]}"}
+  do
+    _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site "$cache_name" "$cache_spec" \
-      || _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site $cache_name \"$cache_spec"
+         mirror add --scope=site "$cache_name" "$cache_url" \
+      || _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site $cache_name \"$cache_url"
   done
   # 4. Spack recipe repos.
   _report $PROGRESS "configuring user-specified recipe repositories"
@@ -475,10 +482,11 @@ _configure_spack() {
 
   _report $PROGRESS "configuring local caches"
   # Add mirror as buildcache for locally-built packages.
-  _cmd $DEBUG_1 spack mirror add --scope=site __local_binaries "$working_dir/copyBack/spack-binary-cache"
-  _cmd $DEBUG_1 spack mirror add --scope=site __local_bootstrap "$working_dir/copyBack/spack-bootstrap-cache"
-  _cmd $DEBUG_1 spack mirror add --scope=site __local_compilers "$working_dir/copyBack/spack-compiler-cache"
-  _cmd $DEBUG_1 spack mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-cache"
+  local cache_spec cache_name cache_url
+  for cache_spec in ${local_caches[*]:+"${local_caches[@]}"}; do
+    _cache_info "$cache_spec"
+    _cmd $DEBUG_1 spack mirror add --scope=site $cache_name "$cache_url"
+  done
 
   # Make a cut-down mirror configuration for safe concretization.
   if (( concretize_safely )); then
@@ -635,20 +643,27 @@ _in_sorted_hashlist() {
 _make_concretize_mirrors_yaml() {
   local out_file="$1"
   _report $DEBUG_1 "generating concretization-specific mirrors.yaml at \"$out_file\""
-  cp -p "$mirrors_cfg"{,~} \
-    && cp "$default_mirrors" "$mirrors_cfg" \
-    && spack \
+  cp -p "$mirrors_cfg"{,~} &&
+    cp "$default_mirrors" "$mirrors_cfg" ||
+      _die $EXIT_SPACK_CONFIG_FAILURE \
+           "unable to generate concretization-specific mirrors.yaml at \"$out_file\""
+
+  local cache_spec cache_name cache_url
+  for cache_spec in \
+    ${local_caches[*]:+"${local_caches[@]}"} \
+    ${concretizing_cache_specs[*]:+"${concretizing_cache_specs[@]}"}
+  do
+    _cache_info "$cache_spec"
+    _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site __local_binaries "$working_dir/copyBack/spack-binary-cache" \
-    && spack \
-         ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site __local_compilers "$working_dir/copyBack/spack-compiler-cache" \
-    && spack \
-         ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site __local_sources "$working_dir/copyBack/spack-source-cache" \
-    && cp "$mirrors_cfg" "$out_file" \
-    && mv -f "$mirrors_cfg"{~,} \
-      || _die $EXIT_SPACK_CONFIG_FAILURE "unable to generate concretization-specific mirrors.yaml at \"$out_file\""
+         mirror add --scope=site $cache_name "$cache_url" ||
+      _die $EXIT_SPACK_CONFIG_FAILURE \
+           "unable to add $cache_url to concretization-specific mirrors"
+  done
+  cp "$mirrors_cfg" "$out_file" &&
+    mv -f "$mirrors_cfg"{~,} ||
+      _die $EXIT_SPACK_CONFIG_FAILURE \
+           "unable to generate concretization-specific mirrors.yaml at \"$out_file\""
 }
 
 _maybe_cache_binaries() {
@@ -1034,8 +1049,13 @@ spack_ver=v0.19.0-dev.fermi
 spack_config_files=()
 spack_config_cmds=()
 recipe_repos=()
-cache_urls=()
-concretizing_cache_urls=()
+cache_specs=()
+local_caches=(
+  "__local_binaries|$working_dir/copyBack/spack-binary-cache"
+  "__local_compilers|$working_dir/copyBack/spack-compiler-cache"
+  "__local_sources|$working_dir/copyBack/spack-source-cache"
+)
+concretizing_cache_specs=()
 extra_sources_write_cache=()
 extra_binaries_write_cache=()
 ups_opt=-u
@@ -1093,19 +1113,19 @@ while (( $# )); do
     --verbosity=*) eval "(( VERBOSITY = ${1#*=} ))";;
     --with-cache)
       optarg="$2"; shift; OIFS="$IFS"; IFS=","
-      cache_urls+=($optarg); IFS="$OIFS"
+      cache_specs+=($optarg); IFS="$OIFS"
       ;;
     --with-cache=*)
       optarg="${1#*=}"; OIFS="$IFS"; IFS=","
-      cache_urls+=($optarg); IFS="$OIFS"
+      cache_specs+=($optarg); IFS="$OIFS"
       ;;
     --with-concretize-cache|--with-concretizing-cache|--with-concretization-cache)
       optarg="$2"; shift; OIFS="$IFS"; IFS=","
-      concretizing_cache_urls+=($optarg); IFS="$OIFS"
+      concretizing_cache_specs+=($optarg); IFS="$OIFS"
       ;;
     --with-concretize-cache=*|--with-concretizing-cache=*|--with-concretization-cache=*)
       optarg="${1#*=}"; OIFS="$IFS"; IFS=","
-      concretizing_cache_urls+=($optarg); IFS="$OIFS"
+      concretizing_cache_specs+=($optarg); IFS="$OIFS"
       ;;
     --working-dir=*) working_dir="${1#*=}";;
     --working_dir) working_dir="$2"; shift;;
