@@ -50,7 +50,7 @@ optf=$dir/templates/package_opts
 dst=$1/etc/spack/$os/packages.yaml
 
 # packages to make not buildable
-force_system='^(bdftopcf|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|libc|libfontenc|libice|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|mesa-glu|mkfontdir|mkfontscale|openssl|pkg-config|tar|tcl|tk|xextproto|xorg-server|xproto|xproxymanagementprotocol|xrandr|xtrans|zlib)$'
+force_system='^(bdftopcf|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|libc|libfontenc|libice|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libxxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|mesa-glu|mkfontdir|mkfontscale|openssl|pkg-config|pkgconf|tar|tcl|tk|xextproto|xorg-server|xproto|xproxymanagementprotocol|xrandr|xtrans|zlib)$'
 
 # packages to force target (instead of merely preferred)
 force_x86_64='^(hwloc|libpciaccess|libsigsegv)$'
@@ -72,72 +72,77 @@ runversion() {
        then
            cmd=`ls /usr/bin/python* | grep -v config | tail -1`
        fi
-       (PATH=/bin:/usr/bin; $cmd --version || $cmd -v) < /dev/null 2>&1 | 
-          strings | 
-          sed -e 's/\+*//' -e 's/64.bit//' | 
-          grep -i $1 | 
+       (PATH=/bin:/usr/bin; $cmd --version || $cmd -v) < /dev/null 2>&1 |
+          strings |
+          sed -e 's/\+*//' -e 's/64.bit//' |
+          grep -i $1 |
           egrep -iv 'error:|for help|not found|illegal|invalid|usage:|--version|-v' |
           head -1 | $teeit |
           perl -pe 's{(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|/).*}{};' |
-          sed -e "s/$1//ig" -e 's/-[0-9].*//'  | $teeit | 
+          sed -e "s/$1//ig" -e 's/-[0-9].*//'  | $teeit |
           sed -e 's/^.*[^0-9.]\([0-9][0-9]*\.[0-9.kp]*\).*$/\1/' | $teeit
    fi
 }
 
-# define getv depending on platform 
+maybe_define_getv() {
+  case $1 in
+    ubuntu)
+      : ubuntu case
+      getv() {
+        apt list $1 2>/dev/null | grep '\[installed\]'| sed -e 's/[^ ]* //' -e 's/.*://' -e 's/[+-].*//' || runversion $1
+      }
+      ;;
+    almalinux|centos|fedora|rhel|scientific)
+      if [ x$RPMCACHE != x ]
+      then
+        getv() {
+          grep -Ee "^$1-[0-9]" $RPMCACHE | tail -1 | grep -v 'is not installed' |
+            sed -e 's/.*-\([0-9][0-9.kp]*\)-[0-9][0-9.]*\..*/\1/' ||
+            runversion $1
+        }
+      else
+        getv() {
+          rpm -q "$1" | tail -1 | grep -v 'is not installed' |
+            sed -e 's/.*-\([0-9][0-9.kp]*\)-[0-9][0-9.]*\..*/\1/' ||
+            runversion $1
+        }
+      fi
+      ;;
+  esac
+}
+
+# define getv depending on platform
 # for linux distros, prefer the apt/rpm version...
-case `uname -s` in
-Linux)
-    case `lsb_release -i` in
-    *Ubuntu)
-        : ubuntu case
-        getv() {
-           apt list $1 2>/dev/null | grep '\[installed\]'| sed -e 's/[^ ]* //' -e 's/.*://' -e 's/[+-].*//' || runversion $1
-        }
-    ;;
-    *Scientific*|*Centos*|*CentOS*|*RedHat*|*Alma*)
-        if [ x$RPMCACHE != x ]
-        then
-        getv() {
-           grep "^$1-[0-9]" $RPMCACHE | tail -1 | grep -v 'is not installed' | 
-              sed -e 's/.*-\([0-9][0-9.kp]*\)-[0-9][0-9.]*\..*/\1/' ||
-              runversion $1
-        }
-        else
-        getv() {
-           rpm -q $1 | tail -1 | grep -v 'is not installed' | 
-              sed -e 's/.*-\([0-9][0-9.kp]*\)-[0-9][0-9.]*\..*/\1/' ||
-              runversion $1
-        }
-        fi
+. /etc/os-release 2>/dev/null
+[ -n "$ID" ] || ID=`lsb_release -i 2>/dev/null | cut -f 2- | tr '[A-Z]' '[a-z]'`
+for os_id in $ID $ID_LIKE; do
+  maybe_define_getv $os_id
+  [ "`type -t getv`" == "function" ] && break
+done
+if [ "`type -t getv`" != "function" ]; then
+  : generic / darwin case
+  getv() {
+    case x$1 in
+      xautotools)
+        runversion automake
+        ;;
+      xlibtool)
+        # looks like a library, but its not...
+        runversion $1
+        ;;
+      xtcl)
+        # it's tclsh not tcl, AND it doesn't take --version...
+        echo info patchlevel | tclsh
+        ;;
+      xlib*)
+        otool -L /usr/lib/$1 | grep "$1.*current version" |  sed -e 's/.*version//' -e 's/)//'
+        ;;
+      x*)
+        runversion $1
         ;;
     esac
-;;
-*)
-    : generic / darwin case
-    getv() {
-       case x$1 in
-       xautotools)
-           runversion automake
-           ;;
-       xlibtool) 
-           # looks like a library, but its not...
-           runversion $1
-           ;;
-       xtcl)
-           # its tclsh not tcl, AND it doesn't take --version...
-           echo info patchlevel | tclsh
-           ;;
-       xlib*) 
-           otool -L /usr/lib/$1 | grep "$1.*current version" |  sed -e 's/.*version//' -e 's/)//'
-           ;;
-       x*)
-           runversion $1
-           ;;
-       esac
-    }
-    ;;
-esac
+  }
+fi
 
 getv2() {
   # more robust getv that does the generic getv, but also tries runversion
@@ -148,10 +153,10 @@ getv2() {
 
   # some xyzproto packages are rolled up into the xorgproto RPM, but have documented versions...
   case "$2" in
-  *proto*) 
+    *proto*) 
       ff=/usr/share/doc/xorgproto/$2.txt  
       [ -r $ff ] && x=`grep Version $ff | head -1 | sed -e 's/.*Version //'` 
-  ;;
+      ;;
   esac
   if [ "$x" = "" ]
   then
@@ -232,6 +237,7 @@ cat <<EOF >&3
         - torque
       pkgconfig:
         - pkg-config
+        - pkgconf
   blas:
     require: openblas
   fftw-api:

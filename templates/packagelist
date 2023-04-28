@@ -18,7 +18,7 @@ asciidoc:asciidoc:$0
 autoconf:autoconf:$0
 autogen:autogen:$0
 automake:automake:$0
-xorg-x11-font-utils:bdftopcf:$0
+(xorg-x11-font-utils|bdftopcf):bdftopcf:$0
 libdb:berkeley-db:$0-devel
 binutils:binutils:$0
 bison:bison:$0
@@ -31,7 +31,7 @@ diffutils:diffutils:$0
 expat:expat:$0-devel
 findutils:findutils:$0
 flex:flex:$0
-xorg-x11-font-utils:font-util:$0
+xorg-x11-(font-)?utils:font-util:$0
 fontconfig:fontconfig:$0-devel
 freetype:freetype:$0-devel
 gawk:gawk:$0
@@ -41,7 +41,7 @@ gettext:gettext:$0-devel
 git:git:$0
 make:gmake:$0
 gperf:gperf:$0
-groff-base:groff:$0
+groff:groff:$0
 help2man:help2man:$0
 condor:htcondor:$0
 htgettoken:htgettoken:$0
@@ -76,8 +76,8 @@ m4:m4:$0
 mesa-libGLU:mesa-glu:$0-devel
 mesa-libGL:mesa:$0-devel
 meson:meson:$0
-xorg-x11-font-utils:mkfontdir:$0
-xorg-x11-font-utils:mkfontscale:$0
+(xorg-x11-font-utils|mkfontscale):mkfontdir:$0
+(xorg-x11-font-utils|mkfontscale):mkfontscale:$0
 mpich(-[0-9.]+)?:mpich:$0-devel
 nasm:nasm:$0
 ninja-build:ninja:$0
@@ -86,9 +86,9 @@ openssh-clients:openssh:$0
 (openssl[0-9a-z]*)-libs:openssl:\1-devel
 patchelf:patchelf:$0
 perl:perl:$0-devel
-pkgconf-pkg-config:pkg-config:$0
-pkgconfig:pkg-config:$0
-python3[0-9]*:python:$0-devel
+(pkg-config|pkgconf-pkg-config):pkg-config:$0
+pkgconf:pkgconf:$0
+python[0-9]*:python:$0-devel
 readline:readline:$0-devel
 tar:tar:$0
 tcl:tcl:$0-devel
