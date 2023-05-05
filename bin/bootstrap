@@ -8,26 +8,26 @@ usage: bootstrap [options] [dest_dir]
   options:
         --help                              Print this message
         --with_padding                      Set padding in spack config
-        --spack_infrastructure_release ver  fetch the labeled version of spack_infrastructure
-        --spack_infrastructure_repo url     ...from this git reposity
-        --spack_release ver                 fetch the labeled version of spack_infrastructure
+        --fermi_spack_tools_release ver  fetch the labeled version of fermi_spack_tools
+        --fermi_spack_tools_repo url     ...from this git reposity
+        --spack_release ver                 fetch the labeled version of fermi_spack_tools
         --spack_repo url                    ...from this git repository
    dest_dir defaults to current directory
 EOF
 }
 # note, other scripts pull these values for defaults
-default_spack_infrastructure_version=main
+default_fermi_spack_tools_version=main
 default_spack_version=v0.19.fermi
 default_spack_repo=https://github.com/FNALssi/spack.git
-default_spack_infrastructure_repo=https://github.com/FNALssi/fermi-spack-tools.git
+default_fermi_spack_tools_repo=https://github.com/FNALssi/fermi-spack-tools.git
 
 parse_args() {
     with_padding=""
-    eval set : $(getopt --longoptions with_padding,help,spack_infrastructure_release:,spack_release:,spack_repo:,spack_infrastructure_repo: -- x "$@")
+    eval set : $(getopt --longoptions with_padding,help,fermi_spack_tools_release:,spack_release:,spack_repo:,fermi_spack_tools_repo: -- x "$@")
     shift
     spack_repo=$default_spack_repo
-    spack_infrastructure_repo=$default_spack_infrastructure_repo
-    ver=$default_spack_infrastructure_version
+    fermi_spack_tools_repo=$default_fermi_spack_tools_repo
+    ver=$default_fermi_spack_tools_version
     spack_version=$default_spack_version
     while [ "${1:0:2}" = "--" ]
     do
@@ -35,8 +35,8 @@ parse_args() {
         x--with_padding)                 with_padding="--with_padding"; shift;;
         x--spack_release)                spack_version=$2; shift; shift ;;
         x--spack_repo)                   spack_repo=$2; shift; shift ;;
-        x--spack_infrastructure_release) ver=$2; shift; shift ;;
-        x--spack_infrastructure_repo)    spack_infrastructure_repo=$2; shift; shift ;;
+        x--fermi_spack_tools_release) ver=$2; shift; shift ;;
+        x--fermi_spack_tools_repo)    fermi_spack_tools_repo=$2; shift; shift ;;
         x--help) usage; exit;;
         x--) shift; break;;
         esac
@@ -106,7 +106,7 @@ main() {
     cd $dest
 
     message "Cloning FNALssi fermi-spack-tools  repository"
-    git clone -b $ver $spack_infrastructure_repo fermi-spack-tools/$ver/NULL/
+    git clone -b $ver $fermi_spack_tools_repo fermi-spack-tools/$ver/NULL/
 
     PATH=$dest/fermi-spack-tools/$ver/NULL/bin:$PATH
 
