@@ -1,6 +1,6 @@
 #!/bin/bash 
 
-# pull down spack-infrastructure and use it to install spack
+# pull down fermi-spack-tools  and use it to install spack
 
 usage() {
   cat <<EOF
@@ -19,7 +19,7 @@ EOF
 default_spack_infrastructure_version=master
 default_spack_version=v0.19.fermi
 default_spack_repo=https://github.com/FNALssi/spack.git
-default_spack_infrastructure_repo=https://github.com/FNALssi/spack-infrastructure.git
+default_spack_infrastructure_repo=https://github.com/FNALssi/fermi-spack-tools.git
 
 parse_args() {
     with_padding=""
@@ -89,7 +89,7 @@ message() {
 }
 
 check_bootstrap() {
-    if [ `spack find | egrep 'patchelf|spack-infrastructure' | wc -l` = 2 ]
+    if [ `spack find | egrep 'patchelf|fermi-spack-tools' | wc -l` = 2 ]
     then
         :
     else
@@ -102,13 +102,13 @@ main() {
     parse_args "$@"
 
     detail_log
-    mkdir -p $dest/spack-infrastructure/$ver
+    mkdir -p $dest/fermi-spack-tools/$ver
     cd $dest
 
-    message "Cloning FNALssi spack-infrastructure repository"
-    git clone -b $ver $spack_infrastructure_repo spack-infrastructure/$ver/NULL/
+    message "Cloning FNALssi fermi-spack-tools  repository"
+    git clone -b $ver $spack_infrastructure_repo fermi-spack-tools/$ver/NULL/
 
-    PATH=$dest/spack-infrastructure/$ver/NULL/bin:$PATH
+    PATH=$dest/fermi-spack-tools/$ver/NULL/bin:$PATH
 
     message "Setting up with make_spack"
     make_spack --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
@@ -118,7 +118,7 @@ main() {
 
     spack compiler find --scope=site
 
-    cd $dest/spack-infrastructure/$ver/NULL && bin/declare_simple spack-infrastructure $ver
+    cd $dest/fermi-spack-tools/$ver/NULL && bin/declare_simple fermi-spack-tools $ver
 
     check_bootstrap
 }
