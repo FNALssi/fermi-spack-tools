@@ -10,7 +10,7 @@ usage: bootstrap [options] [dest_dir]
         --with_padding                      Set padding in spack config
         --fermi_spack_tools_release ver  fetch the labeled version of fermi_spack_tools
         --fermi_spack_tools_repo url     ...from this git reposity
-        --spack_release ver                 fetch the labeled version of fermi_spack_tools
+        --spack_release ver                 fetch the labeled version of Spack
         --spack_repo url                    ...from this git repository
    dest_dir defaults to current directory
 EOF
