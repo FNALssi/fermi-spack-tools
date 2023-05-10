@@ -155,7 +155,6 @@ echo "adding package repos..."
 ( SPACK_ROOT=$src $src/bin/spack repo list ) | (
     
     source $dst/setup-env.sh
-    read header
     while read name path
     do
         if [ $name != builtin ]
