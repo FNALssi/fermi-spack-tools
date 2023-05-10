@@ -126,19 +126,19 @@ cat >> etc/spack/upstreams.yaml <<EOF
         tcl: $install_tcl_path
 EOF
 
-echo  > $dir/setup-env.sh
-echo "export SPACK_SKIP_MODULES=true" >> $dir/setup-env.sh
-echo "export SPACK_DISABLE_LOCAL_CONFIG=true" >> $dir/setup-env.sh
-echo "export SPACK_USER_CACHE_PATH=$dir/tmp" >> $dir/setup-env.sh
-echo ". $SPACK_ROOT/share/spack/setup-env.sh" >> $dir/setup-env.sh
+echo  > $dst/setup-env.sh
+echo "export SPACK_SKIP_MODULES=true" >> $dst/setup-env.sh
+echo "export SPACK_DISABLE_LOCAL_CONFIG=true" >> $dst/setup-env.sh
+echo "export SPACK_USER_CACHE_PATH=$dst/tmp" >> $dir/setup-env.sh
+echo ". $SPACK_ROOT/share/spack/setup-env.sh" >> $dst/setup-env.sh
 
-echo  > $dir/setup-env.csh
-echo "setenv SPACK_SKIP_MODULES true" >> $dir/setup-env.csh
-echo "setenv SPACK_DISABLE_LOCAL_CONFIG true" >> $dir/setup-env.csh
-echo "setenv SPACK_USER_CACHE_PATH $dir/tmp" >> $dir/setup-env.csh
-echo "source $SPACK_ROOT/share/spack/setup-env.csh" >> $dir/setup-env.csh
+echo  > $dst/setup-env.csh
+echo "setenv SPACK_SKIP_MODULES true" >> $dst/setup-env.csh
+echo "setenv SPACK_DISABLE_LOCAL_CONFIG true" >> $dst/setup-env.csh
+echo "setenv SPACK_USER_CACHE_PATH $dst/tmp" >> $dir/setup-env.csh
+echo "source $SPACK_ROOT/share/spack/setup-env.csh" >> $dst/setup-env.csh
 
-mkdir -p $dir/tmp
+mkdir -p $dst/tmp
 
 os=`$SPACK_ROOT/bin/spack arch --operating-system`
 
