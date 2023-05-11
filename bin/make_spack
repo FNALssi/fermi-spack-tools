@@ -54,6 +54,8 @@ bootstrap_patchelf() {
 
     chmod +x $pdir/patchelf
 
+    # set the cache path for the bootstrap so we can symlink individual cache areas to it later...
+    export SPACK_USER_CACHE_PATH=$dir/tmp
     spack -d spec zlib
     install_latest patchelf
 
@@ -294,7 +296,7 @@ main() {
         echo "[ -d \$SPACK_USER_CACHE_PATH/bootstrap ] || ln -s ../bootstrap \$SPACK_USER_CACHE_PATH" >> $dir/setup-env.csh
         echo "source $SPACK_ROOT/share/spack/setup-env.csh" >> $dir/setup-env.csh
 
-        mkdir -p $dir/tmp
+        mkdir -p $dir/tmp/bootstrap
     fi
 }
 main "$@"

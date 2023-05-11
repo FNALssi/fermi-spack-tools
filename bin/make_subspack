@@ -144,7 +144,7 @@ echo "source $SPACK_ROOT/share/spack/setup-env.csh" >> $dst/setup-env.csh
 
 mkdir -p $dst/tmp
 # reuse upstream clingo bootstrap
-ln -s $src/bootstrap $dst/tmp/bootstrap
+ln -s $install_tree_path/tmp/bootstrap $dst/tmp/bootstrap
 
 os=`$SPACK_ROOT/bin/spack arch --operating-system`
 
