@@ -69,31 +69,31 @@ EOF
   cat <<\EOF
 BRIEF OPTIONS
 
-  --cache-write-(sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots)) \
-  --no-cache-write-(sources|binaries) \
-  --extra-(sources|binaries)-write-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+ \
-  --clear-mirrors \
-  --color[= ](auto|always|never) \
-  --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install) \
-  --(no-)?fail-fast \
-  --(no-)?safe-concretize \
-  --spack-python[= ]<python-exec> \
-  --spack-config-cmd[= ]<config-cmd-string>+ \
-  --spack-config-file[= ](<cache-name>\|)?<config-file>+ \
-  --spack-infrastructure-root[= ]<repo> \
-  --spack-infrastructure-version[= ]<version> \
-  --spack-repo[= ]<path>|<repo>(\|<version|branch>)? \
-  --spack-root[= ]<repo> \
-  --spack-version[= ]<version> -\
-  -test[= ](all|none|root) \
-  -q \
-  --quiet \
-  [+-]v+ \
-  --verbosity[= ](-?[0-9]+|INFO|WARNING|(FATAL_|INTERNAL_)?ERROR|INFO|PROGRESS|DEBUG_[1-9][0-9]*) \
-  --no-ups \
-  --ups[= ](plain|traditional|unified|-[ptu]) \
-  --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+ \
-  --with-concretiz(e|ing|ation)-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+ \
+  --cache-write-(sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots))
+  --no-cache-write-(sources|binaries)
+  --extra-(sources|binaries)-write-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
+  --clear-mirrors
+  --color[= ](auto|always|never)
+  --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install)
+  --(no-)?fail-fast
+  --(no-)?safe-concretize
+  --spack-python[= ]<python-exec>
+  --spack-config-cmd[= ]<config-cmd-string>+
+  --spack-config-file[= ](<cache-name>\|)?<config-file>+
+  --spack-infrastructure-root[= ]<repo>
+  --spack-infrastructure-version[= ]<version>
+  --spack-repo[= ]<path>|<repo>(\|<version|branch>)?
+  --spack-root[= ]<repo>
+  --spack-version[= ]<version>
+  --test[= ](all|none|root)
+  -q
+  --quiet
+  [+-]v+
+  --verbosity[= ](-?[0-9]+|INFO|WARNING|(FATAL_|INTERNAL_)?ERROR|INFO|PROGRESS|DEBUG_[1-9][0-9]*)
+  --no-ups
+  --ups[= ](plain|traditional|unified|-[ptu])
+  --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
+  --with-concretiz(e|ing|ation)-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
   --working-dir[= ]<dir>
 
   [ Options suffixed with + are repeatable and cumulative ]
