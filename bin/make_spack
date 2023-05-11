@@ -117,9 +117,13 @@ create_spack() {
             spack config --scope=site update  --yes-to-all config
             case $spack_release in
             rollout*|0.1[67]*) ;;
-            *) $padding && 
-               echo "turning on padding." && 
-               echo "    padded_length: 255" >> $SPACK_ROOT/etc/spack/config.yaml;;
+            *) if $padding; then
+                 echo "turning on padding."
+                 spack config --scope=site add config:install_tree:padded_length:255
+               else
+                 spack config --scope=site rm config:install_tree:padded_length
+               fi
+               ;;
             esac
             export plat="target=`uname -i` os=`spack arch --operating-system`"
             spack mirror add --scope site fnal $binary_cache
@@ -226,12 +230,6 @@ main() {
             echo "FAILED" >&2
             exit 1
         fi
-        if $padding
-        then
-            add_config='printf "config:\n  install_tree:\n" > $SPACK_ROOT/etc/spack/config.yaml'
-        else
-            add_config=:
-        fi
         ;;
     traditional)
         echo "make_spack: INFO: setting up for traditional ups layout under $dir"
@@ -246,8 +244,8 @@ main() {
         fi
         export SPACK_ROOT=$dir/prd/spack/$spack_release/NULL
 
-        export add_config="cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml"
-        add_config="$add_config; cp $spackbindir/../templates/modules.yaml.unified $SPACK_ROOT/etc/spack/modules.yaml"
+        export add_config="spack config add --scope site -f $spackbindir/../templates/config.yaml.traditional${extra}"
+        add_config="$add_config; spack config add --scope site -f $spackbindir/../templates/modules.yaml.unified"
         ;;
      unified)
         echo "make_spack: INFO: setting up for unified layout under $dir"
@@ -262,8 +260,8 @@ main() {
         fi
         export SPACK_ROOT=$dir/spack/$spack_release/NULL
 
-        export add_config="cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml"
-        add_config="$add_config; cp $spackbindir/../templates/modules.yaml.unified $SPACK_ROOT/etc/spack/modules.yaml"
+        export add_config="spack config add --scope site -f $spackbindir/../templates/config.yaml.unified${extra}"
+        add_config="$add_config; spack config add --scope site -f $spackbindir/../templates/modules.yaml.unified"
       ;;
     esac
 
