@@ -80,8 +80,8 @@ BRIEF OPTIONS
   --spack-python[= ]<python-exec>
   --spack-config-cmd[= ]<config-cmd-string>+
   --spack-config-file[= ](<cache-name>\|)?<config-file>+
-  --spack-infrastructure-root[= ]<repo>
-  --spack-infrastructure-version[= ]<version>
+  --fermi-spack-tools-root[= ]<repo>
+  --fermi-spack-tools-version[= ]<version>
   --spack-repo[= ]<path>|<repo>(\|<version|branch>)?
   --spack-root[= ]<repo>
   --spack-version[= ]<version>
@@ -136,11 +136,11 @@ HELP AND DIAGNOSTIC OPTIONS
 
 LOCATION AND VERSION OPTIONS
 
-  --spack-infrastructure-root[= ]<repo>
-  --spack-infrastructure-version[= ]<version|branch>
+  --fermi-spack-tools-root[= ]<repo>
+  --fermi-spack-tools-version[= ]<version|branch>
 
-    Obtain the Spack infrastructure utilities from the specified
-    repository and/or branch/version.
+    Obtain the Fermi Spack Tools from the specified repository and/or
+    branch/version.
 
   --spack-root[= ]<repo>
 
@@ -1043,7 +1043,7 @@ fi
 color=
 concretize_safely=1
 fail_fast=1
-si_root=https://github.com/FNALssi/spack-infrastructure.git
+si_root=https://github.com/FNALssi/fermi-spack-tools.git
 si_ver=master
 spack_ver=v0.19.0-dev.fermi
 spack_config_files=()
@@ -1086,10 +1086,10 @@ while (( $# )); do
     --spack-config-cmd=*) spack_config_cmds+=("${1#*=}");;
     --spack-config-file) spack_config_files+=("$2"); shift;;
     --spack-config-file=*) spack_config_files+=("${1#*=}");;
-    --spack-infrastructure-root) si_root="$2"; shift;;
-    --spack-infrastructure-root=*) si_root="${1#*=}";;
-    --spack-infrastructure-version) si_ver="$2"; shift;;
-    --spack-infrastructure-version=*) si_ver="${1#*=}";;
+    --fermi-spack-tools-root) si_root="$2"; shift;;
+    --fermi-spack-tools-root=*) si_root="${1#*=}";;
+    --fermi-spack-tools-version) si_ver="$2"; shift;;
+    --fermi-spack-tools-version=*) si_ver="${1#*=}";;
     --spack-python) spack_python="$2"; shift;;
     --spack-python=*) spack_python="${1#*=}";;
     --spack-repo) recipe_repos+=("$2"); shift;;
@@ -1220,10 +1220,10 @@ exec $STDOUT>&- $STDERR>&-\
 
 si_upsver="v${si_ver#v}"
 ####################################
-# Install spack-infrastructure to bootstrap a Spack installation.
-_report $PROGRESS "cloning spack-infrastructure"
+# Install fermi-spack-tools to bootstrap a Spack installation.
+_report $PROGRESS "cloning fermi-spack-tools"
 _cmd $DEBUG_1 git clone -b "$si_ver" "$si_root" "$TMP/" \
-  || _die "unable to clone spack-infrastructure $si_ver from $si_root"
+  || _die "unable to clone fermi-spack-tools $si_ver from $si_root"
 if [[ "${spack_config_files[*]}" =~ (^|/)packages\.yaml([[:space:]]|$) ]]; then
   # Bypass packages.yaml generation if we're going to ignore it anyway.
   _report $DEBUG_2 "bypassing packages.yaml generation"
@@ -1287,7 +1287,7 @@ IFS="$OIFS"
 ####################################
 # Set up the build environment.
 if ! [ "$ups_opt" = "-p" ]; then
-  _report $PROGRESS "declaring spack-infrastructure package to UPS"
+  _report $PROGRESS "declaring fermi-spack-tools package to UPS"
   { source /grid/fermiapp/products/common/etc/setups \
       || source /products/setup \
       || _die $EXIT_UPS_ERROR "unable to set up UPS"
@@ -1296,10 +1296,10 @@ if ! [ "$ups_opt" = "-p" ]; then
 
   cd $TMP \
     && {
-    _cmd $DEBUG_1 ups exist spack-infrastructure $si_upsver \
-      || _cmd $DEBUG_1 "$TMP/bin/declare_simple" spack-infrastructure $si_upsver
+    _cmd $DEBUG_1 ups exist fermi-spack-tools $si_upsver \
+      || _cmd $DEBUG_1 "$TMP/bin/declare_simple" fermi-spack-tools $si_upsver
   } \
-    || _die $EXIT_UPS_ERROR "unable to declare spack-infrastructure $si_ver to UPS"
+    || _die $EXIT_UPS_ERROR "unable to declare fermi-spack-tools $si_ver to UPS"
   cd - >/dev/null
 fi
 ####################################
