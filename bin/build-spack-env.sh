@@ -94,6 +94,7 @@ BRIEF OPTIONS
   --ups[= ](plain|traditional|unified|-[ptu])
   --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
   --with-concretiz(e|ing|ation)-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
+  --with-padding
   --working-dir[= ]<dir>
 
   [ Options suffixed with + are repeatable and cumulative ]
@@ -230,6 +231,10 @@ SPACK CONFIGURATION OPTIONS
     Create and populate a traditional, unified ("relocatable") or no UPS
     area to allow the use of installed Spack packages via UPS. Default
     is unified.
+
+  --with-padding
+
+    Equivalent to --spack-config-cmd='--scope=site add config:install_tree:padded_length:255'
 
 
 NON-OPTION ARGUMENTS
@@ -1122,6 +1127,7 @@ while (( $# )); do
       optarg="${1#*=}"; OIFS="$IFS"; IFS=","
       concretizing_cache_specs+=($optarg); IFS="$OIFS"
       ;;
+    --with-padding) with_padding=1;;
     --working-dir=*) working_dir="${1#*=}";;
     --working_dir) working_dir="$2"; shift;;
     --) shift; break;;
@@ -1247,8 +1253,9 @@ if ! [ -f "$spack_env_top_dir/setup-env.sh" ]; then
     --spack_release $spack_ver
     --minimal
     $ups_opt
-    "$spack_env_top_dir"
   )
+  (( with_padding )) && make_spack_cmd+=(--with_padding)
+  make_spack_cmd+=("$spack_env_top_dir")
   _report $PROGRESS "bootstrapping Spack $spack_ver"
   PATH="$TMP/bin:$PATH" \
       _cmd $PROGRESS ${make_spack_cmd[*]:+"${make_spack_cmd[@]}"} \
