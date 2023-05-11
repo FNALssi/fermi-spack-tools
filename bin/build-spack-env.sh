@@ -144,7 +144,7 @@ LOCATION AND VERSION OPTIONS
 
   --spack-root[= ]<repo>
 
-    [ NOT CURRENTLY SUPPORTED due to limitations in downstream utilities ]
+    Obtain Spack from the specified repository.
 
   --spack-version[= ]<version|branch>
 
@@ -1241,7 +1241,14 @@ mkdir -p "$spack_env_top_dir" \
   || _die $EXIT_PATH_FAILURE "unable to make directory structure for spack environment installation"
 cd "$spack_env_top_dir"
 if ! [ -f "$spack_env_top_dir/setup-env.sh" ]; then
-  make_spack_cmd=(make_spack --spack_release $spack_ver --minimal $ups_opt "$spack_env_top_dir")
+  make_spack_cmd=(
+    make_spack
+    ${spack_root:+--spack_repo "$spack_root"}
+    --spack_release $spack_ver
+    --minimal
+    $ups_opt
+    "$spack_env_top_dir"
+  )
   _report $PROGRESS "bootstrapping Spack $spack_ver"
   PATH="$TMP/bin:$PATH" \
       _cmd $PROGRESS ${make_spack_cmd[*]:+"${make_spack_cmd[@]}"} \
