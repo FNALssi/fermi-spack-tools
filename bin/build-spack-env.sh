@@ -279,13 +279,13 @@ CACHING SOURCE AND BINARY PACKAGES
   If configured:
 
   * Source packages for each environment will be cached under
-    `<working-dir>/copyBack/spack-source-cache` before that environment
+    `<working-dir>/copyBack/spack-packages/sources` before that environment
     is built. "Non-stable" sources (e.g. those obtained from
     repositories) will not be cached.
 
   * Binary packages for each environment will be cached under
-    `<working-dir>/copyBack/spack-binary-cache` or
-    `<working-dir>/copyBack/spack-compiler-cache` (as appropriate) after
+    `<working-dir>/copyBack/spack-packages/binaries` or
+    `<working-dir>/copyBack/spack-packages/compilers` (as appropriate) after
     that environment has been built successfully. If
     `--cache-write-binaries=no_root` is active, then root packages of
     non-compiler environments will not be cached.
@@ -710,9 +710,9 @@ _maybe_cache_binaries() {
 }
 
 _maybe_cache_sources() {
-  (( cache_write_sources )) && return
+  (( cache_write_sources )) || return
   local cache
-  for cache in "$working_dir/copyBack/spack-source-cache" \
+  for cache in "$working_dir/copyBack/spack-packages/sources" \
                  ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
     _report $PROGRESS "caching sources in mirror $cache"
   _cmd $DEBUG_1 $PROGRESS spack \
@@ -1159,9 +1159,9 @@ fi
 
 # Local cache locations are derived from $working_dir.
 local_caches=(
-  "__local_binaries|$working_dir/copyBack/spack-binary-cache"
-  "__local_compilers|$working_dir/copyBack/spack-compiler-cache"
-  "__local_sources|$working_dir/copyBack/spack-source-cache"
+  "__local_binaries|$working_dir/copyBack/spack-packages/binaries"
+  "__local_compilers|$working_dir/copyBack/spack-packages/compilers"
+  "__local_sources|$working_dir/copyBack/spack-packages/sources"
 )
 
 spack_env_top_dir="$working_dir/spack_env"
