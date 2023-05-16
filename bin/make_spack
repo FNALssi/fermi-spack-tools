@@ -277,21 +277,16 @@ main() {
     # dies, we don't change it until the end.
 
     if [ -n "$do_setup_env" ]; then
+
         echo  > $dir/setup-env.sh
         echo "export SPACK_SKIP_MODULES=true" >> $dir/setup-env.sh
         echo "export SPACK_DISABLE_LOCAL_CONFIG=true" >> $dir/setup-env.sh
-        echo "export SPACK_USER_CACHE_PATH=$dir/tmp/\$USER" >> $dir/setup-env.sh
-        echo "[ -d \$SPACK_USER_CACHE_PATH ] || mkdir \$SPACK_USER_CACHE_PATH" >> $dir/setup-env.sh
-        echo "[ -d \$SPACK_USER_CACHE_PATH/bootstrap ] || ln -s ../bootstrap \$SPACK_USER_CACHE_PATH" >> $dir/setup-env.sh
-
         echo ". $SPACK_ROOT/share/spack/setup-env.sh" >> $dir/setup-env.sh
+
 
         echo  > $dir/setup-env.csh
         echo "setenv SPACK_SKIP_MODULES true" >> $dir/setup-env.csh
         echo "setenv SPACK_DISABLE_LOCAL_CONFIG true" >> $dir/setup-env.csh
-        echo "setenv SPACK_USER_CACHE_PATH $dir/tmp/\$USER" >> $dir/setup-env.csh
-        echo "[ -d \$SPACK_USER_CACHE_PATH ] || mkdir \$SPACK_USER_CACHE_PATH" >> $dir/setup-env.csh
-        echo "[ -d \$SPACK_USER_CACHE_PATH/bootstrap ] || ln -s ../bootstrap \$SPACK_USER_CACHE_PATH" >> $dir/setup-env.csh
         echo "source $SPACK_ROOT/share/spack/setup-env.csh" >> $dir/setup-env.csh
 
         mkdir -p $dir/tmp/bootstrap
