@@ -63,9 +63,11 @@ libXdmcp:libxdmcp:$0-devel
 libXext:libxext:$0-devel
 libXft:libxft:$0-devel
 libXi:libxi:$0-devel
+libxkbcommon:libxkbcommon:$0-devel
 libxml2:libxml2:$0-devel
 libXmu:libxmu:$0-devel
 libXpm:libxpm:$0-devel
+libXrender:libxrender:$0-devel
 libxshmfence:libxshmfence:$0-devel
 libXt:libxt:$0-devel
 libXv:libxv:$0-devel
@@ -94,6 +96,10 @@ tar:tar:$0
 tcl:tcl:$0-devel
 texinfo:texinfo:$0
 tk:tk:$0-devel
+xcb-util-image:xcb-util-image:$0-devel
+xcb-util-keysyms:xcb-util-keysyms:$0-devel
+xcb-util-renderutil:xcb-util-renderutil:$0-devel
+xcb-util-wm:xcb-util-wm:$0-devel
 xorg-11-util-macros:util-macros:$0
 xorg-x11-proto-devel:xextproto:$0
 (xorg-x11-server)-Xorg:xorg-server:\1-devel
