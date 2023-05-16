@@ -46,7 +46,6 @@ help2man:help2man:$0
 condor:htcondor:$0
 htgettoken:htgettoken:$0
 :hwloc:
-libicu:icu4c:$0-devel
 (krb5)-libs:krb5:\1-devel
 glibc:libc:$0-devel
 :libedit:
