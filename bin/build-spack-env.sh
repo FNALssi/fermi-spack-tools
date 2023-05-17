@@ -710,7 +710,7 @@ _maybe_cache_binaries() {
 }
 
 _maybe_cache_sources() {
-  (( cache_write_sources )) || return
+  ! (( cache_write_sources )) && return
   local cache
   for cache in "$working_dir/copyBack/spack-packages/sources" \
                  ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
