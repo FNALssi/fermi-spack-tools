@@ -233,51 +233,49 @@ cat <<EOF >&3
     target:
       - $preferred_target
     providers:
-      blas::
-        - openblas
-      fftw-api::
-        - fftw
-      go-external-or-gccgo-bootstrap::
-        - go-bootstrap
-      gl::
-        - glx
-      glu::
-        - mesa-glu
-      golang::
-        - go
-      iconv::
-        - libc
-      java::
-        - openjdk
-      jpeg::
-        - libjpeg-turbo
-      lapack::
-        - openblas
-      libglx::
-        - mesa+glx
-      libllvm::
-        - llvm
-      libosmesa::
-        - mesa+osmesa
-      mariadb-client::
-        - mariadb-c-client
-      mysql-client::
-        - mariadb-c-client
-      pbs::
-        - torque
       pkgconfig::
         - pkg-config
         - pkgconf
-      rpc::
-        - libc
-      tbb::
-        - intel-tbb-oneapi
-      unwind::
-        - libunwind
-      uuid::
-        - libuuid
-      yacc::
-        - bison
+  blas:
+    require: openblas
+  fftw-api:
+    require: fftw
+  go-external-or-gccgo-bootstrap:
+    require: go-bootstrap
+  gl:
+    require: glx
+  glu:
+    require: mesa-glu
+  golang:
+    require: go
+  iconv:
+    buildable: False
+    require: libc
+  java:
+    require: openjdk
+  jpeg:
+    require: libjpeg-turbo
+  lapack:
+    require: openblas
+  libglx:
+    require: mesa+glx
+  libllvm:
+    require: llvm
+  libosmesa:
+    require: mesa+osmesa
+  mysql-client:
+    require:  mariadb-c-client
+  rpc:
+    buildable: False
+    require: libc
+  tbb:
+    require: intel-tbb-oneapi
+  unwind:
+    require: libunwind
+  uuid:
+    require: libuuid
+  yacc:
+    require: bison
 EOF
 
 preamble() {
