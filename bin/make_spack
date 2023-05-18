@@ -84,7 +84,8 @@ bootstrap_spack() {
     else
         install_latest py-machotools
     fi
-    make_packages_yaml $SPACK_ROOT
+    test -d  $SPACK_ROOT/etc/spack/${os} || mkdir $SPACK_ROOT/etc/spack/${os} 
+    cp  $spackbindir/../templates/packages.yaml.${os} $SPACK_ROOT/etc/spack/${os}/packages.yaml
 }
 
 add_recipe_repos() {
