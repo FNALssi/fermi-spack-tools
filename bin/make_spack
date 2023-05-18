@@ -195,7 +195,7 @@ parse_args() {
     padding=false
     layout=unified
 
-    eval set : $(getopt --longoptions with_padding,upgrade,spack_release:,minimal,no_buildcache,spack_repo: --options mptu -- : "$@")
+    eval set : $(getopt --longoptions help,with_padding,upgrade,spack_release:,minimal,no_buildcache,spack_repo: --options mptu -- : "$@")
     shift
     while echo x$1 | grep x- > /dev/null
     do
@@ -205,6 +205,7 @@ parse_args() {
         x--spack_release)       spack_release=$2; shift; shift ;;
         x--spack_repo)          spack_repo=$2; shift; shift;;
         x--minimal)             minimal=true; shift ;;
+        x--help)                usage; exit;;
         x--no_buildcache)       use_buildcache=false; shift;;
         x-u)                    layout=unified; shift;;
         x-t)                    layout=traditional; shift;;
@@ -215,6 +216,11 @@ parse_args() {
     done
 
     dir=$2
+    if [ -z "$dir" ]
+    then
+        usage
+        exit 1
+    fi
 }
 
 main() {
