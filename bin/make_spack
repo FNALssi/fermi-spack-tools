@@ -125,6 +125,7 @@ create_spack() {
                else
                  spack config --scope=site rm config:install_tree:padded_length
                fi
+               extra=.new
                ;;
             esac
             export plat="target=`uname -i` os=`spack arch --operating-system`"
@@ -226,6 +227,11 @@ parse_args() {
 
 main() {
     parse_args "$@"
+
+    case $spack_release in
+    rollout*|0.1[67]*) extra="";;
+    *)                 extra=".new";;
+    esac
 
     case $layout in
     plain)
