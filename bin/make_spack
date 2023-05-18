@@ -84,6 +84,7 @@ bootstrap_spack() {
     else
         install_latest py-machotools
     fi
+    os=`spack arch --operating-system`
     test -d  $SPACK_ROOT/etc/spack/${os} || mkdir $SPACK_ROOT/etc/spack/${os} 
     cp  $spackbindir/../templates/packages.yaml.${os} $SPACK_ROOT/etc/spack/${os}/packages.yaml
 }
@@ -251,8 +252,8 @@ main() {
         fi
         export SPACK_ROOT=$dir/prd/spack/$spack_release/NULL
 
-        export add_config="spack config add --scope site -f $spackbindir/../templates/config.yaml.traditional${extra}"
-        add_config="$add_config; spack config add --scope site -f $spackbindir/../templates/modules.yaml.unified"
+        export add_config="spack config --scope site add -f $spackbindir/../templates/config.yaml.traditional${extra}"
+        add_config="$add_config; spack config --scope site add -f $spackbindir/../templates/modules.yaml.unified"
         ;;
      unified)
         echo "make_spack: INFO: setting up for unified layout under $dir"
@@ -267,8 +268,8 @@ main() {
         fi
         export SPACK_ROOT=$dir/spack/$spack_release/NULL
 
-        export add_config="spack config add --scope site -f $spackbindir/../templates/config.yaml.unified${extra}"
-        add_config="$add_config; spack config add --scope site -f $spackbindir/../templates/modules.yaml.unified"
+        export add_config="spack config --scope site add -f $spackbindir/../templates/config.yaml.unified${extra}"
+        add_config="$add_config; spack config --scope site add -f $spackbindir/../templates/modules.yaml.unified"
       ;;
     esac
 
