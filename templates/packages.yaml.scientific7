@@ -85,8 +85,6 @@ packages:
         - zig
   libiconv:
     buildable: false
-  util-macros:
-    buildable: false
   asciidoc:
     target:
       - x86_64
@@ -327,6 +325,10 @@ packages:
   gsl:
     externals:
     - spec: "gsl @1.15 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  gtkplus:
+    externals:
+    - spec: "gtkplus @3.22.30 %gcc@4.8.5 os=scientific7"
       prefix: /usr
   help2man:
     target:
