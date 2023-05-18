@@ -2,5 +2,5 @@ config:
   install_tree: 
 
     projections:
-      all: {package.name}/{version}/{architecture}-{compiler.name}-{compiler.version}-{hash}
+      all: "{package.name}/{version}/{architecture}-{compiler.name}-{compiler.version}-{hash}"
     root: spack/../../..
