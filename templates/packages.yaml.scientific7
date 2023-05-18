@@ -1,0 +1,781 @@
+packages:
+  all:
+    providers:
+      awk:
+        - gawk
+      blas:
+        - openblas
+      D:
+        - ldc
+      daal:
+        - intel-daal
+      elf:
+        - elfutils
+      fftw-api:
+        - fftw
+      flame:
+        - libflame
+      fuse:
+        - libfuse
+      gl:
+        - glx
+      glu:
+        - mesa-glu
+      golang:
+        - go
+      go-external-or-gccgo-bootstrap:
+        - go-bootstrap
+      iconv:
+        - libc
+      ipp:
+        - intel-ipp
+      java:
+        - openjdk
+      jpeg:
+        - libjpeg-turbo
+      lapack:
+        - openblas
+      libglx:
+        - mesa+glx
+      libllvm:
+        - llvm
+      libosmesa:
+        - mesa+osmesa
+      lua-lang:
+        - lua
+      luajit:
+        - lua-luajit-openresty
+      mariadb-client:
+        - mariadb-c-client
+      mkl:
+        - intel-mkl
+      mpe:
+        - mpe2
+      mpi:
+        - openmpi
+      mysql-client:
+        - mariadb-client
+      opencl:
+        - pocl
+      onedal:
+        - intel-oneapi-dal
+      pbs:
+        - torque
+      pil:
+        - py-pillow
+      pkgconfig:
+        - pkg-config
+      rpc:
+        - libc
+      scalapack:
+        - netlib-scalapack
+      sycl:
+        - libaec
+      tbb:
+        - intel-tbb-oneapi
+      unwind:
+        - libunwind
+      uuid:
+        - libuuid
+      xxd:
+        - xxd-standalone
+      yacc:
+        - bison
+      ziglang:
+        - zig
+  libiconv:
+    buildable: false
+  util-macros:
+    buildable: false
+  asciidoc:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "asciidoc @8.6.8 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  autogen:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "autogen @5.18 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  automake:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "automake @1.13.4 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  bdftopcf:
+    externals:
+    - spec: "bdftopcf @1.1 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  binutils:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "binutils+gas+gold+ld @2.27 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  bison:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "bison @3.0.4 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  bzip2:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "bzip2 @1.0.6 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  cmake:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "cmake @2.8.12.2 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  cigetcert:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    #externals:
+    #- spec: "cigetcert @1.20 %gcc@4.8.5 os=scientific7"
+    #  prefix: /usr
+  curl:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "curl @7.29.0 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  davix:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "davix @0.7.5 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  diffutils:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "diffutils @3.3 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  expat:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "expat @2.1.0 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  findutils:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "findutils @4.5.11 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  flex:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "flex @2.5.37 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  fontconfig:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "fontconfig @2.13.0 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  font-util:  # does this need a -devel?
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "font-util @7.5 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  freetype:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "freetype @2.8 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  ftgl:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "ftgl @2.1.3 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  gawk:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "gawk @4.0.2 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  gdb:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "gdb @7.6.1 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  gdbm:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "gdbm @1.10 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  gettext:  # there is a system one, but we don't want to use it...
+    buildable: False
+  git:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "git @1.8.3.1 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  gl2ps:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "gl2ps @1.3.8 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  glew:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "glew @1.10.0 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  gperf:
+    externals:
+    - spec: "gperf @3.0.4 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  groff:
+    externals:
+    - spec: "groff @1.22.2 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  gsl:
+    externals:
+    - spec: "gsl @1.15 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  help2man:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "help2man @1.41.1 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  krb5:
+    externals:
+    - spec: "krb5 @1.15.1 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  berkeley-db: # good
+    externals:
+    - spec: "berkeley-db @5.3.21 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  libc:
+    externals:
+    - spec: "libc+iconv+rpc @2.17 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libdb:
+    externals:
+    - spec: "libdb @5.3.21 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  libdrm:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libdrm @2.4.97 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libedit:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libedit @3.0 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  libffi:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libffi @3.0.13 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libfontenc:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libfontenc @1.1.3 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libgcrypt:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libgcrypt @1.5.3 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libice:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libice @1.0.9 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libjpeg-turbo:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libjpeg-turbo @1.2.90 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libpciaccess:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libpciaccess @0.14 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libpng:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libpng @1.5.13 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  libtool:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libtool @2.4.2 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  libuuid:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libuuid @2.23.2 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxcb:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libxcb @1.13 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxml2:
+    externals:
+    - spec: "libxml2 @2.9.1 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  htgettoken:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "htgettoken @1.15 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  xrandr:
+    externals:
+    - spec: "xrandr @1.5.0 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxshmfence:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libxshmfence @1.2 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libXxf86vm:
+    externals:
+    - spec: "libXxf86vm @1.1.4 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  libyaml:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "libyaml @0.1.4 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  lmod:
+    externals:
+    - spec: "lmod @8.7.7 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  lua:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "lua @5.1.4 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  lz4:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "lz4 @1.8.3 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  m4:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "m4 @1.4.16 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  gmake:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "gmake @3.82 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  meson:
+    externals:
+    - spec: "meson @0.55.1 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  mkfontdir:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "mkfontdir @7.5 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  mkfontscale:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "mkfontscale @7.5 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  mpich:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "mpich @3.2 %gcc@4.8.5 os=scientific7"
+      prefix: /usr/lib64/mpich-3.2/
+  nasm:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "nasm @2.10.07 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  ncurses:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "ncurses @5.9 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  openssh:
+    externals:
+    - spec: "openssh @7.4p1 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  openssl:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "openssl @1.0.2k %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    - spec: "openssl @1.1.1 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  pcre2:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "pcre2 @10.23 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  pcre:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "pcre+jit+utf @8.32 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  perl-data-dumper:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "perl-data-dumper @2.145 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  perl:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "perl @5.16.3 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  pkg-config:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "pkg-config @0.27.1 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  python:
+    externals:
+    - spec: "python @2.7.5 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    - spec: "python @3.6.8 %gcc@4.8.5 os=scientific7"  # may not have -devel on some systems...kluge around it?
+      prefix: /usr
+  rhash:
+    externals:
+    - spec: "rhash @1.3.4 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  sqlite:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "sqlite @3.7.17 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  tar:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "tar @1.26 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  tcl:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "tcl @8.5.13 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  texinfo:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "texinfo @5.1 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  texlive:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "texlive @2012 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  tk:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "tk @8.5.13 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  unzip:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "unzip @6.00 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  xorg-server:
+    externals:
+    - spec: "xorg-server @1.20.4 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  xxhash:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "xxhash @0.6.5 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+  xz:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "xz @5.2.2 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  zlib:
+    target:
+      - x86_64
+    compiler:
+      - gcc@4.8.5
+      - clang@3.4.2
+    externals:
+    - spec: "zlib+optimize+pic+shared @1.2.7 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False

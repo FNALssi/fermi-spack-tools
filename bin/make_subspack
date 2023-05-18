@@ -174,7 +174,8 @@ cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spa
 fi
 
 message "installing packages.yaml"
-cp $src/etc/spack/packages.yaml $SPACK_ROOT/etc/spack/packages.yaml
+test -d  $SPACK_ROOT/etc/spack/${os} || mkdir $SPACK_ROOT/etc/spack/${os} 
+cp $src/etc/spack/${os}/packages.yaml $SPACK_ROOT/etc/spack/${os}/packages.yaml
 
 if $padding 
 then 
