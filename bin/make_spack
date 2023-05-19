@@ -86,7 +86,12 @@ bootstrap_spack() {
     fi
     os=`spack arch --operating-system`
     test -d  $SPACK_ROOT/etc/spack/${os} || mkdir $SPACK_ROOT/etc/spack/${os} 
-    cp  $spackbindir/../templates/packages.yaml.${os} $SPACK_ROOT/etc/spack/${os}/packages.yaml
+    if $query_packages
+    then
+        make_packages_yaml $SPACK_ROOT
+    else
+        cp $spackbindir/../templates/packages.yaml.${os} $SPACK_ROOT/etc/spack/${os}/packages.yaml
+    fi
 }
 
 add_recipe_repos() {
@@ -172,15 +177,18 @@ usage(){
         echo " options:"
         echo "  --upgrade"
         echo "  --no-buildcache"
+        echo "  --query-packages"
         echo "  --spack_release ver"
         echo "  --spack_repo url"
         echo "  --minimal"
-        echo "  make a spack instance with given layout"
-        echo ""
         echo "  -u fermi 'unified' layout"
         echo "  -t fermi 'traditional' layout"
         echo "  -p plain spack default layout"
         echo "  -m minimal setup"
+        echo ""
+        echo "  make a spack instance with given layout"
+        echo "  --query-packages turns on running make_packages_yaml (slow)
+        echo "  --depth is passed to git clone for spack"
         exit 1
 }
 
@@ -196,8 +204,9 @@ parse_args() {
     upgrading=false
     padding=false
     layout=unified
+    query_packages=false
 
-    eval set : $(getopt --longoptions help,with_padding,upgrade,spack_release:,minimal,no_buildcache,spack_repo: --options mptu -- : "$@")
+    eval set : $(getopt --longoptions help,depth,with_padding,upgrade,spack_release:,minimal,no_buildcache,spack_repo:,query-packages --options mptu -- : "$@")
     shift
     while echo x$1 | grep x- > /dev/null
     do
@@ -207,6 +216,7 @@ parse_args() {
         x--spack_release)       spack_release=$2; shift; shift ;;
         x--spack_repo)          spack_repo=$2; shift; shift;;
         x--minimal)             minimal=true; shift ;;
+        x--query-packages)      query_packages=true; shift ;;
         x--help)                usage; exit;;
         x--no_buildcache)       use_buildcache=false; shift;;
         x-u)                    layout=unified; shift;;
