@@ -187,7 +187,7 @@ usage(){
         echo "  -m minimal setup"
         echo ""
         echo "  make a spack instance with given layout"
-        echo "  --query-packages turns on running make_packages_yaml (slow)
+        echo "  --query-packages turns on running make_packages_yaml (slow)"
         echo "  --depth is passed to git clone for spack"
         exit 1
 }
