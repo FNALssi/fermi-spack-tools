@@ -130,17 +130,11 @@ EOF
 echo  > $dst/setup-env.sh
 echo "export SPACK_SKIP_MODULES=true" >> $dst/setup-env.sh
 echo "export SPACK_DISABLE_LOCAL_CONFIG=true" >> $dst/setup-env.sh
-echo "export SPACK_USER_CACHE_PATH=$dst/tmp/\$USER" >> $dst/setup-env.sh
-echo "[ -d \$SPACK_USER_CACHE_PATH ] || mkdir \$SPACK_USER_CACHE_PATH" >> $dst/setup-env.sh
-echo "[ -d \$SPACK_USER_CACHE_PATH/bootstrap ] || ln -s ../bootstrap \$SPACK_USER_CACHE_PATH" >> $dst/setup-env.sh
 echo ". $SPACK_ROOT/share/spack/setup-env.sh" >> $dst/setup-env.sh
 
 echo  > $dst/setup-env.csh
 echo "setenv SPACK_SKIP_MODULES true" >> $dst/setup-env.csh
 echo "setenv SPACK_DISABLE_LOCAL_CONFIG true" >> $dst/setup-env.csh
-echo "setenv SPACK_USER_CACHE_PATH $dst/tmp/\$USER" >> $dst/setup-env.csh
-echo "[ -d \$SPACK_USER_CACHE_PATH ] || mkdir \$SPACK_USER_CACHE_PATH" >> $dst/setup-env.csh
-echo "[ -d \$SPACK_USER_CACHE_PATH/bootstrap ] || ln -s ../bootstrap \$SPACK_USER_CACHE_PATH" >> $dst/setup-env.csh
 echo "source $SPACK_ROOT/share/spack/setup-env.csh" >> $dst/setup-env.csh
 
 mkdir -p $dst/tmp
