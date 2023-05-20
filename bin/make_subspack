@@ -231,14 +231,6 @@ message "adding package repos..."
     done
 )
 
-message "Adding buildcache $binary_cache"
-source $dst/setup-env.sh
-if $padding 
-then 
-    echo "turning on padding." 
-    spack config --scope=site add config:install_tree:padded_length:255
-fi
-
 echo "Adding buildcache $binary_cache"
 $SPACK_ROOT/bin/spack mirror add --scope site fnal $binary_cache
 $SPACK_ROOT/bin/spack buildcache update-index  -d $binary_cache
