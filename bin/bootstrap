@@ -7,6 +7,7 @@ usage() {
 usage: bootstrap [options] [dest_dir] 
   options:
         --help                              Print this message
+        --query-packages                    Run make_packages_yaml rather than putting in templated packages.yaml
         --with_padding                      Set padding in spack config
         --fermi_spack_tools_release ver  fetch the labeled version of fermi_spack_tools
         --fermi_spack_tools_repo url     ...from this git reposity
@@ -23,17 +24,20 @@ default_fermi_spack_tools_repo=https://github.com/FNALssi/fermi-spack-tools.git
 
 parse_args() {
     with_padding=""
-    eval set : $(getopt --longoptions with_padding,help,fermi_spack_tools_release:,spack_release:,spack_repo:,fermi_spack_tools_repo: -- x "$@")
+    eval set : $(getopt --longoptions with_padding,help,query-packages,fermi_spack_tools_release:,spack_release:,spack_repo:,fermi_spack_tools_repo: -- x "$@")
     shift
     spack_repo=$default_spack_repo
     fermi_spack_tools_repo=$default_fermi_spack_tools_repo
     ver=$default_fermi_spack_tools_version
     spack_version=$default_spack_version
+    query_packages=""
+
     while [ "${1:0:2}" = "--" ]
     do
         case "x$1" in
         x--with_padding)                 with_padding="--with_padding"; shift;;
         x--spack_release)                spack_version=$2; shift; shift ;;
+        x--query-packages)               query_packages="--query-packages"; shift ;;
         x--spack_repo)                   spack_repo=$2; shift; shift ;;
         x--fermi_spack_tools_release) ver=$2; shift; shift ;;
         x--fermi_spack_tools_repo)    fermi_spack_tools_repo=$2; shift; shift ;;
@@ -111,7 +115,7 @@ main() {
     PATH=$dest/fermi-spack-tools/$ver/NULL/bin:$PATH
 
     message "Setting up with make_spack"
-    make_spack --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
+    make_spack $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
 
     message "Finding compilers"
     source $dest/setup-env.sh

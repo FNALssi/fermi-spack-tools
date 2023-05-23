@@ -174,13 +174,9 @@ cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spa
 fi
 
 message "installing packages.yaml"
-cp $src/etc/spack/packages.yaml $SPACK_ROOT/etc/spack/packages.yaml
+test -d  $SPACK_ROOT/etc/spack/${os} || mkdir $SPACK_ROOT/etc/spack/${os} 
+cp $src/etc/spack/${os}/packages.yaml $SPACK_ROOT/etc/spack/${os}/packages.yaml
 
-if $padding 
-then 
-    message "turning on padding." 
-    echo "    padded_length: 255" >> $SPACK_ROOT/etc/spack/config.yaml
-fi
 
 message "installing upstreams.yaml..."
 cat >> etc/spack/upstreams.yaml <<EOF
@@ -235,7 +231,7 @@ message "adding package repos..."
     done
 )
 
-message "Adding buildcache $binary_cache"
+echo "Adding buildcache $binary_cache"
 $SPACK_ROOT/bin/spack mirror add --scope site fnal $binary_cache
 $SPACK_ROOT/bin/spack buildcache update-index  -d $binary_cache
 message "Adding backup buildcache $binary_cache_bak"
@@ -251,5 +247,8 @@ for f in $src/var/spack/environments/*
 do
    ln -s $f .
 done
+
+# use the upstream's bootstrap area...
+spack bootstrap root --scope=site $src/.bootstrap
 
 echo "done."

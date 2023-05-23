@@ -39,6 +39,7 @@ gdb:gdb:$0
 gdbm:gdbm:$0-devel
 gettext:gettext:$0-devel
 git:git:$0
+gtk3:gtkplus:$0-devel
 make:gmake:$0
 gperf:gperf:$0
 groff:groff:$0
