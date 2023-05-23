@@ -70,7 +70,7 @@ bootstrap_patchelf() {
 
 find_compilers() {
    source $SPACK_ROOT/share/spack/setup-env.sh
-   spack compiler find --scope=site
+   spack compiler find --scope site
 }
 
 bootstrap_spack() {
@@ -240,6 +240,8 @@ parse_args() {
 
 main() {
     parse_args "$@"
+
+    export SPACK_DISABLE_LOCAL_CONFIG=true
 
     case $spack_release in
     rollout*|0.1[67]*) extra="";;
