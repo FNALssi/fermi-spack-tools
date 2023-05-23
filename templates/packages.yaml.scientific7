@@ -284,7 +284,10 @@ packages:
     - spec: "gdbm @1.10 %gcc@4.8.5 os=scientific7"
       prefix: /usr
     buildable: False
-  gettext:  # there is a system one, but we don't want to use it...
+  gettext:
+    externals:
+    - spec: "gettext ~bzip2+curses~git+libunistring+libxml2~tar+xz @0.19.8.1 %gcc@4.8.5 os=scientific7 ^libc"
+      prefix: /usr
     buildable: False
   git:
     target:
