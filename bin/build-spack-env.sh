@@ -799,7 +799,7 @@ _piecemeal_build() {
     _report $DEBUG_2 "  ${same_level_deps[@]/%/$'\n'              }"
     _cmd $DEBUG_1 $INFO \
          "${spack_install_cmd[@]}" \
-         ${same_level_deps[*]:+--no-add "${same_level_deps[@]//*\///}"} \
+         ${same_level_deps[*]:+"${same_level_deps[@]//*\///}"} \
       || return
     # Add deps to list of installed deps.
     installed_deps+=(${same_level_deps[*]:+"${same_level_deps[@]##*/}"})
