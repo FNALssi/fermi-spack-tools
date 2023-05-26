@@ -385,6 +385,12 @@ packages:
     externals:
     - spec: "texinfo @5.1 %gcc@4.8.5 os=scientific7"
       prefix: /usr
+  texlive:
+    externals:
+    - spec: "texlive @2012-45 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    - spec: "texlive @20220321 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
   tk:
     externals:
     - spec: "tk @8.5.13 %gcc@4.8.5 os=scientific7"
