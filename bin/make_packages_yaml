@@ -262,7 +262,7 @@ cat <<EOF >&3
       mariadb-client::
         - mariadb-c-client
       mysql-client::
-        -  mariadb-client
+        - mariadb-c-client
       pbs::
         - torque
       pkgconfig::
