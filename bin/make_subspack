@@ -209,9 +209,8 @@ ln -s $install_tree_path/tmp/bootstrap $dst/tmp/bootstrap
 os=`$SPACK_ROOT/bin/spack arch --operating-system`
 
 # copy compilers and packages
-[ -r  $src/etc/spack/compilers.yaml ] && cp $src/etc/spack/compilers.yaml $SPACK_ROOT/etc/spack/compilers.yaml
-
-mkdir $SPACK_ROOT/etc/spack/$os
+test -d  $SPACK_ROOT/etc/spack/$os ||  mkdir -p  $SPACK_ROOT/etc/spack/$os
+[ -r  $src/etc/spack/$os/compilers.yaml ] && cp $src/etc/spack/$os/compilers.yaml $SPACK_ROOT/etc/spack/$os/compilers.yaml
 [ -r  $src/etc/spack/$os/packages.yaml ] && cp $src/etc/spack/$os/packages.yaml $SPACK_ROOT/etc/spack/$os/packages.yaml
 
 # now clone package repos..
