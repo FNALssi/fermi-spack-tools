@@ -206,6 +206,17 @@ mkdir -p $dst/tmp
 # reuse upstream clingo bootstrap
 ln -s $install_tree_path/tmp/bootstrap $dst/tmp/bootstrap
 
+case $spack_release in
+rollout*|0.1[67]*) ;;
+*) if $padding; then
+     echo "turning on padding."
+     $SPACK_ROOT/bin/spack config --scope=site add config:install_tree:padded_length:255
+   else
+     $SPACK_ROOT/bin/spack config --scope=site rm config:install_tree:padded_length
+   fi
+   ;;
+esac
+
 os=`$SPACK_ROOT/bin/spack arch --operating-system`
 
 # copy compilers and packages
@@ -248,6 +259,6 @@ do
 done
 
 # use the upstream's bootstrap area...
-spack bootstrap root --scope=site $src/.bootstrap
+$SPACK_ROOT/bin/spack bootstrap root --scope=site $src/.bootstrap
 
 echo "done."
