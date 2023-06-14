@@ -242,6 +242,8 @@ rollout*|0.1[67]*) ;;
    ;;
 esac
 
+os=`$SPACK_ROOT/bin/spack arch --operating-system`
+
 # copy compilers and packages
 test -d  $SPACK_ROOT/etc/spack/$os ||  mkdir -p  $SPACK_ROOT/etc/spack/$os
 [ -r  $src/etc/spack/$os/compilers.yaml ] && cp $src/etc/spack/$os/compilers.yaml $SPACK_ROOT/etc/spack/$os/compilers.yaml
