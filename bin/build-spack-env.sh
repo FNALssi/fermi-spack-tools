@@ -76,6 +76,7 @@ BRIEF OPTIONS
   --color[= ](auto|always|never)
   --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install)
   --(no-)?fail-fast
+  --(no-)?query-packages
   --(no-)?safe-concretize
   --spack-python[= ]<python-exec>
   --spack-config-cmd[= ]<config-cmd-string>+
@@ -195,6 +196,11 @@ SPACK CONFIGURATION OPTIONS
     Control whether to abort an installation at the first failure or
     continue to install as many packages as possible before exit
     (default --fail-fast).
+
+  --(no-)?query-packages
+
+    Construct a packages.yaml based on the packages available on the
+    system, or use a prepackaged one appropriate to the platform.
 
   --spack-python[= ]<python-exec>
 
@@ -1084,8 +1090,10 @@ while (( $# )); do
     --no-cache-write-binaries) _set_cache_write_binaries "none";;
     --no-cache-write-sources) unset cache_write_sources;;
     --no-fail-fast) unset fail_fast;;
+    --no-query-packages) unset query_packages;;
     --no-safe-concretize) unset concretize_safely;;
     --no-ups) ups_opt=-p;;
+    --query-packages) query_packages=1;;
     --quiet|-q) (( VERBOSITY = WARNING ));;
     --safe-concretize) concretize_safely=1;;
     --spack-config-cmd) spack_config_cmds+=("$2"); shift;;
@@ -1255,6 +1263,7 @@ if ! [ -f "$spack_env_top_dir/setup-env.sh" ]; then
     --minimal
     $ups_opt
   )
+  (( query_packages )) && make_spack_cmd+=(--query-packages)
   (( with_padding )) && make_spack_cmd+=(--with_padding)
   make_spack_cmd+=("$spack_env_top_dir")
   _report $PROGRESS "bootstrapping Spack $spack_ver"
