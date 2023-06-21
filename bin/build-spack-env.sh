@@ -507,6 +507,14 @@ _configure_spack() {
   fi
 
   ####################################
+  # Check whether spack buildcache create still needs -r
+  local buildcache_rel_help="$(spack buildcache create --help | grep -Ee '^[[:space:]]-r\b')"
+  [ -z "$buildcache_rel_help" ] ||
+    [[ "$buildcache_rel_help" == *"(deprecated)"* ]] ||
+    buildcache_rel_arg="-r"
+  ####################################
+
+  ####################################
   # Make sure we know about compilers.
   _report $PROGRESS "configuring compilers"
   spack compiler find --scope=site >/dev/null 2>&1
@@ -705,7 +713,7 @@ _maybe_cache_binaries() {
            buildcache create -a --deptype=all \
            ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
-           -r "$cache" \
+           ${buildcache_rel_arg} "$cache" \
            ${hashes_to_cache[*]:+"${hashes_to_cache[@]}"}
       _report $PROGRESS "updating build cache index"
       _cmd $DEBUG_1 $PROGRESS \
@@ -1212,27 +1220,6 @@ case ${cache_write_binaries:=none} in
 esac
 ####################################
 
-####################################
-# Safe, comprehensive cleanup.
-TMP=`mktemp -d -t build-spack-env.sh.XXXXXX`
-trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
-[ -f \"\$mirrors_cfg~\" ] && mv -f \"\$mirrors_cfg\"{~,}; \
-_copy_back_logs; \
-if (( failed == 1 )) && [ \"${cache_write_binaries:-none}\" != none ]; then \
-  tag_text=ALERT _report $ERROR \"emergency buildcache dump...\"; \
-  _cmd $ERROR $PIPE spack \
-      \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
-      buildcache create -a --deptype=all \
-      \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
-      -r --rebuild-index \
-      \"$working_dir/copyBack/spack-emergency-cache\" \
-      \$(spack find --no-groups); \
-  tag_text=ALERT _report $ERROR \"emergency buildcache dump COMPLETE\"; \
-fi; \
-exec $STDOUT>&- $STDERR>&-\
-" EXIT
-####################################
-
 si_upsver="v${si_ver#v}"
 ####################################
 # Install fermi-spack-tools to bootstrap a Spack installation.
@@ -1301,6 +1288,27 @@ default_mirrors="$SPACK_ROOT/etc/spack/defaults/mirrors.yaml"
 concretize_mirrors="$SPACK_ROOT/concretize_mirrors.yaml"
 
 _configure_spack
+
+####################################
+# Safe, comprehensive cleanup.
+TMP=`mktemp -d -t build-spack-env.sh.XXXXXX`
+trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
+[ -f \"\$mirrors_cfg~\" ] && mv -f \"\$mirrors_cfg\"{~,}; \
+_copy_back_logs; \
+if (( failed == 1 )) && [ \"${cache_write_binaries:-none}\" != none ]; then \
+  tag_text=ALERT _report $ERROR \"emergency buildcache dump...\"; \
+  _cmd $ERROR $PIPE spack \
+      \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
+      buildcache create -a --deptype=all \
+      \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
+      \$buildcache_rel_arg --rebuild-index \
+      \"$working_dir/copyBack/spack-emergency-cache\" \
+      \$(spack find --no-groups); \
+  tag_text=ALERT _report $ERROR \"emergency buildcache dump COMPLETE\"; \
+fi; \
+exec $STDOUT>&- $STDERR>&-\
+" EXIT
+####################################
 
 known_compilers=($(ls -1 "$SPACK_ROOT/lib/spack/spack/compilers/"[A-Za-z]*.py | sed -Ene 's&^.*/(.*)\.py$&\1&p'))
 OIFS="$IFS"
