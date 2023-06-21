@@ -14,6 +14,7 @@ import json
 
 # we want to use the ruamel.yaml package from spack
 sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
+sys.path.insert(1, "%s/lib/spack/external/_vendoring" % os.environ["SPACK_ROOT"])
 sys.path.insert(1, "%s/lib/spack/external/py2" % os.environ["SPACK_ROOT"])
 sys.path.insert(1, "%s/lib/spack" % os.environ["SPACK_ROOT"])
 import ruamel.yaml as yaml
@@ -112,6 +113,8 @@ def filter_cycles(deplines):
 @remember
 def ups_depend(prod, ver, flav, qual, hosttype=''):
     """ run ups depend, return list of output lines """
+    if os.environ.get("UPS_TO_SPACK_NO_DEPS","0") == "1":
+        return [" ".join([prod, ver, "-f", flav, "-q", qual])]
     r1 = ups_x("depend -B", prod, ver, flav, qual, hosttype)
     if not r1:
         logging.debug("re-running.. without -B")

@@ -259,6 +259,6 @@ do
 done
 
 # use the upstream's bootstrap area...
-$SPACK_ROOT/bin/spack bootstrap root --scope=site $src/.bootstrap
+$SPACK_ROOT/bin/spack bootstrap root --scope=site $install_tree_path/.bootstrap
 
 echo "done."
