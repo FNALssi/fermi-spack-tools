@@ -962,6 +962,7 @@ endif()
                 "from spack import *\nimport os\n\nclass %s(Package):\n    pass\n"
                 % pkgname
             )
+            recipe_f.write("\n    version('%s', sha256='c2ee0b1d62f62b2806f558a46f6584749d1533fbd3e29c3596a24f375ca14da3')\n" % pkg.dotver )
             recipe_f.write("""
 
     variant("ups_to_spack", default=False)
