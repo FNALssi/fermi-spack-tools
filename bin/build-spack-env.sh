@@ -100,7 +100,7 @@ BRIEF OPTIONS
   [ Options suffixed with + are repeatable and cumulative ]
 
 EOF
-  if (( "$1" == 0 )); then
+  if (( "${1:-0}" == 0 )); then
     return
   fi
 cat <<\EOF
