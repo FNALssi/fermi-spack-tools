@@ -278,7 +278,7 @@ $SPACK_ROOT/bin/spack mirror add --scope site scisoft $binary_cache_bak
 $SPACK_ROOT/bin/spack buildcache update-index  -d $binary_cache_bak
 $SPACK_ROOT/bin/spack -k buildcache keys --install --trust --force
 
-#symlink in environments from upstream
+# symlink in environments from upstream
 cd $SPACK_ROOT/var/spack
 mkdir environments
 cd environments
