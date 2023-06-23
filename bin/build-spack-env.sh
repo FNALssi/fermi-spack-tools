@@ -1300,7 +1300,7 @@ if (( failed == 1 )) && [ \"${cache_write_binaries:-none}\" != none ]; then \
       \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
       \$buildcache_rel_arg --rebuild-index \
       \"$working_dir/copyBack/spack-emergency-cache\" \
-      \$(spack find --no-groups); \
+      \$(spack find -L | sed -Ene 's&^([[:alnum:]]+).*\$&/\\1&p'); \
   tag_text=ALERT _report $ERROR \"emergency buildcache dump COMPLETE\"; \
 fi; \
 exec $STDOUT>&- $STDERR>&-\
