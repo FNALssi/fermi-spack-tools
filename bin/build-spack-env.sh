@@ -1049,6 +1049,10 @@ SPACK_ROOT=$SPACK_ROOT
 $(spack env status)"
 fi
 
+# Temporary working area (and cleanup trap).
+TMP=`mktemp -d -t build-spack-env.sh.XXXXXX`
+trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null" EXIT
+
 ########################################################################
 # To split bundled single-option arguments in your function or script:
 #
@@ -1291,7 +1295,6 @@ _configure_spack
 
 ####################################
 # Safe, comprehensive cleanup.
-TMP=`mktemp -d -t build-spack-env.sh.XXXXXX`
 trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
 [ -f \"\$mirrors_cfg~\" ] && mv -f \"\$mirrors_cfg\"{~,}; \
 _copy_back_logs; \
