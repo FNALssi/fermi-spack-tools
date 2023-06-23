@@ -923,11 +923,6 @@ _process_environment() {
 }
 
 # Properly quote a message for protection from the shell if copy/pasted.
-if (( ${BASH_VERSINFO[0]} > 4 )) \
-     || { (( ${BASH_VERSINFO[0]} == 4 )) \
-            && (( ${BASH_VERSINFO[1]} >= 4 )); }; then
-_quote() { local result_var="$1"; shift; eval $result_var='"${*@Q}"'; }
-else
 _quote() {
   local x= result_var="$1" result=()
   shift
@@ -941,7 +936,6 @@ _quote() {
   done
   eval $result_var='"${result[*]}"'
 }
-fi
 
 _remove_hash() {
   local hashes_var="$1" handled_hash="$2"
