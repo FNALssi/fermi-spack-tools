@@ -46,7 +46,7 @@ done
 
 os=${2:-`spack arch -o`}
 
-optf=$dir/templates/package_opts
+optf=$dir/templates/package_opts.$os
 dst=$1/etc/spack/$os/packages.yaml
 
 # packages to make not buildable
