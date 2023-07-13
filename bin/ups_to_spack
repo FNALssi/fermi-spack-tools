@@ -1004,7 +1004,11 @@ endif()
                     pkgprd=pkgprd[loc+13:]
 
             if not pkgprd:
+<<<<<<< HEAD
                 raise LookupError("variant +ups_to_spack needs cflags=-DUPS_PROD_DIR=/path")
+=======
+                raise LookupError("variant +ups_to_spack needs cflags=-DUPS_PROD_DIR=/path") 
+>>>>>>> updates to ups_to_spack (#19)
 
             if os.path.isdir(pkgprd):
                 os.system("cd {0} && find . -print | cpio -dumpv {1}".format(pkgprd, prefix))
