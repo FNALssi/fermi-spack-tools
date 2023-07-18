@@ -1297,7 +1297,8 @@ _configure_spack
 
 ####################################
 # Safe, comprehensive cleanup.
-trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
+trap "trap - EXIT; \
+[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
 [ -f \"\$mirrors_cfg~\" ] && mv -f \"\$mirrors_cfg\"{~,}; \
 _copy_back_logs; \
 if (( failed )) && (( want_emergency_buildcache )); then \
