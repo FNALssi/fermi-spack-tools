@@ -75,6 +75,7 @@ BRIEF OPTIONS
   --clear-mirrors
   --color[= ](auto|always|never)
   --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install)
+  --(no-)?emergency-buildcache
   --(no-)?fail-fast
   --(no-)?query-packages
   --(no-)?safe-concretize
@@ -186,10 +187,10 @@ SPACK CONFIGURATION OPTIONS
 
  Other Spack Configuration
 
-  --(no-)?safe-concretize
+  --(no-)?emergency-buildcache
 
-    Control whether to concretize environments with only a minimal set
-    of mirrors configured to improve reproducibility (default yes).
+    Control whether to dump successfully installed binaries to an
+    emergency buildcache on abnormal exit (default yes).
 
   --(no-)?fail-fast
 
@@ -201,6 +202,11 @@ SPACK CONFIGURATION OPTIONS
 
     Construct a packages.yaml based on the packages available on the
     system, or use a prepackaged one appropriate to the platform.
+
+  --(no-)?safe-concretize
+
+    Control whether to concretize environments with only a minimal set
+    of mirrors configured to improve reproducibility (default yes).
 
   --spack-python[= ]<python-exec>
 
@@ -306,9 +312,9 @@ LOG RETRIEVAL AND ERROR RECOVERY
   remaining in or under Spack's top-level staging directory (see `spack
   location -S`).
 
-  In the event of an abnormal termination: if the configured option for
-  writing binaries to cache is anything other than, "none," then all
-  successfully installed packages will be written to an emergency cache
+  In the event of an abnormal termination: if the emergency buildcache
+  is enabled (see `--(no-)?emergency-buildcache`), then all successfully
+  installed packages will be written to an emergency cache
   `<working-dir>/copyBack/spack-emergency-cache` before
   `build-spack-env.sh` exits.
 
@@ -1091,10 +1097,12 @@ while (( $# )); do
     --color) color="$2"; shift;;
     --color=*) color="${1#*=}";;
     --debug-spack-*|--verbose-spack-*) eval "${1//-/_}=1";;
+    --emergency-buildcache) want_emergency_buildcache=1;;
     --fail-fast) fail_fast=1;;
     --help|-h|-\?) usage 2; exit 1;;
     --no-cache-write-binaries) _set_cache_write_binaries "none";;
     --no-cache-write-sources) unset cache_write_sources;;
+    --no-emergency-buildcache) unset want_emergency_buildcache;;
     --no-fail-fast) unset fail_fast;;
     --no-query-packages) unset query_packages;;
     --no-safe-concretize) unset concretize_safely;;
@@ -1292,7 +1300,7 @@ _configure_spack
 trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
 [ -f \"\$mirrors_cfg~\" ] && mv -f \"\$mirrors_cfg\"{~,}; \
 _copy_back_logs; \
-if (( failed == 1 )) && [ \"${cache_write_binaries:-none}\" != none ]; then \
+if (( failed )) && (( want_emergency_buildcache )); then \
   tag_text=ALERT _report $ERROR \"emergency buildcache dump...\"; \
   _cmd $ERROR $PIPE spack \
       \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
