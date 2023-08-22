@@ -383,7 +383,7 @@ _classify_concretized_specs() {
   OIFS="$IFS"; IFS=$'\n'; root_hashes=($(echo "${root_hashes[*]}" | sort -u)); IFS="$OIFS"
   _report $DEBUG_2 "root_hashes=\n             ${root_hashes[@]/%/$'\n'  }"
   idx=${#hashes[@]}
-  local n_unique=$(IFS=$'\n' echo "${hashes[*]}" | sort -u | wc -l)
+  local n_unique=$(IFS=$'\n'; echo "${hashes[*]}" | sort -u | wc -l)
   _report $DEBUG_1 "examined $specline_idx speclines and found ${#root_hashes[@]} roots and $n_unique packages"
 }
 
