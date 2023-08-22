@@ -464,7 +464,7 @@ _configure_spack() {
     config_file="${config_file##*'|'}"
     if [[ "$config_file" =~ ^[a-z][a-z0-9_-]*://(.*/)?(.*) ]]; then
       curl -o "${BASH_REMATCH[2]}" -fkLNSs "$config_file" \
-        || _die $EXIT_PATH_FAILURE "unable to obtain specified config file \"$config_file\""
+        || _die $EXIT_CONFIG_FAILURE "unable to obtain specified config file \"$config_file\""
       config_file="${BASH_REMATCH[2]}"
     fi
     _cmd $DEBUG_1 spack \
@@ -859,7 +859,7 @@ _process_environment() {
   local env_cfg="$1"
   if [[ "$env_cfg" =~ ^[a-z][a-z0-9_-]*://(.*/)?(.*) ]]; then
     curl -o "${BASH_REMATCH[2]}" -fkLNSs "$env_cfg" \
-      || _die $EXIT_PATH_FAILURE "unable to obtain specified environment config file \"$env_cfg\""
+      || _die $EXIT_CONFIG_FAILURE "unable to obtain specified environment config file \"$env_cfg\""
     env_cfg="${BASH_REMATCH[2]}"
   fi
   env_name="${env_cfg##*/}"
