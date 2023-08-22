@@ -206,12 +206,22 @@ mkdir -p $dst/tmp
 # reuse upstream clingo bootstrap
 ln -s $install_tree_path/tmp/bootstrap $dst/tmp/bootstrap
 
+case $spack_release in
+rollout*|0.1[67]*) ;;
+*) if $padding; then
+     echo "turning on padding."
+     $SPACK_ROOT/bin/spack config --scope=site add config:install_tree:padded_length:255
+   else
+     $SPACK_ROOT/bin/spack config --scope=site rm config:install_tree:padded_length
+   fi
+   ;;
+esac
+
 os=`$SPACK_ROOT/bin/spack arch --operating-system`
 
 # copy compilers and packages
-[ -r  $src/etc/spack/compilers.yaml ] && cp $src/etc/spack/compilers.yaml $SPACK_ROOT/etc/spack/compilers.yaml
-
-mkdir $SPACK_ROOT/etc/spack/$os
+test -d  $SPACK_ROOT/etc/spack/$os ||  mkdir -p  $SPACK_ROOT/etc/spack/$os
+[ -r  $src/etc/spack/$os/compilers.yaml ] && cp $src/etc/spack/$os/compilers.yaml $SPACK_ROOT/etc/spack/$os/compilers.yaml
 [ -r  $src/etc/spack/$os/packages.yaml ] && cp $src/etc/spack/$os/packages.yaml $SPACK_ROOT/etc/spack/$os/packages.yaml
 
 # now clone package repos..
@@ -249,6 +259,6 @@ do
 done
 
 # use the upstream's bootstrap area...
-spack bootstrap root --scope=site $src/.bootstrap
+$SPACK_ROOT/bin/spack bootstrap root --scope=site $install_tree_path/.bootstrap
 
 echo "done."
