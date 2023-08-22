@@ -767,7 +767,7 @@ _maybe_register_compiler() {
       local compilers_yaml="$(_cmd $DEBUG_2 $PIPE spack \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
                      config --scope site edit --print-file compilers)"
-      _cmd $DEBUG_2 perl -wapi'' -e 'm&\bcompiler:\s*$&msx and $in_compiler=1; $in_compiler and m&spec:\s*\Q'"$compiler_spec"'\E&msx and $in_wanted_compiler=1; $in_wanted_compiler and s&(^\s*environment:\s*).*$&$1\{ prepend_path: \{ PATH: "'"$binutils_path"'/bin" \} \}\n&msx and undef $in_wanted_compiler and undef $in_compiler' "$compilers_yaml" || _die $EXIT_PATH_FAILURE "unable to configure compiler binutils path"
+      _cmd $DEBUG_2 perl -wapi'' -e 'm&\bcompiler:\s*$&msx and $in_compiler=1; $in_compiler and m&spec:\s*\Q'"$compiler_spec"'\E&msx and $in_wanted_compiler=1; $in_wanted_compiler and s&(^\s*environment:\s*).*$&$1\{ prepend_path: \{ PATH: "'"$binutils_path"'/bin" \} \}\n&msx and undef $in_wanted_compiler and undef $in_compiler' "$compilers_yaml" || _die $EXIT_SPACK_CONFIG_FAILURE "unable to configure compiler binutils path for $compiler_spec"
     fi
   fi
 }
