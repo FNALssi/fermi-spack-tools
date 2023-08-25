@@ -809,7 +809,7 @@ endif()
                      # ...this trips over https://github.com/spack/spack/issues/37565
                      # BUT
                      #with os.popen("spack spec /%s | grep ^%s| tail -1" % (
-                     #       self.known_hashes[dpkg.keyval()], 
+                     #       self.known_hashes[dpkg.keyval()],
                      #       dpkg.prod)) as dsf:
                      #    dlist.append("^%s"% quotewords(dsf.readline()))
                      # doesn't actually use the dependency we want, so...
@@ -1004,7 +1004,7 @@ endif()
                     pkgprd=pkgprd[loc+13:]
 
             if not pkgprd:
-                raise LookupError("variant +ups_to_spack needs cflags=-DUPS_PROD_DIR=/path") 
+                raise LookupError("variant +ups_to_spack needs cflags=-DUPS_PROD_DIR=/path")
 
             if os.path.isdir(pkgprd):
                 os.system("cd {0} && find . -print | cpio -dumpv {1}".format(pkgprd, prefix))

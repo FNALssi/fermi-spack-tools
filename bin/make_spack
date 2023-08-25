@@ -88,7 +88,7 @@ bootstrap_spack() {
         install_latest py-machotools
     fi
     os=`spack arch --operating-system`
-    test -d  $SPACK_ROOT/etc/spack/${os} || mkdir $SPACK_ROOT/etc/spack/${os} 
+    test -d  $SPACK_ROOT/etc/spack/${os} || mkdir $SPACK_ROOT/etc/spack/${os}
     if $query_packages
     then
         make_packages_yaml $SPACK_ROOT
