@@ -1,5 +1,6 @@
 binutils +gas+gold+ld
 cmake ~ownlibs
+curl tls=openssl
 doxygen +graphviz
 font-util fonts=encodings
 gettext ~bzip2+curses~git+libunistring+libxml2~tar+xz
