@@ -248,6 +248,10 @@ test -d  $SPACK_ROOT/etc/spack/$os ||  mkdir -p  $SPACK_ROOT/etc/spack/$os
 [ -r  $src/etc/spack/$os/compilers.yaml ] && cp $src/etc/spack/$os/compilers.yaml $SPACK_ROOT/etc/spack/$os/compilers.yaml
 [ -r  $src/etc/spack/$os/packages.yaml ] && cp $src/etc/spack/$os/packages.yaml $SPACK_ROOT/etc/spack/$os/packages.yaml
 
+# and gpg keys
+[ -r  $src/opt/spack/gpg/pubring.gpg ] && cp $src/opt/spack/gpg/pubring.gpg $SPACK_ROOT/opt/spack/gpg/pubring.gpg
+[ -r  $src/opt/spack/gpg/trustdb.gpg ] && cp $src/opt/spack/gpg/trustdb.gpg $SPACK_ROOT/opt/spack/gpg/trustdb.gpg
+
 # now clone package repos..
 
 message "adding package repos..."
