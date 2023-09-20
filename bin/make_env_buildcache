@@ -1,0 +1,77 @@
+#!/bin/sh 
+
+get_local_hashes() {
+    spack spec --install-status --long | 
+      grep '^\[+\]' | 
+      sed -e 's/^\[+\]..//' -e 's/ .*//' | 
+      sort -u
+}
+
+install_sec_key() {
+   # assumes you have your secret key in $HOME/.gnupg/spack/secring.gpg
+   spack gpg list > /dev/null
+   if [ ! -r $SPACK_ROOT/opt/spack/gpg/secring.gpg ]
+   then
+       cp $HOME/.gnupg/spack/secring.gpg $SPACK_ROOT/opt/spack/gpg
+   fi
+}
+
+make_local_buildcache() {
+
+    install_sec_key
+
+    hlist=$(get_local_hashes)
+
+    for hash in $hlist
+    do
+        spack buildcache create -a -k $USER@fnal.gov --only package ./bc /$hash
+    done
+}
+
+make_reconstitute_script() {
+
+    upstream=$(spack config get upstreams | 
+                grep install_tree |
+                sed -e 's/.*: *//' -e 's/  *$//')
+
+    active=$(echo $SPACK_ENV | sed -e 's;.*/;;')
+
+    cat > ./bc/reconstitute.bash <<EOF
+#!/bin/bash
+
+. $upstream/setup-env.sh
+
+spack load fermi-spack-tools
+make_subspack $upstream \$PWD/packages
+. \$PWD/packages/setup-env.sh
+spack mirror add job_local file://\$INPUT_TAR_DIR_LOCAL
+spack env create $active \$INPUT_TAR_DIR_LOCAL/spack.lock
+spack --env $active install
+EOF
+chmod +x ./bc/reconstitute.bash
+
+}
+
+
+main() {
+    if spack env status | grep == > /dev/null
+    then
+        echo "This script needs to run in an active spack environment"
+    fi
+
+    spack cd --env
+
+    make_local_buildcache
+
+    cp spack.lock ./bc/spack.lock
+
+    make_reconstitute_script
+    
+    echo "You can now send reconstruct this environment in a job by using"
+    echo "--tar-file-name=tardir://$PWD/bc"
+    echo "then in your job"
+    echo "  bash \$INPUT_TAR_DIR_LOCAL/reconstitute.bash"
+    echo "  source packages/setup-env.sh"
+}
+
+main "$@"
