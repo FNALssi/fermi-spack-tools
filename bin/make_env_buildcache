@@ -14,11 +14,12 @@ install_sec_key() {
    spack gpg list > /dev/null
    if [ ! -s $SPACK_ROOT/opt/spack/gpg/secring.gpg ]
    then
-       if [ -r $HOME/.gnupg/spack/secring.gpg ]
+       if [ -r $HOME/.gnupg/spack/$USER.seckey ]
        then
-           cp $HOME/.gnupg/spack/secring.gpg $SPACK_ROOT/opt/spack/gpg
+           spack gpg trust $HOME/.gnupg/spack/$USER.pubkey
+           spack gpg trust $HOME/.gnupg/spack/$USER.seckey
        else
-           echo "Error: expecting secret key in \$HOME/.gnupg/spack/secring.gpg"
+           echo "Error: expecting secret key in \$HOME/.gnupg/spack/$USER.seckey"
            exit 1
        fi
    fi

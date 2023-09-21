@@ -15,22 +15,22 @@ usage() {
         echo "--with_padding      enable directory padding in config"
         echo "--spack_release xx  install spack release xx"
         echo "--spack_repo url    use spack repo url"
-        echo "--test_env name     make a local version of 'name' called 'name_local'"
-        echo "--test_dev p1:p2... make packages p1, p2, ... development in above"
+        echo "--local_env name     make a local version of 'name' called 'name_local'"
+        echo "--dev_pkgs p1:p2... make packages p1, p2, ... development in above"
         echo "-v                  verbose"
         echo "-t                  traditional layout"
         echo "-u                  unified layout (default)"
 }
 
 parse_args() {
-    test_env=""
-    test_dev=""
+    local_env=""
+    dev_pkgs=""
     spack_repo=default
     spack_release=default
     padding=false
     verbose=false
 
-    eval set : $(getopt --longoptions with_padding,spack_release:,spack_repo,test_env:,test_dev: --options vtu -- "$@")
+    eval set : $(getopt --longoptions with_padding,spack_release:,spack_repo,local_env:,dev_pkgs: --options vtu -- "$@")
     shift
 
     while echo x$1 | grep x- > /dev/null
@@ -39,8 +39,8 @@ parse_args() {
         x--with_padding)  padding=true; shift ;;
         x--spack_release) spack_release=$2; shift; shift;;
         x--spack_repo)    spack_repo=$2; shift; shift;;
-        x--test_env)      test_env=$2; shift; shift;;
-        x--test_dev)      test_dev=$2; shift; shift;;
+        x--local_env)      local_env=$2; shift; shift;;
+        x--dev_pkgs)      dev_pkgs=$2; shift; shift;;
         x-t) unified=false; shift ;;
         x-u) unified=true; shift ;;
         x-u) verbose=true; shift ;;
@@ -289,27 +289,27 @@ done
 # use the upstream's bootstrap area...
 $SPACK_ROOT/bin/spack bootstrap root --scope=site $install_tree_path/.bootstrap
 
-if [ "$test_env" != "" ]
+if [ "$local_env" != "" ]
 then
-    message creating ${test_env}_local environment ...
-    $SPACK_ROOT/bin/spack env create ${test_env}_local $src/var/spack/environments/${test_env}/spack.yaml
+    message creating ${local_env}_local environment ...
+    $SPACK_ROOT/bin/spack env create ${local_env}_local $src/var/spack/environments/${local_env}/spack.yaml
 fi
 
-if [ "$test_dev" != "" ]
+if [ "$dev_pkgs" != "" ]
 then
-   if [ $test_env == "" ]
+   if [ $local_env == "" ]
    then
        echo "--test_pkg specified without --test-env, ignoring"
    else
-       localspackyaml=$SPACK_ROOT/var/spack/environments/${test_env}_local/spack.yaml
-       IFS=":$IFS"
-       for pkg in $test_dev
+       localspackyaml=$SPACK_ROOT/var/spack/environments/${local_env}_local/spack.yaml
+       IFS=":$IFS"  # lazy way to split on colons in for loop, below
+       for pkg in $dev_pkgs
        do
-           message making $pkg develop in ${test_env}_local environment ...
+           message making $pkg develop in ${local_env}_local environment ...
            perl -pi -e "s/([ ^]${pkg}@=?)[0-9.]*/\$1develop/g;"  $localspackyaml
-           $SPACK_ROOT/bin/spack --env ${test_env}_local develop $pkg@develop
+           $SPACK_ROOT/bin/spack --env ${local_env}_local develop $pkg@develop
        done
    fi
 fi 
 
-echo "done."
+message "Done."
