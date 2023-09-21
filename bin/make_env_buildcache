@@ -10,7 +10,7 @@ get_local_hashes() {
 install_sec_key() {
    # assumes you have your secret key in $HOME/.gnupg/spack/secring.gpg
    spack gpg list > /dev/null
-   if [ ! -r $SPACK_ROOT/opt/spack/gpg/secring.gpg ]
+   if [ ! -s $SPACK_ROOT/opt/spack/gpg/secring.gpg ]
    then
        cp $HOME/.gnupg/spack/secring.gpg $SPACK_ROOT/opt/spack/gpg
    fi
@@ -26,6 +26,7 @@ make_local_buildcache() {
     do
         spack buildcache create -a -k $USER@fnal.gov --only package ./bc /$hash
     done
+    spack buildcache update-index ./bc
 }
 
 make_reconstitute_script() {
@@ -54,12 +55,17 @@ chmod +x ./bc/reconstitute.bash
 
 
 main() {
+    spack env status
     if spack env status | grep == > /dev/null
     then
+        :
+    else
         echo "This script needs to run in an active spack environment"
+        exit 1
     fi
 
     spack cd --env
+    mkdir bc
 
     make_local_buildcache
 
