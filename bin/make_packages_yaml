@@ -330,14 +330,6 @@ do
   opts=`grep "^$spp[ \t]" $optf | sed -e "s/^$spp[ \t]*//"`
   [ -n "$opts" ] && opts=" $opts"
 
-  #dependencies, one needed so far on gettext
-  if [ "$spp" = "gettext" ]
-  then
-    deps=" ^libc"
-  else
-    deps=""
-  fi
-
   # also find any cvmfs versions
   cvmfsversions=`get_cvmfs_spack_versions $spp`
 
