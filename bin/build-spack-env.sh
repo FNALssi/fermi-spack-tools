@@ -81,6 +81,7 @@ BRIEF OPTIONS
   --(no-)?fail-fast
   --(no-)?query-packages
   --(no-)?safe-concretize
+  --no-view
   --spack-python[= ]<python-exec>
   --spack-config-cmd[= ]<config-cmd-string>+
   --spack-config-file[= ](<cache-name>\|)?<config-file>+
@@ -207,6 +208,11 @@ SPACK CONFIGURATION OPTIONS
 
     Control whether to concretize environments with only a minimal set
     of mirrors configured to improve reproducibility (default yes).
+
+  --no-view
+
+    Disable views in created environments. If specified, any view
+    settings in `spack.yaml` or `spack.lock` files will be overridden.
 
   --spack-python[= ]<python-exec>
 
@@ -875,7 +881,7 @@ _process_environment() {
   _report $PROGRESS "creating environment $env_name from $env_cfg"
   _cmd $DEBUG_1 spack \
     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-    env create --without-view $env_name "$env_cfg" \
+    env create $view_opt $env_name "$env_cfg" \
     || _die $EXIT_SPACK_ENV_FAILURE "unable to create environment $env_name from $env_cfg"
 
   # Save logs and attempt to cache successful builds before we're killed.
@@ -1120,6 +1126,7 @@ while (( $# )); do
     --no-cache-write-sources) unset cache_write_sources;;
     --no-emergency-buildcache) unset want_emergency_buildcache;;
     --no-fail-fast) unset fail_fast;;
+    --no-view) view_opt="--without-view";;
     --no-query-packages) unset query_packages;;
     --no-safe-concretize) unset concretize_safely;;
     --no-ups) ups_opt=-p;;
