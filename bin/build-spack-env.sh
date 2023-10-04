@@ -75,6 +75,8 @@ BRIEF OPTIONS
   --clear-mirrors
   --color[= ](auto|always|never)
   --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install)
+  --fermi-spack-tools-root[= ]<repo>
+  --fermi-spack-tools-version[= ]<version>
   --(no-)?emergency-buildcache
   --(no-)?fail-fast
   --(no-)?query-packages
@@ -82,8 +84,6 @@ BRIEF OPTIONS
   --spack-python[= ]<python-exec>
   --spack-config-cmd[= ]<config-cmd-string>+
   --spack-config-file[= ](<cache-name>\|)?<config-file>+
-  --fermi-spack-tools-root[= ]<repo>
-  --fermi-spack-tools-version[= ]<version>
   --spack-repo[= ]<path>|<repo>(\|<version|branch>)?
   --spack-root[= ]<repo>
   --spack-version[= ]<version>
