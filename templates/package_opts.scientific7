@@ -1,0 +1,14 @@
+binutils +gas+gold+ld
+cmake ~ownlibs
+curl tls=openssl
+doxygen +graphviz
+font-util fonts=encodings
+gettext ~bzip2+curses~git+libunistring+libxml2~tar+xz
+libarchive crypto=openssl
+libc +iconv+rpc
+mesa +glx~osmesa swr=none
+mesa-glu gl=glx
+ncurses ~symlinks+termlib
+pcre +jit+utf
+pkg-config +internal_glib
+zlib +optimize+pic+shared

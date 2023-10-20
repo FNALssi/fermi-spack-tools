@@ -1,0 +1,112 @@
+#!/bin/sh 
+
+get_local_hashes() {
+    # get hashes for packages local to our spack instance
+    # (not from upstream) in our current environment
+    spack spec --install-status --long | 
+      grep '^\[+\]' |                        # pick out lines starting [+]
+      sed -e 's/^\[+\]..//' -e 's/ .*//' |   # trim off above and rest
+      sort -u                                # clean up duplicates
+}
+
+install_sec_key() {
+   # assumes you have your secret key in $HOME/.gnupg/spack/secring.gpg
+   spack gpg list > /dev/null
+   if [ ! -s $SPACK_ROOT/opt/spack/gpg/secring.gpg ]
+   then
+       if [ -r $HOME/.gnupg/spack/$USER.seckey ]
+       then
+           spack gpg trust $HOME/.gnupg/spack/$USER.pubkey
+           spack gpg trust $HOME/.gnupg/spack/$USER.seckey
+       else
+           echo "Error: expecting secret key in \$HOME/.gnupg/spack/$USER.seckey"
+           exit 1
+       fi
+   fi
+}
+
+make_local_buildcache() {
+    # using above routines, make a buildcache of all the local
+    # packages from this environment in the environment/bc
+    # subdirectory
+
+    install_sec_key
+
+    hlist=$(get_local_hashes)
+
+    for hash in $hlist
+    do
+        spack buildcache create -a -k $USER@fnal.gov --only package ./bc /$hash
+    done
+    spack buildcache update-index ./bc
+}
+
+make_reconstitute_script() {
+    # make a reconstitute.bash script that will
+    # build a chained spack instance with the 
+    # current environment installed 
+    # from the buildcache in its current
+    # directory
+    # Assumes the upstream will be visible
+    # -- i.e. in /cvmfs or similar
+
+    # find the upstream spack instance path
+    upstream=$(spack config get upstreams | 
+                grep install_tree |
+                sed -e 's/.*: *//' -e 's/  *$//')
+
+    # get the environment name from $SPACK_ENV
+    active=$(echo $SPACK_ENV | sed -e 's;.*/;;')
+
+    # now write the script with an inline template
+    # backslash dollar signs end up as plain in the script
+    sed -e 's/^        //' > ./bc/reconstitute.bash <<EOF
+        #!/bin/bash
+
+        . $upstream/setup-env.sh
+
+        spack load fermi-spack-tools
+        make_subspack $upstream \$PWD/packages
+        . \$PWD/packages/setup-env.sh
+        spack mirror add job_local file://\$INPUT_TAR_DIR_LOCAL
+        spack env create $active \$INPUT_TAR_DIR_LOCAL/spack.lock
+        spack --env $active install
+EOF
+
+    chmod +x ./bc/reconstitute.bash
+
+}
+
+
+main() {
+    # Now the mainline
+    # * make the buildcache,
+    # * copy in the spack.lock file for the environment
+    # * 
+
+    if spack env status | grep == > /dev/null
+    then
+        :
+    else
+        echo "This script needs to run in an active spack environment"
+        exit 1
+    fi
+
+    cd `spack location --env`
+    mkdir bc
+
+    make_local_buildcache
+
+    cp spack.lock ./bc/spack.lock
+
+    make_reconstitute_script
+    
+    echo "You can now send reconstruct this environment in a job by using"
+    echo "--tar-file-name=tardir://$PWD/bc"
+    echo "then in your job"
+    echo "  bash \$INPUT_TAR_DIR_LOCAL/reconstitute.bash"
+    echo "  source packages/setup-env.sh"
+    echo "  spack env activate $active"
+}
+
+main "$@"

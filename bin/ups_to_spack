@@ -14,12 +14,19 @@ import json
 
 # we want to use the ruamel.yaml package from spack
 sys.path.insert(1, "%s/lib/spack/external" % os.environ["SPACK_ROOT"])
+sys.path.insert(1, "%s/lib/spack/external/_vendoring" % os.environ["SPACK_ROOT"])
 sys.path.insert(1, "%s/lib/spack/external/py2" % os.environ["SPACK_ROOT"])
 sys.path.insert(1, "%s/lib/spack" % os.environ["SPACK_ROOT"])
 import ruamel.yaml as yaml
 from spack.spec import Spec
 
 PROOT=os.path.dirname(os.path.dirname(os.path.dirname(os.environ["SPACK_ROOT"])))
+
+def quotewords(s):
+    s = s.strip()
+    s = re.sub("(  *)", "'\\1'", s)
+    s = "'%s'" % s
+    return s
 
 def log_call(f):
     """ decorator to log calls to functions at debug level """
@@ -112,6 +119,8 @@ def filter_cycles(deplines):
 @remember
 def ups_depend(prod, ver, flav, qual, hosttype=''):
     """ run ups depend, return list of output lines """
+    if os.environ.get("UPS_TO_SPACK_NO_DEPS","0") == "1":
+        return [" ".join([prod, ver, "-f", flav, "-q", qual])]
     r1 = ups_x("depend -B", prod, ver, flav, qual, hosttype)
     if not r1:
         logging.debug("re-running.. without -B")
@@ -575,6 +584,7 @@ class ups_to_spack:
         if pkg.keyval() in self.known_hashes:
             return self.known_hashes[pkg.keyval()]
 
+
         dhash = self.get_cached_hash_once(pkg)
 
         if not dhash:
@@ -587,6 +597,8 @@ class ups_to_spack:
             # try to make it recursively...
             logging.debug("DANGER: Trying recursive make_spec call on %s" % pkg)
             dhash = self.migrate_one(pkg, recurseflag=True)
+
+        self.known_hashes[pkg.keyval()] = dhash
 
         return dhash
 
@@ -619,7 +631,7 @@ class ups_to_spack:
             raise AssertionError(
                 "trying to add '%s' flavor product to cache" % pkg.top_flav
             )
-
+ 
         cf = open(self.cache_file, "a")
         cf.write(
             ":".join(
@@ -635,6 +647,7 @@ class ups_to_spack:
             + "\n"
         )
         cf.close()
+        self.known_hashes[pkg.keyval()] = thash
 
     @log_call
     def make_cmake_config(self, pkg, thash):
@@ -791,7 +804,17 @@ endif()
         for dpkg in immeddeps:
              if dpkg.spack_arch() == myarch:
                  dpkg.topbits()
-                 dlist.append("^ %s@%s arch=%s" % (dpkg.prod, dpkg.dotver, dpkg.spack_arch()))
+                 if dpkg.keyval() in self.known_hashes:
+                     dlist.append("^ %s/%s" % (dpkg.prod, self.known_hashes[dpkg.keyval()]))
+                     # ...this trips over https://github.com/spack/spack/issues/37565
+                     # BUT
+                     #with os.popen("spack spec /%s | grep ^%s| tail -1" % (
+                     #       self.known_hashes[dpkg.keyval()],
+                     #       dpkg.prod)) as dsf:
+                     #    dlist.append("^%s"% quotewords(dsf.readline()))
+                     # doesn't actually use the dependency we want, so...
+                 else:
+                     dlist.append("^%s@%s arch=%s" % (dpkg.prod, dpkg.dotver, dpkg.spack_arch()))
 
         flags = self.quals_to_flags(pkg)
 
@@ -802,8 +825,8 @@ endif()
         upsprd = pd.split(pkg.prod)[0]
 
         # install with specific dependencies.
-        cmd = "spack install --reuse --no-checksum ups_to_spack.%s@%s +ups_to_spack cflags=-DUPSPRD=%s arch=%s %s %s"  % (
-                pkg.prod, pkg.dotver, upsprd, pkg.spack_arch(), flags, " ".join(dlist) )
+        cmd = "spack install --reuse --no-checksum ups_to_spack.%s@%s +ups_to_spack cflags=-DUPS_PROD_DIR=%s arch=%s %s %s"  % (
+                pkg.prod, pkg.dotver, pd, pkg.spack_arch(), flags, " ".join(dlist) )
 
         logging.warning("running: %s" % cmd)
         os.system(cmd)
@@ -959,6 +982,7 @@ endif()
                 "from spack import *\nimport os\n\nclass %s(Package):\n    pass\n"
                 % pkgname
             )
+            recipe_f.write("\n    version('%s', sha256='c2ee0b1d62f62b2806f558a46f6584749d1533fbd3e29c3596a24f375ca14da3')\n" % pkg.dotver )
             recipe_f.write("""
 
     variant("ups_to_spack", default=False)
@@ -971,22 +995,23 @@ endif()
 
     with when("+ups_to_spack"):
         def install(self, spec, prefix):
-            v = "v"+str(spec.version.underscored)
-            if "cflags" in self.spec.compiler_flags:
+            pkgprd = ""
+            if ("cflags" in self.spec.compiler_flags and
+                    len(self.spec.compiler_flags["cflags"])):
                 pkgprd=self.spec.compiler_flags["cflags"][0]
-                loc = pkgprd.find("=")
+                loc = pkgprd.find("UPS_PROD_DIR=")
                 if loc > 0:
-                    pkgprd=pkgprd[loc+1:]
-                pkgprd = "{0}/{1}/".format(pkgprd,self.name)
-            else:
-                pkgprd = "%(prodarea)s"
+                    pkgprd=pkgprd[loc+13:]
 
-            if os.path.isdir("{0}{1}%(prodpath)s".format(pkgprd,v)):
-                os.system("cd {0}{1}%(prodpath)s && find . -print | cpio -dumpv {2}".format(pkgprd, v, prefix))
+            if not pkgprd:
+                raise LookupError("variant +ups_to_spack needs cflags=-DUPS_PROD_DIR=/path")
+
+            if os.path.isdir(pkgprd):
+                os.system("cd {0} && find . -print | cpio -dumpv {1}".format(pkgprd, prefix))
             else:
                 # UPS packages can be empty, spack wants *something* there...
                 os.system("echo Converted empty UPS package > {0}/README".format(prefix))
-            os.system("cd {0} && ln -s . .%(prodpath)s".format(prefix))
+            os.system("cd {0} && ln -s . %(prodpath)s".format(prefix))
         
 """ % {"prodarea":prodarea, "prodpath":prodpath})
 
@@ -1870,19 +1895,42 @@ if not os.environ.get("UPS_DIR", None) or not os.environ.get("SPACK_ROOT", None)
     print("Please source a UPS setups.sh and a Spack setup-env.sh before running.")
     sys.exit(1)
 
+def usage():
+    print("usage: ups_to_spack [ups-to-spack-args] [ups list args]")
+    print("  convert ups packages (and dependencies) to spack packages")
+    print("")
+    print("ups-to-spack-args:")
+    print("  --help            print this message")
+    print("  --pdr=n/rpath     replace first n components of paths with rpath")
+    print("  --debug           turn up debug level")
+    print("  --use_spack=dspec use spack package for this dependency")
+    print("")
+    print("dspec is a mixed spec like '/hash ups-depend-line'")
+    print("")
+    print("use 'ups list -?' to get ups list arguments")
+
 pdr = None
+use_spack = []
 
 #
 # not using argparse 'cause the argv mostly gets passed to ups
 # just pick off any leading "--" options
 #
 while sys.argv[1][:2] == "--":
+    print("parsing: %s" % repr(sys.argv))
     if sys.argv[1][:6] == "--pdr=" :
         pdr = sys.argv[1][6:]
         #print("pdr=%s" % pdr)
 
     elif sys.argv[1] == "--debug":
         logging.basicConfig(level=logging.DEBUG)
+
+    elif sys.argv[1] == "--help":
+        usage()
+        exit(0)
+
+    elif sys.argv[1][:12] == "--use-spack=":
+        use_spack.append(sys.argv[1][12:])
 
     else:
         print("Unknown flag %s" % sys.argv[1])
@@ -1892,10 +1940,15 @@ while sys.argv[1][:2] == "--":
 uts = ups_to_spack(pdr=pdr)
 
 if not os.path.exists("/tmp/empty.tar"):
-    pid = os.getpid()
-    d = "/tmp/d{0}".format(pid)
-    os.mkdir(d)
-    os.system("cd {0} && tar cf /tmp/empty.tar .".format(d))
-    os.rmdir(d)
+    d = os.path.dirname(os.path.dirname(__FILE__))
+    os.system("cp {0}/templates/emtpy.tar /tmp/empty.tar .".format(d))
+
+# handle --use_spack args: prepopulate conversion cache
+for us in use_spack:
+    thash = us[1:us.find(' ')]
+    if thash:
+        uplin = us[us.find(' '):]
+        pkg = package(depline=uplin)
+        uts.add_cached_hash(pkg, thash)
 
 uts.migrate_all(sys.argv[1:])

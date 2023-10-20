@@ -46,7 +46,7 @@ done
 
 os=${2:-`spack arch -o`}
 
-optf=$dir/templates/package_opts
+optf=$dir/templates/package_opts.$os
 dst=$1/etc/spack/$os/packages.yaml
 
 # packages to make not buildable
@@ -233,9 +233,9 @@ cat <<EOF >&3
     target:
       - $preferred_target
     providers:
-      pbs:
+      pbs::
         - torque
-      pkgconfig:
+      pkgconfig::
         - pkg-config
         - pkgconf
   blas:
@@ -268,7 +268,7 @@ cat <<EOF >&3
   mariadb-client:
     require: mariadb-c-client
   mysql-client:
-    require:  mariadb-client
+    require:  mariadb-c-client
   rpc:
     buildable: False
     require: libc
@@ -333,14 +333,6 @@ do
   #variants from known variants list
   opts=`grep "^$spp[ \t]" $optf | sed -e "s/^$spp[ \t]*//"`
   [ -n "$opts" ] && opts=" $opts"
-
-  #dependencies, one needed so far on gettext
-  if [ "$spp" = "gettext" ]
-  then
-    deps=" ^libc"
-  else
-    deps=""
-  fi
 
   # also find any cvmfs versions
   cvmfsversions=`get_cvmfs_spack_versions $spp`

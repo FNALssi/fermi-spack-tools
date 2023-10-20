@@ -10,16 +10,27 @@ get_from_bootstrap() {
 
 
 usage() {
-    echo "usage: make_subspack [--spack_release ver] [--spack_repo url] [-t|-u] /path/to/existing/spack /path/to/new/area"
+        echo "usage: make_subspack [options] [-t|-u] path/to/existing/spack /path/to/new/area"
+        echo " options are:"
+        echo "--with_padding      enable directory padding in config"
+        echo "--spack_release xx  install spack release xx"
+        echo "--spack_repo url    use spack repo url"
+        echo "--local_env name     make a local version of 'name' called 'name_local'"
+        echo "--dev_pkgs p1:p2... make packages p1, p2, ... development in above"
+        echo "-v                  verbose"
+        echo "-t                  traditional layout"
+        echo "-u                  unified layout (default)"
 }
 
 parse_args() {
-    spack_repo=$(get_from_bootstrap default_spack_repo)
-    spack_release=$(get_from_bootstrap  default_spack_version)
+    local_env=""
+    dev_pkgs=""
+    spack_repo=default
+    spack_release=default
     padding=false
     verbose=false
 
-    eval set : $(getopt --longoptions with_padding,spack_release:,spack_repo --options vtu -- "$@")
+    eval set : $(getopt --longoptions with_padding,spack_release:,spack_repo,local_env:,dev_pkgs: --options vtu -- "$@")
     shift
 
     while echo x$1 | grep x- > /dev/null
@@ -28,6 +39,8 @@ parse_args() {
         x--with_padding)  padding=true; shift ;;
         x--spack_release) spack_release=$2; shift; shift;;
         x--spack_repo)    spack_repo=$2; shift; shift;;
+        x--local_env)      local_env=$2; shift; shift;;
+        x--dev_pkgs)      dev_pkgs=$2; shift; shift;;
         x-t) unified=false; shift ;;
         x-u) unified=true; shift ;;
         x-u) verbose=true; shift ;;
@@ -38,15 +51,7 @@ parse_args() {
 
     if [ $# != 2 ]
     then
-        echo "usage: make_subspack [options] [-t|-u] path/to/existing/spack /path/to/new/area"
-        echo " options are:"
-        echo "--with_padding      enable directory padding in config"
-        echo "--spack_release xx  install spack release xx"
-        echo "--spack_repo url    use spack repo url"
-        echo "-v                  verbose"
-        echo "-t                  traditional layout"
-        echo "-u                  unified layout (default)"
-         
+        usage
         exit 1
     fi
 
@@ -111,6 +116,12 @@ x/*) ;;
 x*)  spackbindir="$PWD/$spackbindir"
 esac
 
+: starting: $*
+
+unset SPACK_ENV
+unset SPACK_ROOT
+export SPACK_DISABLE_LOCAL_CONFIG=true
+
 parse_args "$@"
 
 if $verbose
@@ -162,7 +173,19 @@ case "$spack_root" in
 *github.com*) args="--depth 4" ;;
 *) args="";;
 esac
-git clone $args -b $spack_release $spack_repo $SPACK_ROOTb
+
+# default to just doing a fs-based clone, which saves lots of space and time
+if [ $spack_repo = default ]
+then
+    spack_repo=$src/.git
+fi
+if [ $spack_release = default ]
+then
+    branchbits=""
+else
+    branchbits="-b $spack_release"
+fi
+git clone $args $branchbits $spack_repo $SPACK_ROOTb
 cd $SPACK_ROOT
 
 echo "installing config.yaml..."
@@ -173,8 +196,10 @@ else
 cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml
 fi
 
+os=`$SPACK_ROOT/bin/spack arch --operating-system`
+
 message "installing packages.yaml"
-test -d  $SPACK_ROOT/etc/spack/${os} || mkdir $SPACK_ROOT/etc/spack/${os} 
+test -d  $SPACK_ROOT/etc/spack/${os} || mkdir $SPACK_ROOT/etc/spack/${os}
 cp $src/etc/spack/${os}/packages.yaml $SPACK_ROOT/etc/spack/${os}/packages.yaml
 
 
@@ -206,13 +231,26 @@ mkdir -p $dst/tmp
 # reuse upstream clingo bootstrap
 ln -s $install_tree_path/tmp/bootstrap $dst/tmp/bootstrap
 
-os=`$SPACK_ROOT/bin/spack arch --operating-system`
+case $spack_release in
+rollout*|0.1[67]*) ;;
+*) if $padding; then
+     echo "turning on padding."
+     $SPACK_ROOT/bin/spack config --scope=site add config:install_tree:padded_length:255
+   else
+     $SPACK_ROOT/bin/spack config --scope=site rm config:install_tree:padded_length
+   fi
+   ;;
+esac
+
 
 # copy compilers and packages
-[ -r  $src/etc/spack/compilers.yaml ] && cp $src/etc/spack/compilers.yaml $SPACK_ROOT/etc/spack/compilers.yaml
-
-mkdir $SPACK_ROOT/etc/spack/$os
+test -d  $SPACK_ROOT/etc/spack/$os ||  mkdir -p  $SPACK_ROOT/etc/spack/$os
+[ -r  $src/etc/spack/$os/compilers.yaml ] && cp $src/etc/spack/$os/compilers.yaml $SPACK_ROOT/etc/spack/$os/compilers.yaml
 [ -r  $src/etc/spack/$os/packages.yaml ] && cp $src/etc/spack/$os/packages.yaml $SPACK_ROOT/etc/spack/$os/packages.yaml
+
+# and gpg keys
+[ -r  $src/opt/spack/gpg/pubring.gpg ] && cp $src/opt/spack/gpg/pubring.gpg $SPACK_ROOT/opt/spack/gpg/pubring.gpg
+[ -r  $src/opt/spack/gpg/trustdb.gpg ] && cp $src/opt/spack/gpg/trustdb.gpg $SPACK_ROOT/opt/spack/gpg/trustdb.gpg
 
 # now clone package repos..
 
@@ -249,6 +287,29 @@ do
 done
 
 # use the upstream's bootstrap area...
-spack bootstrap root --scope=site $src/.bootstrap
+$SPACK_ROOT/bin/spack bootstrap root --scope=site $install_tree_path/.bootstrap
 
-echo "done."
+if [ "$local_env" != "" ]
+then
+    message creating ${local_env}_local environment ...
+    $SPACK_ROOT/bin/spack env create ${local_env}_local $src/var/spack/environments/${local_env}/spack.yaml
+fi
+
+if [ "$dev_pkgs" != "" ]
+then
+   if [ $local_env == "" ]
+   then
+       echo "--test_pkg specified without --test-env, ignoring"
+   else
+       localspackyaml=$SPACK_ROOT/var/spack/environments/${local_env}_local/spack.yaml
+       IFS=":$IFS"  # lazy way to split on colons in for loop, below
+       for pkg in $dev_pkgs
+       do
+           message making $pkg develop in ${local_env}_local environment ...
+           perl -pi -e "s/([ ^]${pkg}@=?)[0-9.]*/\$1develop/g;"  $localspackyaml
+           $SPACK_ROOT/bin/spack --env ${local_env}_local develop $pkg@develop
+       done
+   fi
+fi 
+
+message "Done."
