@@ -50,7 +50,7 @@ optf=$dir/templates/package_opts
 dst=$1/etc/spack/$os/packages.yaml
 
 # packages to make not buildable
-force_system='^(bdftopcf|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|libc|libfontenc|libice|libiconv|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libxkbcommon|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|mesa-glu|mkfontdir|mkfontscale|openssl|pkg-config|pkgconf|tar|tcl|tk|xcb-util-(image|keysyms|renderutil|wm)|xextproto|xorg-server|xproto|xproxymanagementprotocol|xrandr|xtrans|zlib)$'
+force_system='^(bdftopcf|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|libc|libfontenc|libice|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libxkbcommon|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|mesa-glu|mkfontdir|mkfontscale|openssl|pkg-config|pkgconf|tar|tcl|tk|xcb-util-(image|keysyms|renderutil|wm)|xextproto|xorg-server|xproto|xproxymanagementprotocol|xrandr|xtrans|zlib)$'
 
 # packages to force target (instead of merely preferred)
 force_x86_64='^(hwloc|libpciaccess|libsigsegv)$'
@@ -233,51 +233,53 @@ cat <<EOF >&3
     target:
       - $preferred_target
     providers:
-      blas::
-        - openblas
-      fftw-api::
-        - fftw
-      go-external-or-gccgo-bootstrap::
-        - go-bootstrap
-      gl::
-        - glx
-      glu::
-        - mesa-glu
-      golang::
-        - go
-      iconv::
-        - libc
-      java::
-        - openjdk
-      jpeg::
-        - libjpeg-turbo
-      lapack::
-        - openblas
-      libglx::
-        - mesa+glx
-      libllvm::
-        - llvm
-      libosmesa::
-        - mesa+osmesa
-      mariadb-client::
-        - mariadb-c-client
-      mysql-client::
-        -  mariadb-client
-      pbs::
+      pbs:
         - torque
-      pkgconfig::
+      pkgconfig:
         - pkg-config
         - pkgconf
-      rpc::
-        - libc
-      tbb::
-        - intel-tbb-oneapi
-      unwind::
-        - libunwind
-      uuid::
-        - libuuid
-      yacc::
-        - bison
+  blas:
+    require: openblas
+  fftw-api:
+    require: fftw
+  go-external-or-gccgo-bootstrap:
+    require: go-bootstrap
+  gl:
+    require: glx
+  glu:
+    require: mesa-glu
+  golang:
+    require: go
+  iconv:
+    buildable: False
+    require: libc
+  java:
+    require: openjdk
+  jpeg:
+    require: libjpeg-turbo
+  lapack:
+    require: openblas
+  libglx:
+    require: mesa+glx
+  libllvm:
+    require: llvm
+  libosmesa:
+    require: mesa+osmesa
+  mariadb-client:
+    require: mariadb-c-client
+  mysql-client:
+    require:  mariadb-client
+  rpc:
+    buildable: False
+    require: libc
+  tbb:
+    require: intel-tbb-oneapi
+  unwind:
+    require: libunwind
+  uuid:
+    require: libuuid
+  yacc:
+    require: bison
 EOF
 
 preamble() {
