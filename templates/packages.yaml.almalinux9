@@ -346,7 +346,6 @@ packages:
     externals:
     - spec: "openssl @3.0.7 %gcc@11.3.1 os=almalinux9"
       prefix: /usr
-    buildable: False
   patchelf:
     externals:
     - spec: "patchelf @0.15.0 %gcc@11.3.1 os=almalinux9"
