@@ -159,11 +159,6 @@ packages:
       - gcc@4.8.5
       - clang@3.4.2
     externals:
-    - spec: "gettext ~bzip2+curses~git+libunistring+libxml2~tar+xz @0.19.8.1 %gcc@4.8.5 os=scientific7"
-      prefix: /usr
-    # buildable: False
-  git:
-    externals:
     - spec: "git @1.8.3.1 %gcc@4.8.5 os=scientific7"
       prefix: /usr
   gmake:
