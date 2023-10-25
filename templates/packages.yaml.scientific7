@@ -309,10 +309,6 @@ packages:
     externals:
     - spec: "mesa +glx~osmesa swr=none @18.3.4 %gcc@4.8.5 os=scientific7"
       prefix: /usr
-  meson:
-    externals:
-    - spec: "meson @0.55.1 %gcc@4.8.5 os=scientific7"
-      prefix: /usr
   mkfontdir:
     externals:
     - spec: "mkfontdir @7.5 %gcc@4.8.5 os=scientific7"
