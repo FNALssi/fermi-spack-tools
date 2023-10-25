@@ -347,7 +347,6 @@ packages:
     externals:
     - spec: "openssl @1.0.2k %gcc@4.8.5 os=scientific7"
       prefix: /usr
-    buildable: False
   patchelf:
     externals:
     - spec: "patchelf @0.12 %gcc@4.8.5 os=scientific7"

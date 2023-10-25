@@ -11,7 +11,7 @@ esac
 # binary cache to use
 #
 binary_cache=https://spack-cache-1.fnal.gov/binaries/
-binary_cache_bak=https://scisoft.fnal.gov/spack-mirror/
+binary_cache_bak=https://scisoft.fnal.gov/scisoft/spack-mirror/
 
 install_latest() {
     pkg="$1"

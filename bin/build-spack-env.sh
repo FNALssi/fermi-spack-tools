@@ -1086,24 +1086,25 @@ trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null" EXIT
 } 2>/dev/null
 ########################################################################
 
-color=
-concretize_safely=1
-fail_fast=1
-si_root=https://github.com/FNALssi/fermi-spack-tools.git
-si_ver=main
-spack_ver=v0.19.0-dev.fermi
-spack_config_files=()
-spack_config_cmds=()
-recipe_repos=()
+# Initial and default values for global variables/options.
 cache_specs=()
-concretizing_cache_specs=()
-extra_sources_write_cache=()
-extra_binaries_write_cache=()
-ups_opt=-u
-
 cache_write_binaries=all
 cache_write_sources=1
+color=
 common_spack_opts=(--backtrace --timestamp)
+concretize_safely=1
+concretizing_cache_specs=()
+extra_binaries_write_cache=()
+extra_sources_write_cache=()
+fail_fast=1
+recipe_repos=()
+si_root=https://github.com/FNALssi/fermi-spack-tools.git
+si_ver=main
+spack_config_cmds=()
+spack_config_files=()
+spack_ver=v0.19.0-dev.fermi
+ups_opt=-u
+want_emergency_buildcache=1
 
 eval "$ssi_split_options"
 while (( $# )); do
