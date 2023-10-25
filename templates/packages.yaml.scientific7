@@ -364,8 +364,6 @@ packages:
     externals:
     - spec: "python @3.6.8 %gcc@4.8.5 os=scientific7"
       prefix: /usr
-    - spec: "python @3.6.8 %gcc@4.8.5 os=scientific7"
-      prefix: /usr
   readline:
     externals:
     - spec: "readline @6.2 %gcc@4.8.5 os=scientific7"
