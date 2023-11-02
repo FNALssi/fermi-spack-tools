@@ -1352,6 +1352,8 @@ if ! [ "$ups_opt" = "-p" ]; then
   _report $PROGRESS "declaring fermi-spack-tools package to UPS"
   { source /grid/fermiapp/products/common/etc/setups \
       || source /products/setup \
+      || source /cvmfs/mu2e.opensciencegrid.org/artexternals/setups \
+      || source /cvmfs/larsoft.opensciencegrid.org/products/setups \
       || _die $EXIT_UPS_ERROR "unable to set up UPS"
   } >/dev/null 2>&1
   PRODUCTS="$spack_env_top_dir:$PRODUCTS"
