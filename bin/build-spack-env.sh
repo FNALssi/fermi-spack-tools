@@ -1212,8 +1212,16 @@ local_caches=(
 )
 
 spack_env_top_dir="$working_dir/spack_env"
+case "$ups_opt" in
+    -p) spack_env_top_dir="$working_dir/spack_env";;
+    -u) spack_env_top_dir="$working_dir/spack_env/spack/$spack_ver/NULL/";;
+    -t) spack_env_top_dir="$working_dir/spack_env/spack/$spack_ver/NULL/";;
+    -*) _die $EXIT_CONFIG_FAILURE "unrecognized --ups option $ups_opt\n$(usage)";;
+    *) break
+esac
 
-####################################
+
+###################################
 # Handle SPACK_PYTHON
 if [ -n "$spack_python" ]; then
   python_type="$(type -t "$spack_python")" \
