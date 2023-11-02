@@ -561,7 +561,7 @@ _copy_back_logs() {
   mkdir -p "$tar_tmp/"{spack_env,spack-stage}
   cd "$spack_env_top_dir"
   _cmd $DEBUG_3 spack clean -dmp
-  _cmd $DEBUG_3 $PIPE tar -c *.log *-out.txt *.yaml etc var/spack/environments \
+  _cmd $DEBUG_3 $PIPE tar -c $spack_source_dir/*.log $spack_source_dir/*-out.txt $spack_source_dir/*.yaml $spack_source_dir/etc $spack_source_dir/spack/environments \
     | _cmd $DEBUG_3 tar -C "$tar_tmp/spack_env" -x
   _cmd $DEBUG_3 $PIPE tar -C "$(spack location -S)" -c . \
     | _cmd $DEBUG_3 tar -C "$tar_tmp/spack-stage" -x
@@ -1213,9 +1213,9 @@ local_caches=(
 
 spack_env_top_dir="$working_dir/spack_env"
 case "$ups_opt" in
-    -p) spack_env_top_dir="$working_dir/spack_env";;
-    -u) spack_env_top_dir="$working_dir/spack_env/spack/$spack_ver/NULL/spack/$spack_ver/NULL/";;
-    -t) spack_env_top_dir="$working_dir/spack_env/spack/$spack_ver/NULL/spack/$spack_ver/NULL/";;
+    -p) spack_source_dir="./";;
+    -u) spack_source_dir="./spack/$spack_ver/NULL/";;
+    -t) spack_source_dir="./spack/$spack_ver/NULL/";;
     -*) _die $EXIT_CONFIG_FAILURE "unrecognized --ups option $ups_opt\n$(usage)";;
     *) break
 esac
