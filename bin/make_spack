@@ -104,8 +104,8 @@ add_recipe_repos() {
     git clone https://github.com/marcmengel/scd_recipes.git $SPACK_ROOT/var/spack/repos/scd_recipes
     spack repo add --scope=site $SPACK_ROOT/var/spack/repos/scd_recipes
 
-    spack repo create $SPACK_ROOT/var/spack/repos/ups_to_spack
-    spack repo add --scope=site $SPACK_ROOT/var/spack/repos/ups_to_spack
+#    spack repo create $SPACK_ROOT/var/spack/repos/ups_to_spack
+#    spack repo add --scope=site $SPACK_ROOT/var/spack/repos/ups_to_spack
 }
 
 create_spack() {
