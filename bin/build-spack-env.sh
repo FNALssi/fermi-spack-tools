@@ -561,7 +561,7 @@ _copy_back_logs() {
   mkdir -p "$tar_tmp/"{spack_env,spack-stage}
   cd "$spack_env_top_dir"
   _cmd $DEBUG_3 spack clean -dmp
-  _cmd $DEBUG_3 $PIPE tar -c $spack_source_dir/*.log $spack_source_dir/*-out.txt $spack_source_dir/*.yaml $spack_source_dir/etc $spack_source_dir/spack/environments \
+  _cmd $DEBUG_3 $PIPE tar -c $spack_source_dir/*.log $spack_source_dir/*-out.txt $spack_source_dir/*.yaml $spack_source_dir/etc $spack_source_dir/var/spack/environments \
     | _cmd $DEBUG_3 tar -C "$tar_tmp/spack_env" -x
   _cmd $DEBUG_3 $PIPE tar -C "$(spack location -S)" -c . \
     | _cmd $DEBUG_3 tar -C "$tar_tmp/spack-stage" -x
@@ -717,22 +717,28 @@ _maybe_cache_binaries() {
     for cache in "$working_dir/copyBack/spack-$binary_mirror-cache" \
                  ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
       _report $PROGRESS "caching$msg_extra binary packages for environment $env_name to $cache"
-      _cmd $DEBUG_1 $PROGRESS \
+      for hash in "${hashes_to_cache[@]}";do
+        if [  -f "$(spack location -i $hash)/.spack/binary_distribution" ]; then
+	  _report $DEBUG_1 "Skipping package installed from buildcache $hash"
+	else
+          _cmd $DEBUG_1 $PROGRESS \
            spack \
            ${__debug_spack_buildcache:+-d} \
            ${__verbose_spack_buildcache:+-v} \
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-           buildcache create -a --deptype=all \
+           buildcache create --deptype=all \
            ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
            ${buildcache_rel_arg} "$cache" \
-           ${hashes_to_cache[*]:+"${hashes_to_cache[@]}"}
-      _report $PROGRESS "updating build cache index"
-      _cmd $DEBUG_1 $PROGRESS \
+           $hash
+	fi
+      done
+         _report $PROGRESS "updating build cache index"
+         _cmd $DEBUG_1 $PROGRESS \
            spack \
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
            buildcache update-index -k "$cache"
-    done
+   done
   fi
 }
 
@@ -1335,13 +1341,19 @@ trap "trap - EXIT; \
 _copy_back_logs; \
 if (( failed )) && (( want_emergency_buildcache )); then \
   tag_text=ALERT _report $ERROR \"emergency buildcache dump...\"; \
-  _cmd $ERROR $PIPE spack \
+  for spec in \$(spack find -L | sed -Ene 's&^([[:alnum:]]+).*\$&/\\1&p');do \
+    if [  -f \"\$(spack location -i \$spec)/.spack/binary_distribution\" ]; then
+      _report $ERROR skipping package installed from buildcache \$spec;\
+      else \
+      _cmd $ERROR $PIPE spack \
       \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
-      buildcache create -a --deptype=all \
+      buildcache create --deptype=all \
       \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
       \$buildcache_rel_arg --rebuild-index \
       \"$working_dir/copyBack/spack-emergency-cache\" \
-      \$(spack find -L | sed -Ene 's&^([[:alnum:]]+).*\$&/\\1&p'); \
+     \$spec; \
+     fi \
+  done;\
   tag_text=ALERT _report $ERROR \"emergency buildcache dump COMPLETE\"; \
 fi; \
 exec $STDOUT>&- $STDERR>&-\
