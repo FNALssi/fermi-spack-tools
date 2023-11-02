@@ -1343,7 +1343,7 @@ if (( failed )) && (( want_emergency_buildcache )); then \
     if [ ! -f \"\$(spack location -i \$spec)/.spack/binary_distribution\" ]; then
       _cmd $ERROR $PIPE spack \
       \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
-      buildcache create --deptype=all --only=package \
+      buildcache create --deptype=all \
       \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
       \$buildcache_rel_arg --rebuild-index \
       \"$working_dir/copyBack/spack-emergency-cache\" \
