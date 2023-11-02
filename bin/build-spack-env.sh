@@ -718,7 +718,7 @@ _maybe_cache_binaries() {
                  ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
       _report $PROGRESS "caching$msg_extra binary packages for environment $env_name to $cache"
       for hash in "${hashes_to_cache[@]}";do
-        if [ ! -f $(spack location -i $hash)/.spack/binary_distribution ]; then
+        if [ ! -f "$(spack location -i $hash)/.spack/binary_distribution" ]; then
           _cmd $DEBUG_1 $PROGRESS \
            spack \
            ${__debug_spack_buildcache:+-d} \
@@ -1340,7 +1340,7 @@ _copy_back_logs; \
 if (( failed )) && (( want_emergency_buildcache )); then \
   tag_text=ALERT _report $ERROR \"emergency buildcache dump...\"; \
   for spec in \$(spack find -L | sed -Ene 's&^([[:alnum:]]+).*\$&/\\1&p');do \
-    if [ ! -f \$(spack location -i \$spec)/.spack/binary_distribution ]; then
+    if [ ! -f \"\$(spack location -i \$spec)/.spack/binary_distribution\" ]; then
       _cmd $ERROR $PIPE spack \
       \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
       buildcache create --deptype=all --only=package \
