@@ -561,7 +561,7 @@ _copy_back_logs() {
   mkdir -p "$tar_tmp/"{spack_env,spack-stage}
   cd "$spack_env_top_dir"
   _cmd $DEBUG_3 spack clean -dmp
-  _cmd $DEBUG_3 $PIPE tar -c $spack_source_dir/*.log $spack_source_dir/*-out.txt $spack_source_dir/*.yaml $spack_source_dir/etc $spack_source_dir/spack/environments \
+  _cmd $DEBUG_3 $PIPE tar -c $spack_source_dir/*.log $spack_source_dir/*-out.txt $spack_source_dir/*.yaml $spack_source_dir/etc $spack_source_dir/var/spack/environments \
     | _cmd $DEBUG_3 tar -C "$tar_tmp/spack_env" -x
   _cmd $DEBUG_3 $PIPE tar -C "$(spack location -S)" -c . \
     | _cmd $DEBUG_3 tar -C "$tar_tmp/spack-stage" -x
