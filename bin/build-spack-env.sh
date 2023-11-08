@@ -1343,7 +1343,7 @@ if (( failed )) && (( want_emergency_buildcache )); then \
   tag_text=ALERT _report $ERROR \"emergency buildcache dump...\"; \
   for spec in \$(spack find -L | sed -Ene 's&^([[:alnum:]]+).*\$&/\\1&p');do \
     if [  -f \"\$(spack location -i \$spec)/.spack/binary_distribution\" ]; then
-      _report $ERROR skipping package installed from buildcache \$spec;\
+      tag_text=ALERT _report $ERROR skipping package installed from buildcache \$spec;\
       else \
       _cmd $ERROR $PIPE spack \
       \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
