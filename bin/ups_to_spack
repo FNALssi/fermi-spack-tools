@@ -809,11 +809,7 @@ endif()
                      # ...this trips over https://github.com/spack/spack/issues/37565
                      # BUT
                      #with os.popen("spack spec /%s | grep ^%s| tail -1" % (
-<<<<<<< HEAD
                      #       self.known_hashes[dpkg.keyval()],
-=======
-                     #       self.known_hashes[dpkg.keyval()], 
->>>>>>> 10c806c44f4ff9a3d9da72aeb1d2e546ecdacdce
                      #       dpkg.prod)) as dsf:
                      #    dlist.append("^%s"% quotewords(dsf.readline()))
                      # doesn't actually use the dependency we want, so...
