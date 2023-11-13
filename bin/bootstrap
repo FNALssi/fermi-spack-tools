@@ -93,7 +93,7 @@ message() {
 }
 
 check_bootstrap() {
-    if [ `spack find | egrep 'patchelf|fermi-spack-tools' | wc -l` = 2 ]
+    if [ `spack find | egrep 'fermi-spack-tools' | wc -l` = 1 ]
     then
         :
     else
