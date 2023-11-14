@@ -253,10 +253,6 @@ packages:
     externals:
     - spec: "libxi @1.7.9 %gcc@4.8.5 os=scientific7"
       prefix: /usr
-  libxml2:
-    externals:
-    - spec: "libxml2 @2.9.1 %gcc@4.8.5 os=scientific7"
-      prefix: /usr
   libxmu:
     externals:
     - spec: "libxmu @1.1.2 %gcc@4.8.5 os=scientific7"
@@ -360,7 +356,6 @@ packages:
     externals:
     - spec: "pkg-config +internal_glib @0.27.1 %gcc@4.8.5 os=scientific7"
       prefix: /usr
-    buildable: False
   python:
     externals:
     - spec: "python @3.6.8 %gcc@4.8.5 os=scientific7"

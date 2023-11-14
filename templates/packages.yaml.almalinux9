@@ -317,10 +317,6 @@ packages:
     externals:
     - spec: "mesa +glx~osmesa swr=none @22.3.0 %gcc@11.3.1 os=almalinux9"
       prefix: /usr
-  meson:
-    externals:
-    - spec: "meson @0.63.3 %gcc@11.3.1 os=almalinux9"
-      prefix: /usr
   mkfontdir:
     externals:
     - spec: "mkfontdir @1.2.1 %gcc@11.3.1 os=almalinux9"
@@ -363,12 +359,10 @@ packages:
     externals:
     - spec: "pkg-config +internal_glib @1.7.3 %gcc@11.3.1 os=almalinux9"
       prefix: /usr
-    buildable: False
   pkgconf:
     externals:
     - spec: "pkgconf @1.7.3 %gcc@11.3.1 os=almalinux9"
       prefix: /usr
-    buildable: False
   python:
     externals:
     - spec: "python @3.9.16 %gcc@11.3.1 os=almalinux9"
