@@ -47,7 +47,15 @@ done
 os=${2:-`spack arch -o`}
 
 optf=$dir/templates/package_opts.$os
-dst=$1/etc/spack/$os/packages.yaml
+
+if [ "$(spack --version)" -gt "0.20.0" ]
+then
+    sd="$(spack arch --platform)/"
+else
+    sd=""
+fi
+
+dst=$1/etc/spack/${sd}${os}/packages.yaml
 
 # packages to make not buildable
 force_system='^(bdftopcf|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|libc|libfontenc|libice|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libxkbcommon|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|mesa-glu|mkfontdir|mkfontscale|openssl|pkg-config|pkgconf|tar|tcl|tk|xcb-util-(image|keysyms|renderutil|wm)|xextproto|xorg-server|xproto|xproxymanagementprotocol|xrandr|xtrans|zlib)$'

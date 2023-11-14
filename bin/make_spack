@@ -93,13 +93,13 @@ bootstrap_spack() {
     then
         make_packages_yaml $SPACK_ROOT
     else
-        if [ "$spack_release" -gt "v0.20.0" ]
+        if [ "$(spack --version)" -gt "0.20.0" ]
         then
-            sd="linux"
+            sd="$(spack arch --platform)/"
         else
             sd=""
         fi
-        cp $spackbindir/../templates/packages.yaml.${os} $SPACK_ROOT/etc/spack/$sd/${os}/packages.yaml
+        cp $spackbindir/../templates/packages.yaml.${os} $SPACK_ROOT/etc/spack/${sd}${os}/packages.yaml
     fi
 }
 
