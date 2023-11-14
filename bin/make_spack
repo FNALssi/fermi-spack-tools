@@ -60,6 +60,8 @@ bootstrap_patchelf() {
     spack bootstrap now
     spack bootstrap status
 
+    spack mirror add --scope site fnal $binary_cache
+
     install_latest patchelf
 
     rm -rf $pdir
@@ -70,7 +72,7 @@ bootstrap_patchelf() {
 
 find_compilers() {
    source $SPACK_ROOT/share/spack/setup-env.sh
-   spack compiler find --scope site
+   spack compiler find --scope=site
 }
 
 bootstrap_spack() {
@@ -93,12 +95,13 @@ bootstrap_spack() {
     then
         make_packages_yaml $SPACK_ROOT
     else
-        if [ "$(spack --version)" -gt "0.20.0" ]
+        if [ "$(spack --version)" '>' "0.20.0" ]
         then
             sd="$(spack arch --platform)/"
         else
             sd=""
         fi
+        echo "Installing stock packages.yaml in $SPACK_ROOT/etc/spack/${sd}${os}"
         cp $spackbindir/../templates/packages.yaml.${os} $SPACK_ROOT/etc/spack/${sd}${os}/packages.yaml
     fi
 }

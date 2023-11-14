@@ -48,7 +48,7 @@ os=${2:-`spack arch -o`}
 
 optf=$dir/templates/package_opts.$os
 
-if [ "$(spack --version)" -gt "0.20.0" ]
+if [ "$(spack --version)" '>' "0.20.0" ]
 then
     sd="$(spack arch --platform)/"
 else
