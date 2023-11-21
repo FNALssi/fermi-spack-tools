@@ -726,7 +726,7 @@ _maybe_cache_binaries() {
            ${__debug_spack_buildcache:+-d} \
            ${__verbose_spack_buildcache:+-v} \
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-           buildcache create --deptype=all \
+           buildcache create \
            ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
            ${buildcache_rel_arg} "$cache" \
@@ -1347,7 +1347,7 @@ if (( failed )) && (( want_emergency_buildcache )); then \
       else \
       _cmd $ERROR $PIPE spack \
       \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
-      buildcache create --deptype=all \
+      buildcache create \
       \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
       \$buildcache_rel_arg --rebuild-index \
       \"$working_dir/copyBack/spack-emergency-cache\" \
