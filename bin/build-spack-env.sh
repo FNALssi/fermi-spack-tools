@@ -1394,13 +1394,17 @@ environment_specs=("$@")
 num_environments=${#environment_specs[@]}
 env_idx=0
 
-####################################
-# Build each specified environment.
-for env_cfg in ${environment_specs[*]:+"${environment_specs[@]}"}; do
-  _report $PROGRESS "processing user-specified environment configuration $env_cfg"
-  _process_environment "$env_cfg"
-done
-####################################
+if (( ! num_environments )); then # NOP
+  _report $INFO "no environment configurations specified: exiting after setup"
+else
+  ####################################
+  # Build each specified environment.
+  for env_cfg in ${environment_specs[*]:+"${environment_specs[@]}"}; do
+    _report $PROGRESS "processing user-specified environment configuration $env_cfg"
+    _process_environment "$env_cfg"
+  done
+  ####################################
+fi
 
 ### Local Variables:
 ### mode: sh
