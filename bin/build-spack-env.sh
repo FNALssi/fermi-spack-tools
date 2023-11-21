@@ -62,7 +62,7 @@ working_dir="${WORKSPACE:=$(pwd)}"
 usage() {
   cat <<EOF
 
-usage: $prog <options> (--)? (<spack-env-yaml-file>|<spack-env-yaml-url>)+
+usage: $prog <options> (--)? [(<spack-env-yaml-file>|<spack-env-yaml-url>)] ...
        $prog (-[h?]|--help)
 
 EOF
