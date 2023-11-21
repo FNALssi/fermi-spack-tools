@@ -558,6 +558,7 @@ _copy_back_logs() {
   local tar_tmp="$working_dir/copyBack/tmp"
   local spack_env= env_spec= install_prefix=
   _report $INFO "end-of-job copy-back..."
+  trap 'status=$?; _report $INFO "end-of-job copy-back PREEMPTED by signal $((status - 128))"; exit $status' INT
   mkdir -p "$tar_tmp/"{spack_env,spack-stage}
   cd "$spack_env_top_dir"
   _cmd $DEBUG_3 spack clean -dmp
@@ -890,8 +891,9 @@ _process_environment() {
     env create $view_opt $env_name "$env_cfg" \
     || _die $EXIT_SPACK_ENV_FAILURE "unable to create environment $env_name from $env_cfg"
 
-  # Save logs and attempt to cache successful builds before we're killed.
-  trap 'interrupt=$?; _report $INFO "user interrupt"; _copy_back_logs' HUP INT QUIT TERM
+  # Record an intentional stoppage. EXIT trap will take care of
+  # log/cache preservation.
+  trap 'interrupt=$?; trap - HUP INT QUIT TERM; _report $INFO "user interrupt"' HUP INT QUIT TERM
 
   local is_compiler_env=
   local is_nonterminal_compiler_env=
