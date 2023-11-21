@@ -499,8 +499,8 @@ _configure_spack() {
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site "$cache_name" "$cache_url" \
-      || _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site $cache_name \"$cache_url"
+         mirror add --scope=site ${cache_type:+--type "${cache_type}"} "$cache_name" "$cache_url" \
+      || _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site ${cache_type:+--type \"${cache_type}\"} \"$cache_name\" \"$cache_url\""
   done
   # 4. Spack recipe repos.
   _report $PROGRESS "configuring user-specified recipe repositories"
@@ -690,7 +690,7 @@ _make_concretize_mirrors_yaml() {
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site $cache_name "$cache_url" ||
+         mirror add --scope=site ${cache_type:+--type "${cache_type}"} "$cache_name" "$cache_url" ||
       _die $EXIT_SPACK_CONFIG_FAILURE \
            "unable to add $cache_url to concretization-specific mirrors"
   done
@@ -1214,9 +1214,9 @@ fi
 
 # Local cache locations are derived from $working_dir.
 local_caches=(
-  "__local_binaries|$working_dir/copyBack/spack-packages/binaries"
-  "__local_compilers|$working_dir/copyBack/spack-packages/compilers"
-  "__local_sources|$working_dir/copyBack/spack-packages/sources"
+  "__local_binaries|binary:$working_dir/copyBack/spack-packages/binaries"
+  "__local_compilers|binary:$working_dir/copyBack/spack-packages/compilers"
+  "__local_sources|source:$working_dir/copyBack/spack-packages/sources"
 )
 
 spack_env_top_dir="$working_dir/spack_env"
