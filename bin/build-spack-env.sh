@@ -71,7 +71,7 @@ BRIEF OPTIONS
 
   --cache-write-(sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots))
   --no-cache-write-(sources|binaries)
-  --extra-(sources|binaries)-write-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
+  --extra-(sources|binaries)-write-cache[= ](<cache-path>|<cache-url>)(,...)+
   --clear-mirrors
   --color[= ](auto|always|never)
   --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install)
@@ -95,8 +95,8 @@ BRIEF OPTIONS
   --verbosity[= ](-?[0-9]+|INFO|WARNING|(FATAL_|INTERNAL_)?ERROR|INFO|PROGRESS|DEBUG_[1-9][0-9]*)
   --no-ups
   --ups[= ](plain|traditional|unified|-[ptu])
-  --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
-  --with-concretiz(e|ing|ation)-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
+  --with-cache[= ](<cache-name>\|)?(<type>:)?(<cache-path>|<cache-url>)(,...)+
+  --with-concretiz(e|ing|ation)-cache[= ](<cache-name>\|)?(<type>:)?(<cache-path>|<cache-url>)(,...)+
   --with-padding
   --working-dir[= ]<dir>
 
@@ -169,7 +169,7 @@ SPACK CONFIGURATION OPTIONS
     Control whether sources or binary packages are written to local
     caches under <working-dir>/copyBack.
 
-  --extra-(sources|binaries)-write-cache[= ]<cache-path>|<cache-url>)(,...)+
+  --extra-(sources|binaries)-write-cache[= ](<cache-path>|<cache-url>)(,...)+
 
     Extra source/binary cache locations for built products. Incompatible
     with --no-cache-write-(sources|binaries).
@@ -178,12 +178,13 @@ SPACK CONFIGURATION OPTIONS
 
     Remove bootstrapped mirrors/caches from configuration.
 
-  --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
-  --with-concretiz(e|ing|ation)-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
+  --with-cache[= ](<cache-name>\|)?(<type>:)?(<cache-path>|<cache-url>)(,...)+
+  --with-concretiz(e|ing|ation)-cache[= ](<cache-name>\|)?(<type>:)?(<cache-path>|<cache-url>)(,...)+
 
     Add a read-only mirror/cache. If --safe-concretize is set, added
     caches will be ignored during the concretizaton process unless the
-    second form is used.
+    second form is used. If specified, <type> may be "source," or
+    "binary."
 
 
  Other Spack Configuration
@@ -357,11 +358,12 @@ EOF
 }
 
 _cache_info() {
-  if [[ "$cache_spec" =~ ^([^|]+)\|(.*)$ ]]; then
-    cache_name="${BASH_REMATCH[1]}"
-    cache_url="${BASH_REMATCH[2]}"
+  if [[ "$cache_spec" =~ ^(([^|]+)\|)?((source|binary):)?(.*)$ ]]; then
+    cache_name="${BASH_REMATCH[2]:-buildcache_$((++cache_count))}"
+    cache_type="${BASH_REMATCH[4]}"
+    cache_url="${BASH_REMATCH[5]}"
   else
-    cache_name="buildcache_$((++cache_count))"
+    _die $EXIT_SPACK_CONFIG_FAILURE "unable to parse cache_spec \"$cache_spec\""
   fi
 }
 
