@@ -1352,6 +1352,7 @@ if (( failed )) && (( want_emergency_buildcache )); then \
       _cmd $ERROR $PIPE spack \
       \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
       buildcache create \
+      \${buildcache_package_opts[*]:+\"\${buildcache_package_opts[@]}\"} \
       \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
       \$buildcache_rel_arg --rebuild-index \
       \"$working_dir/copyBack/spack-emergency-cache\" \
