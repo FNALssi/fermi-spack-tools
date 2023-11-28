@@ -107,7 +107,7 @@ bootstrap_spack() {
 }
 
 add_recipe_repos() {
-    git clone https://github.com/FNALssi/fnal_art.git $SPACK_ROOT/var/spack/repos/fnal_art
+    git clone -b larsoft-build https://github.com/FNALssi/fnal_art.git $SPACK_ROOT/var/spack/repos/fnal_art
     spack repo add --scope=site $SPACK_ROOT/var/spack/repos/fnal_art
 
     git clone https://github.com/marcmengel/scd_recipes.git $SPACK_ROOT/var/spack/repos/scd_recipes
