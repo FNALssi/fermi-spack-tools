@@ -156,11 +156,6 @@ packages:
     externals:
     - spec: "git @1.8.3.1 %gcc@4.8.5 os=scientific7"
       prefix: /usr
-  glib:
-    externals:
-    - spec: "glib @2.56.1 %gcc@4.8.5 os=scientific7"
-      prefix: /usr
-    buildable: False
   gmake:
     externals:
     - spec: "gmake @3.82 %gcc@4.8.5 os=scientific7"
