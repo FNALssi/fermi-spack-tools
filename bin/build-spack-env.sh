@@ -62,7 +62,7 @@ working_dir="${WORKSPACE:=$(pwd)}"
 usage() {
   cat <<EOF
 
-usage: $prog <options> (--)? (<spack-env-yaml-file>|<spack-env-yaml-url>)+
+usage: $prog <options> (--)? [(<spack-env-yaml-file>|<spack-env-yaml-url>)] ...
        $prog (-[h?]|--help)
 
 EOF
@@ -71,7 +71,7 @@ BRIEF OPTIONS
 
   --cache-write-(sources|binaries[= ](all|none|deps|dependencies|(no|non)[_-]roots|roots))
   --no-cache-write-(sources|binaries)
-  --extra-(sources|binaries)-write-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
+  --extra-(sources|binaries)-write-cache[= ](<cache-path>|<cache-url>)(,...)+
   --clear-mirrors
   --color[= ](auto|always|never)
   --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install)
@@ -95,8 +95,8 @@ BRIEF OPTIONS
   --verbosity[= ](-?[0-9]+|INFO|WARNING|(FATAL_|INTERNAL_)?ERROR|INFO|PROGRESS|DEBUG_[1-9][0-9]*)
   --no-ups
   --ups[= ](plain|traditional|unified|-[ptu])
-  --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
-  --with-concretiz(e|ing|ation)-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
+  --with-cache[= ](<cache-name>\|)?(<type>:)?(<cache-path>|<cache-url>)(,...)+
+  --with-concretiz(e|ing|ation)-cache[= ](<cache-name>\|)?(<type>:)?(<cache-path>|<cache-url>)(,...)+
   --with-padding
   --working-dir[= ]<dir>
 
@@ -169,7 +169,7 @@ SPACK CONFIGURATION OPTIONS
     Control whether sources or binary packages are written to local
     caches under <working-dir>/copyBack.
 
-  --extra-(sources|binaries)-write-cache[= ]<cache-path>|<cache-url>)(,...)+
+  --extra-(sources|binaries)-write-cache[= ](<cache-path>|<cache-url>)(,...)+
 
     Extra source/binary cache locations for built products. Incompatible
     with --no-cache-write-(sources|binaries).
@@ -178,12 +178,13 @@ SPACK CONFIGURATION OPTIONS
 
     Remove bootstrapped mirrors/caches from configuration.
 
-  --with-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
-  --with-concretiz(e|ing|ation)-cache[= ](<cache-name>\|)?|<cache-path>|<cache-url>)(,...)+
+  --with-cache[= ](<cache-name>\|)?(<type>:)?(<cache-path>|<cache-url>)(,...)+
+  --with-concretiz(e|ing|ation)-cache[= ](<cache-name>\|)?(<type>:)?(<cache-path>|<cache-url>)(,...)+
 
     Add a read-only mirror/cache. If --safe-concretize is set, added
     caches will be ignored during the concretizaton process unless the
-    second form is used.
+    second form is used. If specified, <type> may be "source," or
+    "binary."
 
 
  Other Spack Configuration
@@ -357,11 +358,12 @@ EOF
 }
 
 _cache_info() {
-  if [[ "$cache_spec" =~ ^([^|]+)\|(.*)$ ]]; then
-    cache_name="${BASH_REMATCH[1]}"
-    cache_url="${BASH_REMATCH[2]}"
+  if [[ "$cache_spec" =~ ^(([^|]+)\|)?((source|binary):)?(.*)$ ]]; then
+    cache_name="${BASH_REMATCH[2]:-buildcache_$((++cache_count))}"
+    cache_type="${BASH_REMATCH[4]}"
+    cache_url="${BASH_REMATCH[5]}"
   else
-    cache_name="buildcache_$((++cache_count))"
+    _die $EXIT_SPACK_CONFIG_FAILURE "unable to parse cache_spec \"$cache_spec\""
   fi
 }
 
@@ -497,8 +499,8 @@ _configure_spack() {
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site "$cache_name" "$cache_url" \
-      || _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site $cache_name \"$cache_url"
+         mirror add --scope=site ${cache_type:+--type "${cache_type}"} "$cache_name" "$cache_url" \
+      || _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site ${cache_type:+--type \"${cache_type}\"} \"$cache_name\" \"$cache_url\""
   done
   # 4. Spack recipe repos.
   _report $PROGRESS "configuring user-specified recipe repositories"
@@ -558,6 +560,7 @@ _copy_back_logs() {
   local tar_tmp="$working_dir/copyBack/tmp"
   local spack_env= env_spec= install_prefix=
   _report $INFO "end-of-job copy-back..."
+  trap 'status=$?; _report $INFO "end-of-job copy-back PREEMPTED by signal $((status - 128))"; exit $status' INT
   mkdir -p "$tar_tmp/"{spack_env,spack-stage}
   cd "$spack_env_top_dir"
   _cmd $DEBUG_3 spack clean -dmp
@@ -688,7 +691,7 @@ _make_concretize_mirrors_yaml() {
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site $cache_name "$cache_url" ||
+         mirror add --scope=site ${cache_type:+--type "${cache_type}"} "$cache_name" "$cache_url" ||
       _die $EXIT_SPACK_CONFIG_FAILURE \
            "unable to add $cache_url to concretization-specific mirrors"
   done
@@ -890,8 +893,9 @@ _process_environment() {
     env create $view_opt $env_name "$env_cfg" \
     || _die $EXIT_SPACK_ENV_FAILURE "unable to create environment $env_name from $env_cfg"
 
-  # Save logs and attempt to cache successful builds before we're killed.
-  trap 'interrupt=$?; _report $INFO "user interrupt"; _copy_back_logs' HUP INT QUIT TERM
+  # Record an intentional stoppage. EXIT trap will take care of
+  # log/cache preservation.
+  trap 'interrupt=$?; trap - HUP INT QUIT TERM; _report $INFO "user interrupt"' HUP INT QUIT TERM
 
   local is_compiler_env=
   local is_nonterminal_compiler_env=
@@ -1212,9 +1216,9 @@ fi
 
 # Local cache locations are derived from $working_dir.
 local_caches=(
-  "__local_binaries|$working_dir/copyBack/spack-packages/binaries"
-  "__local_compilers|$working_dir/copyBack/spack-packages/compilers"
-  "__local_sources|$working_dir/copyBack/spack-packages/sources"
+  "__local_binaries|binary:$working_dir/copyBack/spack-packages/binaries"
+  "__local_compilers|binary:$working_dir/copyBack/spack-packages/compilers"
+  "__local_sources|source:$working_dir/copyBack/spack-packages/sources"
 )
 
 spack_env_top_dir="$working_dir/spack_env"
@@ -1393,13 +1397,17 @@ environment_specs=("$@")
 num_environments=${#environment_specs[@]}
 env_idx=0
 
-####################################
-# Build each specified environment.
-for env_cfg in ${environment_specs[*]:+"${environment_specs[@]}"}; do
-  _report $PROGRESS "processing user-specified environment configuration $env_cfg"
-  _process_environment "$env_cfg"
-done
-####################################
+if (( ! num_environments )); then # NOP
+  _report $INFO "no environment configurations specified: exiting after setup"
+else
+  ####################################
+  # Build each specified environment.
+  for env_cfg in ${environment_specs[*]:+"${environment_specs[@]}"}; do
+    _report $PROGRESS "processing user-specified environment configuration $env_cfg"
+    _process_environment "$env_cfg"
+  done
+  ####################################
+fi
 
 ### Local Variables:
 ### mode: sh
