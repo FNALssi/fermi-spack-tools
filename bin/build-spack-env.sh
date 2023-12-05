@@ -522,9 +522,9 @@ _configure_spack() {
 
   ####################################
   # Check whether spack buildcache create still needs -r
-  local buildcache_rel_help="$(spack buildcache create --help | grep -Ee '^[[:space:]]-r\b')"
-  [ -z "$buildcache_rel_help" ] ||
-    [[ "$buildcache_rel_help" == *"(deprecated)"* ]] ||
+  local buildcache_create_help="$(spack buildcache create --help | grep -Ee '^[[:space:]]-r\b')"
+  [ -z "$buildcache_create_help" ] ||
+    [[ "$buildcache_create_help" == *"(deprecated)"* ]] ||
     buildcache_rel_arg="-r"
   ####################################
 
