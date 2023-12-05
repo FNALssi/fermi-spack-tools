@@ -770,6 +770,8 @@ _maybe_register_compiler() {
     compiler_spec="${compiler_spec/@/@=}"
     compiler_spec="${compiler_spec/@==/@=}"
     compiler_build_spec=${compiler_spec/clang/llvm}
+    compiler_build_spec=${compiler_build_spec/oneapi/intel-oneapi-compilers}
+    compiler_build_spec=${compiler_build_spec/dpcpp/intel-oneapi-compilers}
     local compiler_path="$(_cmd $DEBUG_2 $PIPE spack \
                     -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
