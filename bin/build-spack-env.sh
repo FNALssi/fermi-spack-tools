@@ -360,7 +360,7 @@ EOF
 _cache_info() {
   if [[ "$cache_spec" =~ ^(([^|]+)\|)?((source|binary):)?(.*)$ ]]; then
     cache_name="${BASH_REMATCH[2]:-buildcache_$((++cache_count))}"
-    cache_type="${BASH_REMATCH[4]}"
+    (( have_mirror_add_type )) && cache_type="${BASH_REMATCH[4]}"
     cache_url="${BASH_REMATCH[5]}"
   else
     _die $EXIT_SPACK_CONFIG_FAILURE "unable to parse cache_spec \"$cache_spec\""
@@ -526,6 +526,12 @@ _configure_spack() {
   [ -z "$buildcache_create_help" ] ||
     [[ "$buildcache_create_help" == *"(deprecated)"* ]] ||
     buildcache_rel_arg="-r"
+  ####################################
+
+  ####################################
+  # Check whether spack mirror add supports --type
+  mirror_add_help="$(spack mirror add --help | grep -Ee '^[[:space:]]--type[[:space:]]+')"
+  [ -n "$mirror_add_help" ] && have_mirror_add_type=1
   ####################################
 
   ####################################
