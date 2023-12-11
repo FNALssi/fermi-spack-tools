@@ -306,7 +306,7 @@ CACHING SOURCE AND BINARY PACKAGES
     `<working-dir>/copyBack/spack-packages/binaries` or
     `<working-dir>/copyBack/spack-packages/compilers` (as appropriate) after
     that environment has been built successfully. If
-    `--cache-write-binaries=no_root` is active, then root packages of
+    `--cache-write-binaries=no_roots` is active, then root packages of
     non-compiler environments will not be cached.
 
 
