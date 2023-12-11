@@ -724,30 +724,30 @@ _maybe_cache_binaries() {
   if (( ${#hashes_to_cache[@]} )); then
     local cache=
     for cache in "$working_dir/copyBack/spack-$binary_mirror-cache" \
-                 ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
+                   ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
       _report $PROGRESS "caching$msg_extra binary packages for environment $env_name to $cache"
-      for hash in "${hashes_to_cache[@]}";do
+      for hash in "${hashes_to_cache[@]}"; do
         if [  -f "$(spack location -i $hash)/.spack/binary_distribution" ]; then
-	  _report $DEBUG_1 "Skipping package installed from buildcache $hash"
-	else
+	        _report $DEBUG_1 "Skipping package installed from buildcache $hash"
+	      else
           _cmd $DEBUG_1 $PROGRESS \
-           spack \
-           ${__debug_spack_buildcache:+-d} \
-           ${__verbose_spack_buildcache:+-v} \
-           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-           buildcache create \
-           ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
-           ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
-           ${buildcache_rel_arg} "$cache" \
-           $hash
-	fi
+               spack \
+               ${__debug_spack_buildcache:+-d} \
+               ${__verbose_spack_buildcache:+-v} \
+               ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+               buildcache create \
+               ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
+               ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
+               ${buildcache_rel_arg} "$cache" \
+               $hash
+	      fi
       done
-         _report $PROGRESS "updating build cache index"
-         _cmd $DEBUG_1 $PROGRESS \
+      _report $PROGRESS "updating build cache index"
+      _cmd $DEBUG_1 $PROGRESS \
            spack \
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
            buildcache update-index -k "$cache"
-   done
+    done
   fi
 }
 
