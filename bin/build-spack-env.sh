@@ -739,7 +739,7 @@ _maybe_cache_binaries() {
                ${__debug_spack_buildcache:+-d} \
                ${__verbose_spack_buildcache:+-v} \
                ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-               buildcache create \
+               buildcache create --only package \
                ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
                ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
                ${buildcache_rel_arg} "$cache" \
