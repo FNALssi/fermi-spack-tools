@@ -991,7 +991,7 @@ _remove_hash() {
   local hashes_var="$1"
   shift
   local OIFS="$IFS"; IFS=$'\n'; IFS="$OIFS"; handled_hashes=($(echo "$*" | sort -u)); IFS="$OIFS"
-  eval local "hashes=(\${$hashes_var[*]:+\"\${$hashes_var\[@\]}\"})"
+  eval local "hashes=(\${$hashes_var[*]:+\"\${$hashes_var[@]}\"})"
   (( ${#hashes[@]} )) || return
   local filtered_hashes=()
   for hash in ${hashes[*]:+"${hashes[@]}"}; do
