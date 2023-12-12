@@ -984,12 +984,14 @@ _quote() {
 }
 
 _remove_hash() {
-  local hashes_var="$1" handled_hash="$2"
+  local hashes_var="$1"
+  shift
+  local OIFS="$IFS"; IFS=$'\n'; IFS="$OIFS"; handled_hashes=($(echo "$*" | sort -u)); IFS="$OIFS"
   eval local "hashes=(\${$hashes_var[*]:+\"\${$hashes_var\[@\]}\"})"
   (( ${#hashes[@]} )) || return
   local filtered_hashes=()
   for hash in ${hashes[*]:+"${hashes[@]}"}; do
-    [ "$handled_hash" = "$hash" ] || filtered_hashes+=("$hash")
+    _in_sorted_hashlist "$hash" "${handled_hashes[@]}" || filtered_hashes+=("$hash")
   done
   eval $hashes_var="(\${filtered_hashes[*]:+\"\${filtered_hashes[@]}\"})"
 }
