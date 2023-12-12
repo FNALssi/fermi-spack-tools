@@ -388,7 +388,7 @@ _classify_concretized_specs() {
     levels+=($level)
   done
   # Sort root hashes for efficient checking.
-  OIFS="$IFS"; IFS=$'\n'; root_hashes=($(echo "${root_hashes[*]}" | sort -u)); IFS="$OIFS"
+  local OIFS="$IFS"; IFS=$'\n'; root_hashes=($(echo "${root_hashes[*]}" | sort -u)); IFS="$OIFS"
   _report $DEBUG_2 "root_hashes=\n             ${root_hashes[@]/%/$'\n'  }"
   # Make sure root hashes that are also dependencies of other roots are
   # all removed from non_root_hashes.
@@ -841,7 +841,7 @@ _piecemeal_build() {
   _report $DEBUG_2 "finished piecemeal build analysis with $idx entries remaining"
   # Uniquify hashes.
   local sorted_buildable_dep_hashes=()
-  OIFS="$IFS"; IFS=$'\n'
+  local OIFS="$IFS"; IFS=$'\n'
   while IFS='' read -r dep_hash; do
     sorted_buildable_dep_hashes+=("$dep_hash")
   done < <(echo "${buildable_dep_hashes[*]}" | sort -ut / -k 1nr -k 2,3)
