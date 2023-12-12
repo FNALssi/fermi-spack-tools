@@ -390,6 +390,10 @@ _classify_concretized_specs() {
   # Sort root hashes for efficient checking.
   OIFS="$IFS"; IFS=$'\n'; root_hashes=($(echo "${root_hashes[*]}" | sort -u)); IFS="$OIFS"
   _report $DEBUG_2 "root_hashes=\n             ${root_hashes[@]/%/$'\n'  }"
+  # Make sure root hashes that are also dependencies of other roots are
+  # all removed from non_root_hashes.
+  _remove_hash non_root_hashes "${root_hashes[@]}"
+  # Record the number of hashes we need to deal with, and report info.
   idx=${#hashes[@]}
   local n_unique=$(IFS=$'\n'; echo "${hashes[*]}" | sort -u | wc -l)
   _report $DEBUG_1 "examined $specline_idx speclines and found ${#root_hashes[@]} roots and $n_unique unique packages"
