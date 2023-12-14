@@ -21,12 +21,12 @@ if [ -d $1-$2/spack_env/var/spack/environments ]; then
 		spack -e $env buildcache sync $1-$2e local-compiler-plain
 	done
 fi
-if [ -d $1-$2/spack_env/spack/v0.21.0-fermi/NULL/var/spack/environments ]; then
-	for env in $(ls -d $1-$2/spack_env/spack/v0.21.0-fermi/NULL/var/spack/environments/*);do
+if [ -d $1-$2/spack_env/spack/v0.21.0-fermi$3/NULL/var/spack/environments ]; then
+	for env in $(ls -d $1-$2/spack_env/spack/v0.21.0-fermi$3/NULL/var/spack/environments/*);do
 		spack -e $env buildcache sync $1-$2b local-binary-unified
 		spack -e $env buildcache sync $1-$2e local-binary-unified
 	done
-	for env in $(ls -d $1-$2/spack_env/spack/v0.21.0-fermi/NULL/var/spack/environments/{gcc,clang}*);do
+	for env in $(ls -d $1-$2/spack_env/spack/v0.21.0-fermi$3/NULL/var/spack/environments/{gcc,clang}*);do
 		spack -e $env buildcache sync $1-$2b local-compiler-unified
 		spack -e $env buildcache sync $1-$2e local-compiler-unified
 	done
