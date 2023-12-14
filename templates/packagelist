@@ -85,7 +85,6 @@ nasm:nasm:$0
 ninja-build:ninja:$0
 ncurses:ncurses:$0-devel
 openssh-clients:openssh:$0
-(openssl[0-9a-z]*)-libs:openssl:\1-devel
 patchelf:patchelf:$0
 perl:perl:$0-devel
 (pkgconfig|pkgconf-pkg-config):pkg-config:$0
