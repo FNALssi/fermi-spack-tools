@@ -140,7 +140,7 @@ if $unified
 then
     install_tree_path=$src
     SPACK_ROOT="$dst/spack/$spack_release/NULL/"
-    src=`ls -d $src/spack/*/NULL/ | tail -1`
+    src=`ls $src/spack/*/NULL/bin/spack $src/bin/spack | tail -1 | sed -e 's;/bin/spack;;'`
     echo "src=$src"
 else
     install_tree_path=$src/prd
@@ -148,6 +148,11 @@ else
     src="$src/prd/spack/$spack_release/NULL/"
 fi
 install_tcl_path=$src/share/spack/modules
+
+if [ -d $install_tree_path/opt/spack/.spack-db ]
+then
+    install_tree_path=$install_tree_path/opt/spack
+fi
 
 if [ -d "$install_tree_path/__spack_path_placeholder__" ]
 then
