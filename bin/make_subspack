@@ -20,6 +20,7 @@ usage() {
         echo "-v                  verbose"
         echo "-t                  traditional layout"
         echo "-u                  unified layout (default)"
+        echo "-p                  plain layout"
 }
 
 parse_args() {
@@ -29,8 +30,9 @@ parse_args() {
     spack_release=default
     padding=false
     verbose=false
+    plain=false
 
-    eval set : $(getopt --longoptions with_padding,spack_release:,spack_repo,local_env:,dev_pkgs: --options vtu -- "$@")
+    eval set : $(getopt --longoptions with_padding,spack_release:,spack_repo,local_env:,dev_pkgs: --options vtup -- "$@")
     shift
 
     while echo x$1 | grep x- > /dev/null
@@ -43,7 +45,8 @@ parse_args() {
         x--dev_pkgs)      dev_pkgs=$2; shift; shift;;
         x-t) unified=false; shift ;;
         x-u) unified=true; shift ;;
-        x-u) verbose=true; shift ;;
+        x-p) plain=true; unified=false; shift ;;
+        x-v) verbose=true; shift ;;
         x--) shift; break;;
         esac
     done
@@ -136,18 +139,29 @@ else
 fi
 
 # assume unified layout...
+if $plain
+then
+   SPACK_ROOT=$dst
+else
+
 if $unified
 then
-    install_tree_path=$src
     SPACK_ROOT="$dst/spack/$spack_release/NULL/"
-    src=`ls $src/spack/*/NULL/bin/spack $src/bin/spack | tail -1 | sed -e 's;/bin/spack;;'`
-    echo "src=$src"
 else
-    install_tree_path=$src/prd
     SPACK_ROOT="$dst/prd/spack/$spack_release/NULL/"
-    src="$src/prd/spack/$spack_release/NULL/"
 fi
+fi
+
+install_tree_path=$src
+src=`ls $src/spack/*/NULL/bin/spack $src/bin/spack $src/prd/spack/*/NULL/bin/spack 2>/dev/null | tail -1 | sed -e 's;/bin/spack;;'`
+echo "src=$src"
+
 install_tcl_path=$src/share/spack/modules
+
+if [ $d $install_tree_path/prd/ ]
+then
+    install_tree_ath=
+fi
 
 if [ -d $install_tree_path/opt/spack/.spack-db ]
 then
@@ -194,11 +208,16 @@ git clone $args $branchbits $spack_repo $SPACK_ROOTb
 cd $SPACK_ROOT
 
 echo "installing config.yaml..."
+if $plain
+then
+   printf "config:\n  deprecated: false\n" >> $SPACK_ROOT/etc/spack/config.yaml
+else
 if $unified
 then
 cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml
 else
 cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml
+fi
 fi
 
 os=`$SPACK_ROOT/bin/spack arch --operating-system`
@@ -250,6 +269,7 @@ esac
 
 # copy compilers and packages
 test -d  $SPACK_ROOT/etc/spack/$os ||  mkdir -p  $SPACK_ROOT/etc/spack/$os
+[ -r  $src/etc/spack/compilers.yaml ] && cp $src/etc/spack/compilers.yaml $SPACK_ROOT/etc/spack/compilers.yaml
 [ -r  $src/etc/spack/$os/compilers.yaml ] && cp $src/etc/spack/$os/compilers.yaml $SPACK_ROOT/etc/spack/$os/compilers.yaml
 [ -r  $src/etc/spack/$os/packages.yaml ] && cp $src/etc/spack/$os/packages.yaml $SPACK_ROOT/etc/spack/$os/packages.yaml
 
@@ -292,7 +312,7 @@ do
 done
 
 # use the upstream's bootstrap area...
-$SPACK_ROOT/bin/spack bootstrap root --scope=site $install_tree_path/.bootstrap
+$SPACK_ROOT/bin/spack bootstrap root --scope=site $(SPACK_ROOT=$src spack bootstrap root)
 
 if [ "$local_env" != "" ]
 then
