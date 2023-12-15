@@ -158,9 +158,9 @@ echo "src=$src"
 
 install_tcl_path=$src/share/spack/modules
 
-if [ $d $install_tree_path/prd/ ]
+if [ -d $install_tree_path/prd/ ]
 then
-    install_tree_ath=
+    install_tree_path=$install_tree_path/prd/ 
 fi
 
 if [ -d $install_tree_path/opt/spack/.spack-db ]
