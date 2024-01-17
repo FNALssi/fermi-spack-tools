@@ -509,7 +509,7 @@ _configure_spack() {
   done
   # 3. Caches
   _report $PROGRESS "configuring user-specified cache locations"
-  local cache_spec cache_url cache_name
+  local cache_spec cache_url cache_name cache_type
   for cache_spec in \
     ${cache_specs[*]:+"${cache_specs[@]}"} \
     ${concretizing_cache_specs[*]:+"${concretizing_cache_specs[@]}"}
@@ -517,8 +517,9 @@ _configure_spack() {
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site ${cache_type:+--type "${cache_type}"} "$cache_name" "$cache_url" \
-      || _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site ${cache_type:+--type \"${cache_type}\"} \"$cache_name\" \"$cache_url\""
+         mirror add --scope=site ${cache_type:+--type "${cache_type}"} \
+         "$cache_name" "$cache_url"  ||
+      _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site ${cache_type:+--type \"${cache_type}\"} \"$cache_name\" \"$cache_url\""
   done
   # 4. Spack recipe repos.
   _report $PROGRESS "configuring user-specified recipe repositories"
@@ -526,10 +527,11 @@ _configure_spack() {
 
   _report $PROGRESS "configuring local caches"
   # Add mirror as buildcache for locally-built packages.
-  local cache_spec cache_name cache_url
   for cache_spec in ${local_caches[*]:+"${local_caches[@]}"}; do
     _cache_info "$cache_spec"
-    _cmd $DEBUG_1 spack mirror add --scope=site $cache_name "$cache_url"
+    _cmd $DEBUG_1 spack \
+         mirror add --scope=site ${cache_type:+--type "${cache_type}"} \
+         "$cache_name" "$cache_url"
   done
 
   # Make a cut-down mirror configuration for safe concretization.
