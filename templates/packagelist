@@ -54,6 +54,7 @@ libfontenc:libfontenc:$0-devel
 libICE:libice:$0-devel
 :libpciaccess:
 libSM:libsm:$0-devel
+libtirpc:libtirpc:$0-devel
 libtool:libtool:$0
 libuuid:libuuid:$0-devel
 libX11:libx11:$0-devel
@@ -85,10 +86,12 @@ nasm:nasm:$0
 ninja-build:ninja:$0
 ncurses:ncurses:$0-devel
 openssh-clients:openssh:$0
+(openssl[0-9a-z]*)-libs:openssl:\1-devel
 patchelf:patchelf:$0
 perl:perl:$0-devel
 (pkgconfig|pkgconf-pkg-config):pkg-config:$0
 pkgconf:pkgconf:$0
+python[0-9]*:python:$0-devel
 readline:readline:$0-devel
 tar:tar:$0
 tcl:tcl:$0-devel
@@ -99,7 +102,7 @@ xcb-util-image:xcb-util-image:$0-devel
 xcb-util-keysyms:xcb-util-keysyms:$0-devel
 xcb-util-renderutil:xcb-util-renderutil:$0-devel
 xcb-util-wm:xcb-util-wm:$0-devel
-xorg-11-util-macros:util-macros:$0
+xorg-x11-util-macros:util-macros:$0
 xorg-x11-proto-devel:xextproto:$0
 (xorg-x11-server)-Xorg:xorg-server:\1-devel
 xorg-x11-proto-devel:xproto:$0
