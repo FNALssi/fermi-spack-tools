@@ -465,6 +465,20 @@ _configure_spack() {
   fi
 
   ####################################
+  # Check whether spack mirror add supports --type
+  mirror_add_help="$(spack mirror add --help | grep -Ee '^[[:space:]]*--type[[:space:]]+')"
+  [ -n "$mirror_add_help" ] && have_mirror_add_type=1
+  ####################################
+
+  ####################################
+  # Check whether spack buildcache create still needs -r
+  local buildcache_create_help="$(spack buildcache create --help | grep -Ee '^[[:space:]]-r\b')"
+  [ -z "$buildcache_create_help" ] ||
+    [[ "$buildcache_create_help" == *"(deprecated)"* ]] ||
+    buildcache_rel_arg="-r"
+  ####################################
+
+  ####################################
   # Configure Spack according to user specifications.
   #
   # 1. Extra / different config files.
@@ -523,20 +537,6 @@ _configure_spack() {
     _report $PROGRESS "preparing cache configuration for safe concretization"
     _make_concretize_mirrors_yaml "$concretize_mirrors"
   fi
-
-  ####################################
-  # Check whether spack buildcache create still needs -r
-  local buildcache_create_help="$(spack buildcache create --help | grep -Ee '^[[:space:]]-r\b')"
-  [ -z "$buildcache_create_help" ] ||
-    [[ "$buildcache_create_help" == *"(deprecated)"* ]] ||
-    buildcache_rel_arg="-r"
-  ####################################
-
-  ####################################
-  # Check whether spack mirror add supports --type
-  mirror_add_help="$(spack mirror add --help | grep -Ee '^[[:space:]]--type[[:space:]]+')"
-  [ -n "$mirror_add_help" ] && have_mirror_add_type=1
-  ####################################
 
   ####################################
   # Make sure we know about compilers.
