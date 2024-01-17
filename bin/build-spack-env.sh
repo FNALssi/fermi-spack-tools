@@ -1230,8 +1230,8 @@ fi
 
 # Local cache locations are derived from $working_dir.
 local_caches=(
-  "__local_binaries|binary:$working_dir/copyBack/spack-packages/binaries"
-  "__local_compilers|binary:$working_dir/copyBack/spack-packages/compilers"
+  "__local_binaries|binary:$working_dir/copyBack/spack-binary-cache"
+  "__local_compilers|binary:$working_dir/copyBack/spack-compiler-cache"
   "__local_sources|source:$working_dir/copyBack/spack-packages/sources"
 )
 
