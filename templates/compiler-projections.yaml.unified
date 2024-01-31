@@ -1,0 +1,6 @@
+spack:
+  config:
+    install_tree:
+      projections:
+        gcc: "{package.name}/{version}/{architecture}-{compiler.name}-{compiler.version}"
+        llvm: "{package.name}/{version}{architecture}-{compiler.name}-{compiler.version}"

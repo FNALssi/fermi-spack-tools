@@ -20,7 +20,7 @@ install_latest() {
         hash_pkg_ver=`spack -k buildcache list --long --allarch "$pkg $plat" | tail -1`
         echo "make_spack: info: latest $pkg is $hash_pkg_ver"
         hash=`echo $hash_pkg_ver | sed -e 's/ .*//'`
-        spack -k buildcache install -o -a -m "/$hash"
+        spack -k buildcache install -o -m "/$hash"
     else
         spack -k install "$pkg $plat"
     fi
@@ -154,12 +154,17 @@ create_spack() {
                ;;
             esac
             export plat="target=`uname -i` os=`spack arch --operating-system`"
-            spack mirror add --scope site fnal $binary_cache
-            spack buildcache update-index -k fnal
-            spack mirror add --scope site scisoft $binary_cache_bak
-            spack buildcache update-index -k scisoft
-            spack -k buildcache keys --install --trust --force
-            add_recipe_repos
+            if $minimal
+            then
+              :
+            else
+              spack mirror add --scope site fnal $binary_cache
+              spack buildcache update-index -k fnal
+              spack mirror add --scope site scisoft $binary_cache_bak
+              spack buildcache update-index -k scisoft
+              spack -k buildcache keys --install --trust --force
+            fi
+	    add_recipe_repos
             if $upgrading
             then
                 spack reindex
