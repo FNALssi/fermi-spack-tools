@@ -136,11 +136,6 @@ packages:
     - spec: "gdbm @1.19 %gcc@11.4.1 os=almalinux9"
       prefix: /usr
     buildable: False
-  glib:
-    externals:
-    - spec: "glib @2.68.4 %gcc@11.4.1 os=almalinux9"
-      prefix: /usr
-    buildable: False
   gettext:
     externals:
     - spec: "gettext ~bzip2+curses~git+libunistring+libxml2~tar+xz @0.21 %gcc@11.4.1 os=almalinux9"

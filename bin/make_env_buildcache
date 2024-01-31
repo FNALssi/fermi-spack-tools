@@ -54,6 +54,13 @@ make_reconstitute_script() {
     upstream=$(spack config get upstreams | 
                 grep install_tree |
                 sed -e 's/.*: *//' -e 's/  *$//')
+ 
+    # plain layout we have the setup-env script at $SPACK_ROOT
+    case "$upstream" in
+    *.opt/spack) 
+          upstream=$SPACK_ROOT
+          ;;
+     esac
 
     # get the environment name from $SPACK_ENV
     active=$(echo $SPACK_ENV | sed -e 's;.*/;;')
