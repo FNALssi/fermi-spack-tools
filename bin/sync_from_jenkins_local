@@ -12,19 +12,19 @@ mkdir $1-$2; tar -x  -C $1-$2 -f jenkins-build-spack-env-label1=$1-$2.tar.bz2
 #fi
 spack mirror list
 if [ -d $1-$2/spack_env/var/spack/environments ]; then
-	mkdir local-binary-plain-$1-$2b
-	spack mirror add local-binary-plain-$1-$2b $PWD/local-binary-plain-$1-$2b
+	mkdir local-binary-plain
+	spack mirror add local-binary-plain $PWD/local-binary-plain
 	for env in $(ls -d $1-$2/spack_env/var/spack/environments/*);do
-		spack -e $env buildcache sync $1-$2b local-binary-plain-$1-$2b
-		spack -e $env buildcache sync $1-$2e local-binary-plain-$1-$2b
-	spack buildcache update-index local-binary-plain-$1-$2b
+		spack -e $env buildcache sync $1-$2b local-binary-plain
+		spack -e $env buildcache sync $1-$2e local-binary-plain
+	spack buildcache update-index local-binary-plain
 	done
-	mkdir local-compiler-plain-$1-$2c
-	spack mirror add local-compiler-plain-$1-$2c $PWD/local-compiler-plain-$1-$2c
+	mkdir local-compiler-plain
+	spack mirror add local-compiler-plain $PWD/local-compiler-plain
 	for env in $(ls -d $1-$2/spack_env/var/spack/environments/{gcc,clang}*);do
-		spack -e $env buildcache sync $1-$2c local-compiler-plain-$1-$2c
+		spack -e $env buildcache sync $1-$2c local-compiler-plain
 	done
-	spack buildcache update-index local-compiler-plain-$1-$2c
+	spack buildcache update-index local-compiler-plain
 fi
 if [ -d $1-$2/spack_env/spack/v0.21.0-fermi/NULL/var/spack/environments ]; then
 	for env in $(ls -d $1-$2/spack_env/spack/v0.21.0-fermi/NULL/var/spack/environments/*);do
@@ -34,7 +34,6 @@ if [ -d $1-$2/spack_env/spack/v0.21.0-fermi/NULL/var/spack/environments ]; then
 	spack buildcache update-index local-binary-unified
 	for env in $(ls -d $1-$2/spack_env/spack/v0.21.0-fermi/NULL/var/spack/environments/{gcc,clang}*);do
 		spack -e $env buildcache sync $1-$2b local-compiler-unified
-		spack -e $env buildcache sync $1-$2e local-compiler-unified
 	done
 	spack buildcache update-index local-compiler-unified
 fi
