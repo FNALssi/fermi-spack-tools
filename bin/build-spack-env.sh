@@ -715,39 +715,39 @@ _make_concretize_mirrors_yaml() {
 
 _maybe_cache_binaries() {
   [ "${cache_write_binaries:-none}" == "none" ] && return
-  local binary_mirror= hashes_to_cache=() msg_extra=
+  local binary_mirror hashes_to_cache=() msg_extra= cache
   if (( is_compiler_env )); then
     binary_mirror=compiler
   else
     binary_mirror=binary
   fi
+  local hashes_to_cache_tmp=(${non_root_hashes[*]:+"${non_root_hashes[@]//*\///}"})
   if [ "$cache_write_binaries" = "no_roots" ] && ! (( is_compiler_env )); then
-    hashes_to_cache=(${non_root_hashes[*]:+"${non_root_hashes[@]//*\///}"})
     msg_extra=" $cache_write_binaries"
   else
-    hashes_to_cache=(${hashes[*]:+"${hashes[@]//*\///}"})
+    hashes_to_cache_tmp+=("${root_hashes[@]//*\///}")
   fi
+  for hash in ${hashes_to_cache_tmp[*]:+"${hashes_to_cache[@]}"}; do
+    if [  -f "$(spack location -i $hash)/.spack/binary_distribution" ]; then
+	    _report $DEBUG_1 "Skipping package installed from buildcache $hash"
+	  else
+      hashes_to_cache+=("$hash")
+    fi
+  done
   if (( ${#hashes_to_cache[@]} )); then
-    local cache=
     for cache in "$working_dir/copyBack/spack-$binary_mirror-cache" \
                    ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
-      _report $PROGRESS "caching$msg_extra binary packages for environment $env_name to $cache"
-      for hash in "${hashes_to_cache[@]}"; do
-        if [  -f "$(spack location -i $hash)/.spack/binary_distribution" ]; then
-	        _report $DEBUG_1 "Skipping package installed from buildcache $hash"
-	      else
-          _cmd $DEBUG_1 $PROGRESS \
-               spack \
-               ${__debug_spack_buildcache:+-d} \
-               ${__verbose_spack_buildcache:+-v} \
-               ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-               buildcache create --only package \
-               ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
-               ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
-               ${buildcache_rel_arg} "$cache" \
-               $hash
-	      fi
-      done
+      _report $PROGRESS "caching ${#hashes_to_cache[@]}$msg_extra binary packages for environment $env_name to $cache"
+      _cmd $DEBUG_1 $PROGRESS \
+           spack \
+           ${__debug_spack_buildcache:+-d} \
+           ${__verbose_spack_buildcache:+-v} \
+           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+           buildcache create --only package \
+           ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
+           ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
+           ${buildcache_rel_arg} "$cache" \
+           "${hashes_to_cache[@]}"
       _report $PROGRESS "updating build cache index"
       _cmd $DEBUG_1 $PROGRESS \
            spack \
