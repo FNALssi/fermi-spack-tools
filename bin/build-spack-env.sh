@@ -727,7 +727,7 @@ _maybe_cache_binaries() {
   else
     hashes_to_cache_tmp+=("${root_hashes[@]//*\///}")
   fi
-  for hash in ${hashes_to_cache_tmp[*]:+"${hashes_to_cache[@]}"}; do
+  for hash in ${hashes_to_cache_tmp[*]:+"${hashes_to_cache_tmp[@]}"}; do
     if [  -f "$(spack location -i $hash)/.spack/binary_distribution" ]; then
 	    _report $DEBUG_1 "Skipping package installed from buildcache $hash"
 	  else
