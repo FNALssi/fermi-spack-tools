@@ -1008,7 +1008,7 @@ _report() {
   local severity=$DEFAULT_VERBOSITY redirect=">&$STDOUT"
   if [[ "$1" =~ ^-?[0-9]*$ ]]; then (( severity = $1 )); shift; fi
   (( VERBOSITY < severity )) && return # Diagnostics suppression.
-  (( severity < INFO )) && redirect=">&$STDERR" # Important to stderr.
+  (( _report_stderr || severity < INFO )) && redirect=">&$STDERR" # Important to stderr.
   local severity_tag="$(_severity_tag $severity)"
   eval printf '"${severity_tag:+$severity_tag }${is_cmd:+executing }$*\n"' \
        $redirect \
