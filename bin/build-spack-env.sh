@@ -715,25 +715,39 @@ _make_concretize_mirrors_yaml() {
 
 _maybe_cache_binaries() {
   [ "${cache_write_binaries:-none}" == "none" ] && return
-  local binary_mirror hashes_to_cache=() msg_extra= cache
+  local binary_mirror msg_extra= cache
   if (( is_compiler_env )); then
     binary_mirror=compiler
   else
     binary_mirror=binary
   fi
-  local hashes_to_cache_tmp=(${non_root_hashes[*]:+"${non_root_hashes[@]//*\///}"})
+  local hashes_to_cache_tmp=(${non_root_hashes[*]:+"${non_root_hashes[@]}"})
   if [ "$cache_write_binaries" = "no_roots" ] && ! (( is_compiler_env )); then
     msg_extra=" $cache_write_binaries"
   else
-    hashes_to_cache_tmp+=("${root_hashes[@]//*\///}")
+    hashes_to_cache_tmp+=("${root_hashes[@]}")
   fi
+  # We need to ask Spack for the location prefix of possibly many
+  # packages in order to avoid writing packages to build cache that were
+  # already installed from build cache. Do this in one Spack session to
+  # avoid unnecessary overhead.
+  echo 'env = spack.environment.active_environment()' > "$TMP/location_cmds.py"
   for hash in ${hashes_to_cache_tmp[*]:+"${hashes_to_cache_tmp[@]}"}; do
-    if [  -f "$(spack location -i $hash)/.spack/binary_distribution" ]; then
-	    _report $DEBUG_1 "Skipping package installed from buildcache $hash"
-	  else
-      hashes_to_cache+=("$hash")
-    fi
+    echo 'print("'"$hash"'", spack.cmd.disambiguate_spec("'"${hash//*\///}"'", env, False).prefix)' >> "$TMP/location_cmds.py"
   done
+  local hashes_to_cache=(
+    $(
+      _cmd $DEBUG_1 $PIPE spack python "$TMP/location_cmds.py" |
+        while read hash prefix; do
+          if [  -f "$prefix/.spack/binary_distribution" ]; then
+	          _report_stderr=1 _report $DEBUG_1 "skip package installed from buildcache: $hash"
+	        else
+	          _report_stderr=1 _report $DEBUG_3 "save package in buildcache: $hash"
+            echo "${hash//*\///}"
+          fi
+        done
+    )
+  )
   if (( ${#hashes_to_cache[@]} )); then
     for cache in "$working_dir/copyBack/spack-$binary_mirror-cache" \
                    ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
