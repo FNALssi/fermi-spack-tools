@@ -465,6 +465,20 @@ _configure_spack() {
   fi
 
   ####################################
+  # Check whether spack mirror add supports --type
+  mirror_add_help="$(spack mirror add --help | grep -Ee '^[[:space:]]*--type[[:space:]]+')"
+  [ -n "$mirror_add_help" ] && have_mirror_add_type=1
+  ####################################
+
+  ####################################
+  # Check whether spack buildcache create still needs -r
+  local buildcache_create_help="$(spack buildcache create --help | grep -Ee '^[[:space:]]-r\b')"
+  [ -z "$buildcache_create_help" ] ||
+    [[ "$buildcache_create_help" == *"(deprecated)"* ]] ||
+    buildcache_rel_arg="-r"
+  ####################################
+
+  ####################################
   # Configure Spack according to user specifications.
   #
   # 1. Extra / different config files.
@@ -495,7 +509,7 @@ _configure_spack() {
   done
   # 3. Caches
   _report $PROGRESS "configuring user-specified cache locations"
-  local cache_spec cache_url cache_name
+  local cache_spec cache_url cache_name cache_type
   for cache_spec in \
     ${cache_specs[*]:+"${cache_specs[@]}"} \
     ${concretizing_cache_specs[*]:+"${concretizing_cache_specs[@]}"}
@@ -503,8 +517,9 @@ _configure_spack() {
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site ${cache_type:+--type "${cache_type}"} "$cache_name" "$cache_url" \
-      || _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site ${cache_type:+--type \"${cache_type}\"} \"$cache_name\" \"$cache_url\""
+         mirror add --scope=site ${cache_type:+--type "${cache_type}"} \
+         "$cache_name" "$cache_url"  ||
+      _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site ${cache_type:+--type \"${cache_type}\"} \"$cache_name\" \"$cache_url\""
   done
   # 4. Spack recipe repos.
   _report $PROGRESS "configuring user-specified recipe repositories"
@@ -512,10 +527,11 @@ _configure_spack() {
 
   _report $PROGRESS "configuring local caches"
   # Add mirror as buildcache for locally-built packages.
-  local cache_spec cache_name cache_url
   for cache_spec in ${local_caches[*]:+"${local_caches[@]}"}; do
     _cache_info "$cache_spec"
-    _cmd $DEBUG_1 spack mirror add --scope=site $cache_name "$cache_url"
+    _cmd $DEBUG_1 spack \
+         mirror add --scope=site ${cache_type:+--type "${cache_type}"} \
+         "$cache_name" "$cache_url"
   done
 
   # Make a cut-down mirror configuration for safe concretization.
@@ -523,20 +539,6 @@ _configure_spack() {
     _report $PROGRESS "preparing cache configuration for safe concretization"
     _make_concretize_mirrors_yaml "$concretize_mirrors"
   fi
-
-  ####################################
-  # Check whether spack buildcache create still needs -r
-  local buildcache_create_help="$(spack buildcache create --help | grep -Ee '^[[:space:]]-r\b')"
-  [ -z "$buildcache_create_help" ] ||
-    [[ "$buildcache_create_help" == *"(deprecated)"* ]] ||
-    buildcache_rel_arg="-r"
-  ####################################
-
-  ####################################
-  # Check whether spack mirror add supports --type
-  mirror_add_help="$(spack mirror add --help | grep -Ee '^[[:space:]]--type[[:space:]]+')"
-  [ -n "$mirror_add_help" ] && have_mirror_add_type=1
-  ####################################
 
   ####################################
   # Make sure we know about compilers.
@@ -713,39 +715,53 @@ _make_concretize_mirrors_yaml() {
 
 _maybe_cache_binaries() {
   [ "${cache_write_binaries:-none}" == "none" ] && return
-  local binary_mirror= hashes_to_cache=() msg_extra=
+  local binary_mirror msg_extra= cache
   if (( is_compiler_env )); then
     binary_mirror=compiler
   else
     binary_mirror=binary
   fi
+  local hashes_to_cache_tmp=(${non_root_hashes[*]:+"${non_root_hashes[@]}"})
   if [ "$cache_write_binaries" = "no_roots" ] && ! (( is_compiler_env )); then
-    hashes_to_cache=(${non_root_hashes[*]:+"${non_root_hashes[@]//*\///}"})
     msg_extra=" $cache_write_binaries"
   else
-    hashes_to_cache=(${hashes[*]:+"${hashes[@]//*\///}"})
+    hashes_to_cache_tmp+=("${root_hashes[@]}")
   fi
+  # We need to ask Spack for the location prefix of possibly many
+  # packages in order to avoid writing packages to build cache that were
+  # already installed from build cache. Do this in one Spack session to
+  # avoid unnecessary overhead.
+  echo 'env = spack.environment.active_environment()' > "$TMP/location_cmds.py"
+  for hash in ${hashes_to_cache_tmp[*]:+"${hashes_to_cache_tmp[@]}"}; do
+    echo 'print("'"$hash"'", spack.cmd.disambiguate_spec("'"${hash//*\///}"'", env, False).prefix)' >> "$TMP/location_cmds.py"
+  done
+  local hashes_to_cache=(
+    $(
+      _cmd $DEBUG_1 $PIPE spack python "$TMP/location_cmds.py" |
+        while read hash prefix; do
+          if [  -f "$prefix/.spack/binary_distribution" ]; then
+	          _report_stderr=1 _report $DEBUG_1 "skip package installed from buildcache: $hash"
+	        else
+	          _report_stderr=1 _report $DEBUG_3 "save package in buildcache: $hash"
+            echo "${hash//*\///}"
+          fi
+        done
+    )
+  )
   if (( ${#hashes_to_cache[@]} )); then
-    local cache=
     for cache in "$working_dir/copyBack/spack-$binary_mirror-cache" \
                    ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
-      _report $PROGRESS "caching$msg_extra binary packages for environment $env_name to $cache"
-      for hash in "${hashes_to_cache[@]}"; do
-        if [  -f "$(spack location -i $hash)/.spack/binary_distribution" ]; then
-	        _report $DEBUG_1 "Skipping package installed from buildcache $hash"
-	      else
-          _cmd $DEBUG_1 $PROGRESS \
-               spack \
-               ${__debug_spack_buildcache:+-d} \
-               ${__verbose_spack_buildcache:+-v} \
-               ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-               buildcache create --only package \
-               ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
-               ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
-               ${buildcache_rel_arg} "$cache" \
-               $hash
-	      fi
-      done
+      _report $PROGRESS "caching ${#hashes_to_cache[@]}$msg_extra binary packages for environment $env_name to $cache"
+      _cmd $DEBUG_1 $PROGRESS \
+           spack \
+           ${__debug_spack_buildcache:+-d} \
+           ${__verbose_spack_buildcache:+-v} \
+           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+           buildcache create --only package \
+           ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
+           ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
+           ${buildcache_rel_arg} "$cache" \
+           "${hashes_to_cache[@]}"
       _report $PROGRESS "updating build cache index"
       _cmd $DEBUG_1 $PROGRESS \
            spack \
@@ -1006,7 +1022,7 @@ _report() {
   local severity=$DEFAULT_VERBOSITY redirect=">&$STDOUT"
   if [[ "$1" =~ ^-?[0-9]*$ ]]; then (( severity = $1 )); shift; fi
   (( VERBOSITY < severity )) && return # Diagnostics suppression.
-  (( severity < INFO )) && redirect=">&$STDERR" # Important to stderr.
+  (( _report_stderr || severity < INFO )) && redirect=">&$STDERR" # Important to stderr.
   local severity_tag="$(_severity_tag $severity)"
   eval printf '"${severity_tag:+$severity_tag }${is_cmd:+executing }$*\n"' \
        $redirect \
@@ -1230,8 +1246,8 @@ fi
 
 # Local cache locations are derived from $working_dir.
 local_caches=(
-  "__local_binaries|binary:$working_dir/copyBack/spack-packages/binaries"
-  "__local_compilers|binary:$working_dir/copyBack/spack-packages/compilers"
+  "__local_binaries|binary:$working_dir/copyBack/spack-binary-cache"
+  "__local_compilers|binary:$working_dir/copyBack/spack-compiler-cache"
   "__local_sources|source:$working_dir/copyBack/spack-packages/sources"
 )
 
