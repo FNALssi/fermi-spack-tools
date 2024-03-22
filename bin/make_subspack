@@ -188,10 +188,7 @@ test -d $SPACK_ROOTd || mkdir -p $SPACK_ROOTd
 message git clone-ing spack
 
 cd $SPACK_ROOTd
-case "$spack_root" in
-*github.com*) args="--depth 4" ;;
-*) args="";;
-esac
+args="--depth 2"
 
 # default to just doing a fs-based clone, which saves lots of space and time
 if [ $spack_repo = default ]
