@@ -54,6 +54,7 @@ libfontenc:libfontenc:$0-devel
 libICE:libice:$0-devel
 :libpciaccess:
 libSM:libsm:$0-devel
+libtirpc:libtirpc:$0-devel
 libtool:libtool:$0
 libuuid:libuuid:$0-devel
 libX11:libx11:$0-devel

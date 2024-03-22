@@ -457,11 +457,7 @@ class package:
             tf_2 = re.sub(".*-2.6", "scientificfermi5", tf_2)
             tf_2 = re.sub("^[0-9].*", "scientificfermi5", tf_2)
 
-        # excessive intel-centrism...
-        if f_os.find("64bit") > 0:
-            tf_3 = "x86_64_v2"
-        else:
-            tf_3 = "x86"
+        tf_3 = "x86_64_v2"
 
         logging.debug("spack_arch(%s) -> %s-%s-%s" % (self.flav, tf_1, tf_2, tf_3))
         return "%s-%s-%s" % (tf_1, tf_2, tf_3)
@@ -1941,7 +1937,7 @@ uts = ups_to_spack(pdr=pdr)
 
 if not os.path.exists("/tmp/empty.tar"):
     d = os.path.dirname(os.path.dirname(__file__))
-    os.system("cp {0}/templates/emtpy.tar /tmp/empty.tar .".format(d))
+    os.system("cp {0}/templates/emtpy.tar /tmp/empty.tar".format(d))
 
 # handle --use_spack args: prepopulate conversion cache
 for us in use_spack:
