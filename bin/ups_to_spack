@@ -930,7 +930,7 @@ endif()
         # check that we have a ups_to_spack repository...
         if not os.access(uts_repo_yaml, os.R_OK):
             os.system("spack repo create %s ups_to_spack" % uts_repo)
-            os.system("spack repo add --scope=default %s" % uts_repo )
+            os.system("spack repo add --scope=site %s" % uts_repo )
 
         self.get_namespace(pkg)
         # pick out path parts before/after version...
@@ -1940,7 +1940,7 @@ while sys.argv[1][:2] == "--":
 uts = ups_to_spack(pdr=pdr)
 
 if not os.path.exists("/tmp/empty.tar"):
-    d = os.path.dirname(os.path.dirname(__FILE__))
+    d = os.path.dirname(os.path.dirname(__file__))
     os.system("cp {0}/templates/emtpy.tar /tmp/empty.tar .".format(d))
 
 # handle --use_spack args: prepopulate conversion cache

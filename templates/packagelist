@@ -101,7 +101,7 @@ xcb-util-image:xcb-util-image:$0-devel
 xcb-util-keysyms:xcb-util-keysyms:$0-devel
 xcb-util-renderutil:xcb-util-renderutil:$0-devel
 xcb-util-wm:xcb-util-wm:$0-devel
-xorg-11-util-macros:util-macros:$0
+xorg-x11-util-macros:util-macros:$0
 xorg-x11-proto-devel:xextproto:$0
 (xorg-x11-server)-Xorg:xorg-server:\1-devel
 xorg-x11-proto-devel:xproto:$0
