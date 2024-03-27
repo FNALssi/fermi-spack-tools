@@ -773,6 +773,9 @@ EOF
         done
     )
   )
+  (( $? == 0 )) ||
+    _die "unexpected result executing Python script $TMP/location_cmds.py:\n$(cat "$TMP/location_cmds.py")"
+
   if (( ${#hashes_to_cache[@]} )); then
     for cache in "$working_dir/copyBack/spack-$binary_mirror-cache" \
                    ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
