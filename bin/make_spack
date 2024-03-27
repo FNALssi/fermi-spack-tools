@@ -103,14 +103,17 @@ bootstrap_spack() {
     then
         make_packages_yaml $SPACK_ROOT
     else
-        if [ "$(spack --version)" '>' "0.20.0" ]
+        spack_version="$(spack --version)"
+        if [ "$spack_version" '>' "0.20.0" ]
         then
             sd="$(spack arch --platform)/"
         else
             sd=""
         fi
         echo "Installing stock packages.yaml in $SPACK_ROOT/etc/spack/${sd}${os}"
-        cp $spackbindir/../templates/packages.yaml.${os} $SPACK_ROOT/etc/spack/${sd}${os}/packages.yaml
+        mkdir -p "$SPACK_ROOT/etc/spack/${sd}${os}" &&
+          cp -v "$spackbindir/../templates/packages.yaml.${os}" \
+             "$SPACK_ROOT/etc/spack/${sd}${os}/packages.yaml"
     fi
 }
 
@@ -328,7 +331,7 @@ main() {
     export PATH=$SPACK_ROOT/bin:$PATH
     create_spack
 
-    if [ -n "$dir" ]; then
+    if [ -n "$dir" ] && [ -d "$dir/spack" ]; then
       rm -f $dir/spack/current
       ln -s $dir/spack/$spack_release $dir/spack/current
     fi
