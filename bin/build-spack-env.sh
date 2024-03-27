@@ -751,7 +751,12 @@ _maybe_cache_binaries() {
   # packages in order to avoid writing packages to build cache that were
   # already installed from build cache. Do this in one Spack session to
   # avoid unnecessary overhead.
-  echo 'env = spack.environment.active_environment()' > "$TMP/location_cmds.py"
+  cat > "$TMP/location_cmds.py" <<\EOF
+import spack.cmd
+import spack.environment
+
+env = spack.environment.active_environment()
+EOF
   for hash in ${hashes_to_cache_tmp[*]:+"${hashes_to_cache_tmp[@]}"}; do
     echo 'print("'"$hash"'", spack.cmd.disambiguate_spec("'"${hash//*\///}"'", env, False).prefix)' >> "$TMP/location_cmds.py"
   done
