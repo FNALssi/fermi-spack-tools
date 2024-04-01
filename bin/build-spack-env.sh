@@ -439,8 +439,28 @@ _configure_recipe_repos() {
         done
         path="$path-$((bnum + 1))"
       fi
-      _cmd $DEBUG_1 git clone ${branch_etc:+-b "$branch_etc"} "$url" "$path" ||
-        _die "unable to clone $url to $path to configure Spack recipe repo"
+      if [ -d "$path" ]; then
+        if [ "$(_cmd $DEBUG_2 $PIPE git -C "$path" remote)" = "origin" ] &&
+             [ "$(_cmd $DEBUG_2 $PIPE git -C "$path" remote get-url origin)" = "$url" ]; then
+          if [ "$(_cmd $DEBUG_2 $PIPE git -C "$path" branch --show-current)" = "$branch_etc" ]; then
+            :
+          elif (( $(_cmd $DEBUG_2 $PIPE git -C "$path" status -s | wc -l) == 0 )) &&
+                 [ -n "$branch_etc" ]; then
+            _report $INFO "Switching to branch $branch_etc in $path"
+            _cmd $DEBUG_1 git -C "$path" switch "$branch_etc"
+          fi
+        else
+          false
+        fi
+      elif ! [ -e "$path" ]; then
+        _cmd $DEBUG_1 git clone ${branch_etc:+-b "$branch_etc"} "$url" "$path" ||
+          _die "unable to clone $url to $path to configure Spack recipe repo"
+      else
+        false
+      fi
+      if (( $? )); then
+        _die "unable to reconcile requested repo $repo_element with existing path $path"
+      fi
     else
       path="$repo_element"
     fi
@@ -731,7 +751,12 @@ _maybe_cache_binaries() {
   # packages in order to avoid writing packages to build cache that were
   # already installed from build cache. Do this in one Spack session to
   # avoid unnecessary overhead.
-  echo 'env = spack.environment.active_environment()' > "$TMP/location_cmds.py"
+  cat > "$TMP/location_cmds.py" <<\EOF
+import spack.cmd
+import spack.environment
+
+env = spack.environment.active_environment()
+EOF
   for hash in ${hashes_to_cache_tmp[*]:+"${hashes_to_cache_tmp[@]}"}; do
     echo 'print("'"$hash"'", spack.cmd.disambiguate_spec("'"${hash//*\///}"'", env, False).prefix)' >> "$TMP/location_cmds.py"
   done
@@ -748,6 +773,9 @@ _maybe_cache_binaries() {
         done
     )
   )
+  (( $? == 0 )) ||
+    _die "unexpected result executing Python script $TMP/location_cmds.py:\n$(cat "$TMP/location_cmds.py")"
+
   if (( ${#hashes_to_cache[@]} )); then
     for cache in "$working_dir/copyBack/spack-$binary_mirror-cache" \
                    ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
