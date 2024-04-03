@@ -1143,10 +1143,6 @@ SPACK_ROOT=$SPACK_ROOT
 $(spack env status)"
 fi
 
-# Temporary working area (and cleanup trap).
-TMP=`mktemp -d -t build-spack-env.sh.XXXXXX`
-trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null" EXIT
-
 ########################################################################
 # To split bundled single-option arguments in your function or script:
 #
@@ -1275,6 +1271,10 @@ if [ -z "$TMPDIR" ]; then
   mkdir -p "$TMPDIR"
 fi
 ####################################
+
+# Temporary working area (and cleanup trap).
+TMP="$(mktemp -d -t build-spack-env.sh.XXXXXX)"
+trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null" EXIT
 
 # Local cache locations are derived from $working_dir.
 local_caches=(
