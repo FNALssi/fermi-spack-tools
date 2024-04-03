@@ -751,15 +751,19 @@ _maybe_cache_binaries() {
   # packages in order to avoid writing packages to build cache that were
   # already installed from build cache. Do this in one Spack session to
   # avoid unnecessary overhead.
-  cat > "$TMP/location_cmds.py" <<\EOF
+  {
+    cat > "$TMP/location_cmds.py" <<\EOF
 import spack.cmd
 import spack.environment
 
 env = spack.environment.active_environment()
 EOF
+  } ||
+    _die "I/O error writing to $TMP/location_cmds.py"
   for hash in ${hashes_to_cache_tmp[*]:+"${hashes_to_cache_tmp[@]}"}; do
     echo 'print("'"$hash"'", spack.cmd.disambiguate_spec("'"${hash//*\///}"'", env, False).prefix)' >> "$TMP/location_cmds.py"
-  done
+  done ||
+    _die "I/O error writing to $TMP/location_cmds.py"
   local hashes_to_cache=(
     $(
       _cmd $DEBUG_1 $PIPE spack python "$TMP/location_cmds.py" |
@@ -1139,10 +1143,6 @@ SPACK_ROOT=$SPACK_ROOT
 $(spack env status)"
 fi
 
-# Temporary working area (and cleanup trap).
-TMP=`mktemp -d -t build-spack-env.sh.XXXXXX`
-trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null" EXIT
-
 ########################################################################
 # To split bundled single-option arguments in your function or script:
 #
@@ -1271,6 +1271,10 @@ if [ -z "$TMPDIR" ]; then
   mkdir -p "$TMPDIR"
 fi
 ####################################
+
+# Temporary working area (and cleanup trap).
+TMP="$(mktemp -d -t build-spack-env.sh.XXXXXX)"
+trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null" EXIT
 
 # Local cache locations are derived from $working_dir.
 local_caches=(
