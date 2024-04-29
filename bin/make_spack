@@ -234,8 +234,14 @@ parse_args() {
     verbose=false
 
     origargs="$*"
-    eval set : $(getopt --longoptions help,depth,with_padding,upgrade,spack_release:,minimal,no_buildcache,spack_repo:,query-packages --options mptuv -- : "$@")
-    shift
+    if x=$(getopt --longoptions help,depth,with_padding,upgrade,spack_release:,minimal,no_buildcache,spack_repo:,query-packages --options mptuv -- : "$@")
+    then
+        eval set : $x
+        shift
+    else
+        usage
+        exit 1
+    fi
     while echo x$1 | grep x- > /dev/null
     do
         case "x$1" in
