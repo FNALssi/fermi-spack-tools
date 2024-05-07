@@ -375,7 +375,7 @@ _classify_concretized_specs() {
   local regex='^([^[:space:]]+) ( *)([^[:space:]@+~%]*)'
   local n_speclines=${#all_concrete_specs[@]} specline_idx=0
   while (( specline_idx < n_speclines )); do
-    _report $DEBUG_3 "examining line $specline_idx/$n_speclines: ${all_concrete_specs[$specline_idx]}"
+    _report $DEBUG_4 "examining line $((specline_idx + 1))/$n_speclines: ${all_concrete_specs[$specline_idx]}"
     [[ "${all_concrete_specs[$((specline_idx++))]}" =~ $regex ]] || continue
     local hash="${BASH_REMATCH[3]}/${BASH_REMATCH[1]}"
     local level=$(( ${#BASH_REMATCH[2]} / 4 ))
@@ -396,7 +396,7 @@ _classify_concretized_specs() {
   # Record the number of hashes we need to deal with, and report info.
   idx=${#hashes[@]}
   local n_unique=$(IFS=$'\n'; echo "${hashes[*]}" | sort -u | wc -l)
-  _report $DEBUG_1 "examined $specline_idx speclines and found ${#root_hashes[@]} roots and $n_unique unique packages"
+  _report $DEBUG_1 "examined $specline_idx speclines and found ${#root_hashes[@]} root(s) and $n_unique unique package(s)"
 }
 
 # Report and execute this command.
@@ -591,7 +591,7 @@ _configure_spack() {
 _copy_back_logs() {
   local tar_tmp="$working_dir/copyBack/tmp"
   local spack_env= env_spec= install_prefix=
-  _report $INFO "end-of-job copy-back..."
+  _report $INFO "end-of-job copy-back"
   trap 'status=$?; _report $INFO "end-of-job copy-back PREEMPTED by signal $((status - 128))"; exit $status' INT
   mkdir -p "$tar_tmp/"{spack_env,spack-stage}
   cd "$spack_env_top_dir"
@@ -761,6 +761,7 @@ EOF
   } ||
     _die "I/O error writing to $TMP/location_cmds.py"
   for hash in ${hashes_to_cache_tmp[*]:+"${hashes_to_cache_tmp[@]}"}; do
+    _report $DEBUG_4 "scheduling location lookup of $hash"
     echo 'print("'"$hash"'", spack.cmd.disambiguate_spec("'"${hash//*\///}"'", env, False).prefix)' >> "$TMP/location_cmds.py"
   done ||
     _die "I/O error writing to $TMP/location_cmds.py"
@@ -768,10 +769,11 @@ EOF
     $(
       _cmd $DEBUG_1 $PIPE spack python "$TMP/location_cmds.py" |
         while read hash prefix; do
+          _report $DEBUG_4 "looking for binary_distribution marker for $hash in $prefix/.spack/"
           if [  -f "$prefix/.spack/binary_distribution" ]; then
 	          _report_stderr=1 _report $DEBUG_1 "skip package installed from buildcache: $hash"
 	        else
-	          _report_stderr=1 _report $DEBUG_3 "save package in buildcache: $hash"
+	          _report_stderr=1 _report $DEBUG_2 "save package in buildcache: $hash"
             echo "${hash//*\///}"
           fi
         done
@@ -794,11 +796,12 @@ EOF
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
            ${buildcache_rel_arg} "$cache" \
            "${hashes_to_cache[@]}"
-      _report $PROGRESS "updating build cache index"
+      _report $PROGRESS "updating build cache index at $cache"
       _cmd $DEBUG_1 $PROGRESS \
            spack \
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-           buildcache update-index -k "$cache"
+           buildcache update-index -k "$cache" ||
+        _report $ERROR "failure to update build cache index: manual intervention required for $cache"
     done
   fi
 }
@@ -1406,7 +1409,7 @@ trap "trap - EXIT; \
 [ -f \"\$mirrors_cfg~\" ] && mv -f \"\$mirrors_cfg\"{~,}; \
 _copy_back_logs; \
 if (( failed )) && (( want_emergency_buildcache )); then \
-  tag_text=ALERT _report $ERROR \"emergency buildcache dump...\"; \
+  tag_text=ALERT _report $ERROR \"emergency buildcache dump\"; \
   for spec in \$(spack find -L | sed -Ene 's&^([[:alnum:]]+).*\$&/\\1&p');do \
     if [  -f \"\$(spack location -i \$spec)/.spack/binary_distribution\" ]; then
       tag_text=ALERT _report $ERROR skipping package installed from buildcache \$spec;\
