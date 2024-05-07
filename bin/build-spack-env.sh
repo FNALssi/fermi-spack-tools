@@ -1379,12 +1379,16 @@ export PATH="$(echo "$PATH" | sed -Ee 's&(^|:)[^/][^:]*&&g')"
 . "$spack_env_top_dir/share/spack/setup-env.sh"
 export SPACK_DISABLE_LOCAL_CONFIG=true
 export SPACK_USER_CACHE_PATH="$spack_env_top_dir/tmp/spack-cache"
+export TMPDIR="\${TMPDIR:-$TMPDIR}"
 EOF
   cat >setup-env.csh <<EOF
 setenv PATH "`echo "$PATH" | sed -Ee 's&(^|:)[^/][^:]*&&g'`"
 source "$spack_env_top_dir/share/spack/setup-env.csh"
 setenv SPACK_DISABLE_LOCAL_CONFIG true
 setenv SPACK_USER_CACHE_PATH "$spack_env_top_dir/tmp/spack-cache"
+if (! $?TMPDIR) then
+  setenv TMPDIR "$TMPDIR"
+endif
 EOF
 fi
 ####################################
