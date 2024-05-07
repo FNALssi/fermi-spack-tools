@@ -367,8 +367,8 @@ _cache_info() {
   fi
 }
 
-# Split each spec into hash and indent (=dependency) level, identifying
-# root hashes (level==0).
+# Split each spec into name, hash and indent (=dependency) level,
+# identifying root hashes (level==0).
 _classify_concretized_specs() {
   local all_concrete_specs=()
   _identify_concrete_specs || return
@@ -377,25 +377,33 @@ _classify_concretized_specs() {
   while (( specline_idx < n_speclines )); do
     _report $DEBUG_4 "examining line $((specline_idx + 1))/$n_speclines: ${all_concrete_specs[$specline_idx]}"
     [[ "${all_concrete_specs[$((specline_idx++))]}" =~ $regex ]] || continue
-    local hash="${BASH_REMATCH[3]}/${BASH_REMATCH[1]}"
-    local level=$(( ${#BASH_REMATCH[2]} / 4 ))
+    local namespace_name="${BASH_REMATCH[3]}"
+    local hash="${BASH_REMATCH[1]}"
+    local level=${#BASH_REMATCH[2]}
     if (( level )); then
-      non_root_hashes+=("$hash")
+      non_root_hashes+=("$namespace_name/$hash")
     else
-      root_hashes+=("$hash")
+      root_hashes+=("$namespace_name/$hash")
     fi
-    hashes+=("$hash")
-    levels+=($level)
+    hashes+=("$namespace_name/$hash")
   done
-  # Sort root hashes for efficient checking.
-  local OIFS="$IFS"; IFS=$'\n'; root_hashes=($(echo "${root_hashes[*]}" | sort -u)); IFS="$OIFS"
-  _report $DEBUG_2 "root_hashes=\n             ${root_hashes[@]/%/$'\n'  }"
+  _report $DEBUG_4 "hashes:\n            ${hashes[@]/%/$'\n'           }"
+  _report $DEBUG_2 "root hashes:\n            ${root_hashes[@]/%/$'\n'           }"
+  # Remove namespace.name for future use
+  root_hashes=(${root_hashes[@]##*/})
+  non_root_hashes=(${non_root_hashes[@]##*/})
+  # Sort hashes for efficient checking.
+  local OIFS="$IFS"; IFS=$'\n'
+  # Unique hash-only.
+  root_hashes=($(echo "${root_hashes[*]}" | sort -u))
+  non_root_hashes=($(echo "${non_root_hashes[*]}" | sort -u))
+  IFS="$OIFS"
   # Make sure root hashes that are also dependencies of other roots are
   # all removed from non_root_hashes.
   _remove_hash non_root_hashes "${root_hashes[@]}"
   # Record the number of hashes we need to deal with, and report info.
-  idx=${#hashes[@]}
-  local n_unique=$(IFS=$'\n'; echo "${hashes[*]}" | sort -u | wc -l)
+  n_hashes=${#hashes[@]}
+  local n_unique=$(( ${#root_hashes[@]} + ${#non_root_hashes[@]} ))
   _report $DEBUG_1 "examined $specline_idx speclines and found ${#root_hashes[@]} root(s) and $n_unique unique package(s)"
 }
 
@@ -652,13 +660,8 @@ _do_build_and_test() {
   )
   local extra_cmd_opts=(${env_tests_arg:+"$env_tests_arg"})
   if ! (( is_nonterminal_compiler_env )) && [ "$tests_type" = "root" ]; then
-    extra_cmd_opts+=(--no-cache) # Ensure roots are built even if in cache.
-    local installed_deps=()
-    # Build non-root dependencies.
-    local deps_tranche_counter=0
-    while (( idx > 0 )); do
-      _piecemeal_build || return
-    done
+    # Build non-root dependencies first, followed by roots.
+    _piecemeal_build || return
   else
     # Build the whole environment.
     _report $PROGRESS "building environment $env_name"
@@ -676,17 +679,16 @@ _identify_concrete_specs() {
       -e $env_name \
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
       --color=never \
-      find  --no-groups --show-full-compiler -cfNdvpL \
+      find  --no-groups --show-full-compiler -cfNdvL \
       > "$TMP/$env_name-concrete.txt"
-    sed -Ene '/^==> (\[.*\] )?Concretized roots$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; p; }' \
-        "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt"
-    sed -Ene 's&^([^[:space:]]+)[[:space:]]*(\^?[a-z].*)$&\1 \2&; t WORKING; b; : WORKING; s&^([^[:space:]]+ )builtin\.(.*[^[:space:]])[[:space:]]+/usr$&\1external.\2&; s&[[:space:]]+/scratch.*$&&; s&^([^[:space:]]+) ([^.]+)\.([^@]+)@([^%]+).*$&"\1","\2","\3","\4"&; p' "$TMP/$env_name-concrete-filtered.txt" | sort -u -t, -k 3 > "$env_name.csv"
+      sed -Ene '/^==> (\[.*\] )?Concretized roots$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; p; }' \
+          "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt"
   } 2>/dev/null
+  local status=$?
   _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt") lines"
   while IFS='' read -r line; do
     all_concrete_specs+=("$line")
   done < "$TMP/$env_name-concrete-filtered.txt"
-  local status=$?
   _report $DEBUG_1 "found ${#all_concrete_specs[@]} concrete specs"
   return $status
 }
@@ -762,12 +764,15 @@ EOF
     _die "I/O error writing to $TMP/location_cmds.py"
   for hash in ${hashes_to_cache_tmp[*]:+"${hashes_to_cache_tmp[@]}"}; do
     _report $DEBUG_4 "scheduling location lookup of $hash"
-    echo 'print("'"$hash"'", spack.cmd.disambiguate_spec("'"${hash//*\///}"'", env, False).prefix)' >> "$TMP/location_cmds.py"
+    echo 'print("'"$hash"'", spack.cmd.disambiguate_spec("'"/${hash//*\///}"'", env, False).prefix)' >> "$TMP/location_cmds.py"
   done ||
     _die "I/O error writing to $TMP/location_cmds.py"
   local hashes_to_cache=(
     $(
-      _cmd $DEBUG_1 $PIPE spack python "$TMP/location_cmds.py" |
+      _cmd $DEBUG_1 $PIPE spack \
+           -e $env_name \
+           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+           python "$TMP/location_cmds.py" |
         while read hash prefix; do
           _report $DEBUG_4 "looking for binary_distribution marker for $hash in $prefix/.spack/"
           if [  -f "$prefix/.spack/binary_distribution" ]; then
@@ -795,7 +800,8 @@ EOF
            ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
            ${buildcache_rel_arg} "$cache" \
-           "${hashes_to_cache[@]}"
+           "${hashes_to_cache[@]/#//}" ||
+        _die "failure caching packages to $cache"
       _report $PROGRESS "updating build cache index at $cache"
       _cmd $DEBUG_1 $PROGRESS \
            spack \
@@ -876,64 +882,38 @@ _maybe_swap_mirror_config() {
 }
 
 _piecemeal_build() {
-  local buildable_dep_hashes=() build_root_hash=
-  local remaining_root_hashes="${root_hashes[@]}"
-  _report $DEBUG_2 "started piecemeal build analysis with $idx entries remaining"
-  while (( idx-- )); do
-    if _in_sorted_hashlist "${hashes[$idx]}" ${remaining_root_hashes[*]:+"${remaining_root_hashes[@]}"}; then
-      build_root_hash="${hashes[$idx]}"
-      _remove_hash remaining_root_hashes "${hashes[$idx]}"
-      break;
-    fi
-    # This is a dependency we should build if we haven't already.
-    buildable_dep_hashes+=("${levels[$idx]}/${hashes[$idx]}")
-  done
-  _report $DEBUG_1 "found ${#buildable_dep_hashes[@]} dependencies buildable at this time"
-  _report $DEBUG_2 "finished piecemeal build analysis with $idx entries remaining"
-  # Uniquify hashes.
-  local sorted_buildable_dep_hashes=()
-  local OIFS="$IFS"; IFS=$'\n'
-  while IFS='' read -r dep_hash; do
-    sorted_buildable_dep_hashes+=("$dep_hash")
-  done < <(echo "${buildable_dep_hashes[*]}" | sort -ut / -k 1nr -k 2,3)
-  IFS="$OIFS"
-  # Build identified dependencies.
-  local dep_idx=-1 ndeps=${#sorted_buildable_dep_hashes[@]}
-  _report $DEBUG_1 "sorted $ndeps buildable dependencies"
-  while (( dep_idx++ < ndeps )); do
-    local same_level_deps=()
-    local dep_level=${sorted_buildable_dep_hashes[$dep_idx]%%/*}
-    while (( dep_idx < ndeps )) && (( ${sorted_buildable_dep_hashes[$dep_idx]%%/*} == dep_level )); do
-      local dep=${sorted_buildable_dep_hashes[$((dep_idx++))]#*/}
-      _in_sorted_hashlist "$dep" ${installed_deps[*]:+"${installed_deps[@]}"} \
-        || same_level_deps+=("$dep")
-    done
-    (( ++deps_tranche_counter ))
-    _report $PROGRESS "building ${#same_level_deps[@]} dependencies of root packages in environment $env_name (tranche #$deps_tranche_counter)"
-    _report $DEBUG_2 "  ${same_level_deps[@]/%/$'\n'              }"
+  local extra_cmd_opts+=(--no-cache) # Ensure roots are built even if in cache.
+  {
+    cat > "$TMP/dep_hash_cmds.py" <<\EOF
+import spack.cmd as cmd
+import spack.traverse
+import spack.environment as ev
+
+env = ev.active_environment()
+concretized_root_specs = [env.specs_by_hash[h] for h in env.concretized_order]
+specs = list(spack.traverse.traverse_nodes(concretized_root_specs, root=False))
+filtered_hashes = [s.format("{namespace}.{name}{/hash}") for s in specs if not (s.installed or any(c in s for c in concretized_root_specs))]
+if filtered_hashes:
+    print(*filtered_hashes, sep="\n")
+EOF
+  } || _die "I/O error writing to $TMP/dep_hash_cmds.py"
+  local hashes_to_install=(
+    $(_cmd $DEBUG_1 $PIPE spack \
+           -e $env_name \
+           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+           python "$TMP/dep_hash_cmds.py")
+  )
+  (( $? == 0 )) ||
+    _die "unexpected result executing Python script $TMP/dep_hash_cmds.py:\n$(cat "$TMP/dep_hash_cmds.py")"
+  if (( ${#hashes_to_install[@]} )); then
+    _report $DEBUG_2 "building ${#hashes_to_install[@]} non-root dependencies in environment $env_name"
+    _report $DEBUG_4 "            ${hashes_to_install[@]/%/$'\n'           }"
     _cmd $DEBUG_1 $INFO \
          "${spack_install_cmd[@]}" \
-         ${same_level_deps[*]:+"${same_level_deps[@]//*\///}"} \
-      || return
-    # Add deps to list of installed deps.
-    installed_deps+=(${same_level_deps[*]:+"${same_level_deps[@]##*/}"})
-  done
-  # Build identified root or the whole environment if we've run out of
-  # intermediate roots to build.
-  _report $PROGRESS "building${build_root_hash:+ root package $build_root_hash in} environment $env_name"
-  local spack_build_root_cmd=(
-    "${spack_install_cmd[@]}" \
-      ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"} \
-      ${build_root_hash:+--no-add "/${build_root_hash##*/}"}
-  )
-  _cmd $DEBUG_1 $INFO "${spack_build_root_cmd[@]}" || return
-  installed_deps+=(${build_root_hash:+"$build_root_hash"})
-  if (( ndeps )) || [ -n "$build_root_hash" ]; then
-    OIFS="$IFS"; IFS=$'\n'
-    installed_deps=($(echo "${installed_deps[*]}" | sort -u))
-    IFS="$OIFS"
+         ${hashes_to_install[*]:+"${hashes_to_install[@]/*\///}"} || return
   fi
-  return 0
+  _report $PROGRESS "building${hashes_to_install[*]:+ remaining package(s) in} environment $env_name"
+  _cmd $DEBUG_1 $INFO "${spack_install_cmd[@]}" ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"}
 }
 
 _process_environment() {
@@ -989,7 +969,7 @@ _process_environment() {
   _report $PROGRESS "concretizing environment $env_name${concretize_safely:+ safely}"
   local env_tests_arg=
   (( is_nonterminal_compiler_env )) || env_tests_arg=${tests_arg:+"$tests_arg"}
-  local hashes=() non_root_hashes=() root_hashes=() levels=() idx=
+  local hashes=() non_root_hashes=() root_hashes=() n_hashes= idx=0
   _maybe_swap_mirror_config &&
     _cmd $DEBUG_1 $PROGRESS \
          spack \
@@ -1041,12 +1021,15 @@ _quote() {
 _remove_hash() {
   local hashes_var="$1"
   shift
-  local OIFS="$IFS"; IFS=$'\n'; IFS="$OIFS"; handled_hashes=($(echo "$*" | sort -u)); IFS="$OIFS"
+  local OIFS="$IFS"; IFS=$'\n'; IFS="$OIFS"
+  handled_hashes=($(echo "$*" | sort -u))
+  IFS="$OIFS"
   eval local "hashes=(\${$hashes_var[*]:+\"\${$hashes_var[@]}\"})"
   (( ${#hashes[@]} )) || return
   local filtered_hashes=()
   for hash in ${hashes[*]:+"${hashes[@]}"}; do
-    _in_sorted_hashlist "$hash" "${handled_hashes[@]}" || filtered_hashes+=("$hash")
+    _in_sorted_hashlist "$hash" "${handled_hashes[@]}" ||
+      filtered_hashes+=("$hash")
   done
   eval $hashes_var="(\${filtered_hashes[*]:+\"\${filtered_hashes[@]}\"})"
 }
