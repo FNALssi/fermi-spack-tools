@@ -802,12 +802,14 @@ EOF
            ${buildcache_rel_arg} "$cache" \
            "${hashes_to_cache[@]/#//}" ||
         _die "failure caching packages to $cache"
-      _report $PROGRESS "updating build cache index at $cache"
-      _cmd $DEBUG_1 $PROGRESS \
-           spack \
-           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-           buildcache update-index -k "$cache" ||
-        _report $ERROR "failure to update build cache index: manual intervention required for $cache"
+      if [ -d "$cache/build_cache/index.json" ]; then
+        _report $PROGRESS "updating build cache index at $cache"
+        _cmd $DEBUG_1 $PROGRESS \
+             spack \
+             ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+             buildcache update-index -k "$cache" ||
+          _report $ERROR "failure to update build cache index: manual intervention required for $cache"
+      fi
     done
   fi
 }
