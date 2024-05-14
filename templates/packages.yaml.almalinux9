@@ -322,6 +322,11 @@ packages:
     - spec: "mkfontscale @1.2.1 %gcc@11 os=almalinux9"
       prefix: /usr
     buildable: False
+  motif:
+    externals:
+    - spec: "motif @2.3.4 %gcc@11 os=almalinux9"
+      prefix: /usr
+    buildable: False
   nasm:
     externals:
     - spec: "nasm @2.15.03 %gcc@11 os=almalinux9"
