@@ -24,8 +24,15 @@ default_fermi_spack_tools_repo=https://github.com/FNALssi/fermi-spack-tools.git
 
 parse_args() {
     with_padding=""
-    eval set : $(getopt --longoptions with_padding,help,query-packages,fermi_spack_tools_release:,spack_release:,spack_repo:,fermi_spack_tools_repo: -- x "$@")
-    shift
+    if x=$(getopt --longoptions with_padding,help,query-packages,fermi_spack_tools_release:,spack_release:,spack_repo:,fermi_spack_tools_repo: -- x "$@")
+    then
+        eval set : $x
+        shift
+    else
+        usage
+        exit 1
+    fi
+
     spack_repo=$default_spack_repo
     fermi_spack_tools_repo=$default_fermi_spack_tools_repo
     ver=$default_fermi_spack_tools_version

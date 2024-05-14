@@ -1913,7 +1913,7 @@ use_spack = []
 # just pick off any leading "--" options
 #
 while sys.argv[1][:2] == "--":
-    print("parsing: %s" % repr(sys.argv))
+    #print("parsing: %s" % repr(sys.argv))
     if sys.argv[1][:6] == "--pdr=" :
         pdr = sys.argv[1][6:]
         #print("pdr=%s" % pdr)
@@ -1930,6 +1930,8 @@ while sys.argv[1][:2] == "--":
 
     else:
         print("Unknown flag %s" % sys.argv[1])
+        usage()
+        exit(1)
 
     sys.argv = sys.argv[:1] + sys.argv[2:]
 
@@ -1937,7 +1939,7 @@ uts = ups_to_spack(pdr=pdr)
 
 if not os.path.exists("/tmp/empty.tar"):
     d = os.path.dirname(os.path.dirname(__file__))
-    os.system("cp {0}/templates/emtpy.tar /tmp/empty.tar".format(d))
+    os.system("cp {0}/templates/empty.tar /tmp/empty.tar".format(d))
 
 # handle --use_spack args: prepopulate conversion cache
 for us in use_spack:
