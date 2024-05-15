@@ -1,5 +1,8 @@
 #!/bin/sh
 
+#stubbed out for now
+exit 0
+
 spackbindir=`echo $0 | sed -e 's;update_ups_to_spack;;' `
 case x$spackbindir in
 x/*) ;;

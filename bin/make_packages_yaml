@@ -18,7 +18,7 @@ usage() {
 
 src=$dir/templates/packagelist
 want_cvmfs=false
-if x=$(getopt --longoptions "help,with-externals,with-cvmfs,debug,packagelist:" : "$@")
+if x=$(getopt --options "" --longoptions "help,with-externals,with-cvmfs,debug,packagelist:"  -- "$@")
 then
     eval set : $x
     shift
@@ -27,7 +27,7 @@ else
     exit 1
 fi
 
-while :
+while : "$1"
 do
 case "x$1" in
 x--help|x)

@@ -124,6 +124,14 @@ add_recipe_repos() {
     git clone https://github.com/marcmengel/scd_recipes.git $SPACK_ROOT/var/spack/repos/scd_recipes
     spack repo add --scope=site $SPACK_ROOT/var/spack/repos/scd_recipes
 
+    for rv in $repovers
+    do
+         IFS=":$IFS" set $rv
+         r=$1; v=$2
+         echo "checking out version $v in repository $r"
+         (cd $SPACK_ROOT/var/spack/repos/$r && git checkout $v)
+    done
+
 #    spack repo create $SPACK_ROOT/var/spack/repos/ups_to_spack
 #    spack repo add --scope=site $SPACK_ROOT/var/spack/repos/ups_to_spack
 }
@@ -234,10 +242,11 @@ parse_args() {
     padding=false
     layout=unified
     query_packages=false
+    repovers=""
     verbose=false
 
     origargs="$*"
-    if x=$(getopt --longoptions help,depth,with_padding,upgrade,spack_release:,minimal,no_buildcache,spack_repo:,query-packages --options mptuv -- : "$@")
+    if x=$(getopt --longoptions help,depth,with_padding,upgrade,spack_release:,minimal,no_buildcache,repover,spack_repo:,query-packages --options mptuv -- "$@")
     then
         eval set : $x
         shift
@@ -256,6 +265,7 @@ parse_args() {
         x--query-packages)      query_packages=true; shift ;;
         x--help)                usage; exit;;
         x--no_buildcache)       use_buildcache=false; shift;;
+        x--repover)             repovers="$repovers $2"; shift; shift;;
         x-u)                    layout=unified; shift;;
         x-t)                    layout=traditional; shift;;
         x-p)                    layout=plain; shift;;

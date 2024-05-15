@@ -47,12 +47,50 @@ cat ${pkglist} |
   do
      echo "doing: $what $spec"
      case $what in
-     i) spack find "$spec" || python $SPACK_ROOT/bin/spack buildcache install -a -o -m "$spec" ;;
-     t) cd $SPACK_ROOT/../../.. && tar xzf $spec; spack reindex;;
-     u) spack uninstall "$spec";;
-     U) un_ups_to_spack;; 
+     i) 
+        # install a spec by name/hash
+        spack find "$spec" || python $SPACK_ROOT/bin/spack buildcache install -o -m "$spec" ;;
+     e) 
+        # install an environment by .../envname.spack.lock file or URL
+        ename=$(basename $spec | sed -e 's/.spack.lock$//')
+        case "x$spec" in 
+        xhttps:*)  
+            d=/tmp/d$$
+            mdkir $d
+            localf=$d/$(basename $spec)
+            wget -o $localf "$spec"
+            ;;
+        *)  localf="$spec"
+            ;;
+        esac
+        spack env create $ename $localf 
+        spack --env=$ename install
+        ;;
+     r) 
+        # remove a directory tree
+        case "x$spec" in
+        x|x/*) echo "skipping empty or absolute r entry" >&2 ;;
+        x*)    cd $SPACK_ROOT/../../.. && rm -rf "$spec";;
+        esac
+        ;;
+        
+     t) 
+        # unpack a tarfile
+        cd $SPACK_ROOT/../../.. && tar xzf $spec; spack reindex;;
+     u) 
+        # uninstall something
+        spack uninstall "$spec";;
+
+     U) 
+        # run un_ups_to_spack
+        un_ups_to_spack;; 
+     *) 
+        # who knows?
+        echo "unknown entry: $what $spec" >&2;;
      esac
+
      [ $? == 0 ] && echo "$what $spec" >> ${pkglist}.done || echo "$what $spec" >> ${pkglist}.failed
+
   done
 
-rm -f ${pkglist}
+rm -f ${pkglist} /tmp/d$$
