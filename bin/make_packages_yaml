@@ -6,12 +6,7 @@ x*/*) dir=`echo $0 | sed -e 's;\(.*\)/\([^/]*\);\1/..;'` ;;
 x*)   dir=.. ;;
 esac
 
-src=$dir/templates/packagelist
-want_cvmfs=false
-while :
-do
-case "x$1" in
-x--help|x)
+usage() {
     echo "Usage: make_packages_yaml [options] spack_root [os]"
     echo "  options:"
     echo "   --help               print this message"
@@ -19,6 +14,25 @@ x--help|x)
     echo "   --with-cvmfs=/a/b/c  include other cvmfs externals"
     echo "   --debug              turn on debugging messages"
     echo "   --packagelist=/a/b/c use custom package list"
+}
+
+src=$dir/templates/packagelist
+want_cvmfs=false
+if x=$(getopt --longoptions --long-options help,with-externals,with-cvmfs,debug,packagelist:  -- "$@")
+then
+    eval set : $x
+    shift
+    shift
+else
+    usage
+    exit 1
+fi
+
+while : "$1"
+do
+case "x$1" in
+x--help|x)
+    usage
     exit 0
     ;;
 x--with-externals)  
@@ -58,7 +72,7 @@ fi
 dst=$1/etc/spack/${sd}${os}/packages.yaml
 
 # packages to make not buildable
-force_system='^(bdftopcf|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|libc|libfontenc|libice|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libxkbcommon|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|mesa-glu|mkfontdir|mkfontscale|openssl|pkg-config|pkgconf|tar|tcl|tk|xcb-util-(image|keysyms|renderutil|wm)|xextproto|xorg-server|xproto|xproxymanagementprotocol|xrandr|xtrans|zlib)$'
+force_system='^(bdftopcf|damageproto|diffutils|expat|findutils|font-util|gdbm|gettext|libc|libfontenc|libice|libx11|libxau|libxcb|libxdamage|libxdmcp|libxext|libxfixes|libxfont|libxkbcommon|libxmu|libxpm|libxrandr|libxrender|libxshmfence|libxt|libxv|libxvmc|libxxf86vm|mesa-glu|mkfontdir|mkfontscale|motif|openssl|pkg-config|pkgconf|tar|tcl|tk|xcb-util-(image|keysyms|renderutil|wm)|xextproto|xorg-server|xproto|xproxymanagementprotocol|xrandr|xtrans|zlib)$'
 
 # packages to force target (instead of merely preferred)
 force_x86_64='^(hwloc|libpciaccess|libsigsegv)$'

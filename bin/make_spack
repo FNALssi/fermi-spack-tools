@@ -71,12 +71,20 @@ bootstrap_patchelf() {
 }
 
 find_compilers() {
-   source $SPACK_ROOT/share/spack/setup-env.sh
-   spack compiler find --scope=site
+    source $SPACK_ROOT/share/spack/setup-env.sh
+    spack compiler find --scope=site
+
+    if [ "$(spack arch --o)" = "almalinux9" ]
+    then
+	# deal with almalinux 11.3.1/11.4.1 compiler confusion
+	# put add 11.3.1 in as also living in /usr/bin...
+	cf=$SPACK_ROOT/etc/spack/compilers.yaml
+        sed -e '1d' -e 's/11.4.1/11.3.1/' < $cf >> $cf
+    fi
 }
 
 bootstrap_spack() {
-    bootstrap_patchelf
+    # bootstrap_patchelf
     find_compilers
     if echo $spack_release | grep rollout > /dev/null
     then
@@ -95,14 +103,17 @@ bootstrap_spack() {
     then
         make_packages_yaml $SPACK_ROOT
     else
-        if [ "$(spack --version)" '>' "0.20.0" ]
+        spack_version="$(spack --version)"
+        if [ "$spack_version" '>' "0.20.0" ]
         then
             sd="$(spack arch --platform)/"
         else
             sd=""
         fi
         echo "Installing stock packages.yaml in $SPACK_ROOT/etc/spack/${sd}${os}"
-        cp $spackbindir/../templates/packages.yaml.${os} $SPACK_ROOT/etc/spack/${sd}${os}/packages.yaml
+        mkdir -p "$SPACK_ROOT/etc/spack/${sd}${os}" &&
+          cp -v "$spackbindir/../templates/packages.yaml.${os}" \
+             "$SPACK_ROOT/etc/spack/${sd}${os}/packages.yaml"
     fi
 }
 
@@ -135,7 +146,7 @@ create_spack() {
         *github.com*) args="--depth 4" ;;
         *) args="";;
         esac
-        git clone $args  -b $spack_release $spack_repo $b
+        git clone $args --depth 2 -b $spack_release $spack_repo $b
 
         if cd $b
         then 
@@ -154,17 +165,17 @@ create_spack() {
                ;;
             esac
             export plat="target=`uname -i` os=`spack arch --operating-system`"
-            if $minimal
-            then
-              :
-            else
-              spack mirror add --scope site fnal $binary_cache
-              spack buildcache update-index -k fnal
-              spack mirror add --scope site scisoft $binary_cache_bak
-              spack buildcache update-index -k scisoft
-              spack -k buildcache keys --install --trust --force
-            fi
+            spack mirror add --scope site fnal $binary_cache
+            spack mirror add --scope site scisoft $binary_cache_bak
+	    spack gpg list
+	    # sometimes the buildcache keys doesn't work, so try
+	    # a second timde if it fails?
+            spack buildcache keys --install --trust --force ||
+                spack buildcache keys --install --trust --force 
+	    spack gpg list
+
 	    add_recipe_repos
+
             if $upgrading
             then
                 spack reindex
@@ -210,6 +221,7 @@ usage(){
         echo "  -t fermi 'traditional' layout"
         echo "  -p plain spack default layout"
         echo "  -m minimal setup"
+        echo "  -v verbose flag"
         echo ""
         echo "  make a spack instance with given layout"
         echo "  --query-packages turns on running make_packages_yaml (slow)"
@@ -231,9 +243,18 @@ parse_args() {
     layout=unified
     query_packages=false
     repovers=""
+    verbose=false
 
-    eval set : $(getopt --longoptions help,depth,with_padding,upgrade,spack_release:,minimal,no_buildcache,spack_repo:,repover:,query-packages --options mptu -- : "$@")
-    shift
+    origargs="$*"
+    if x=$(getopt --longoptions help,depth,with_padding,upgrade,spack_release:,minimal,no_buildcache,spack_repo:,query-packages --options mptuv -- : "$@")
+    then
+        eval set : $x
+        shift
+        shift
+    else
+        usage
+        exit 1
+    fi
     while echo x$1 | grep x- > /dev/null
     do
         case "x$1" in
@@ -250,6 +271,7 @@ parse_args() {
         x-t)                    layout=traditional; shift;;
         x-p)                    layout=plain; shift;;
         x-m)                    minimal=true; shift;;
+        x-v)                    verbose=true; shift;;
         x--)                    shift; break;;
         esac
     done
@@ -259,6 +281,11 @@ parse_args() {
     then
         usage
         exit 1
+    fi
+    if $verbose
+    then
+        echo "$(date --iso-8601=seconds) Starting make_spack $origargs"
+	set -x
     fi
 }
 
@@ -321,7 +348,7 @@ main() {
     export PATH=$SPACK_ROOT/bin:$PATH
     create_spack
 
-    if [ -n "$dir" ]; then
+    if [ -n "$dir" ] && [ -d "$dir/spack" ]; then
       rm -f $dir/spack/current
       ln -s $dir/spack/$spack_release $dir/spack/current
     fi

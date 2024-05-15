@@ -457,11 +457,7 @@ class package:
             tf_2 = re.sub(".*-2.6", "scientificfermi5", tf_2)
             tf_2 = re.sub("^[0-9].*", "scientificfermi5", tf_2)
 
-        # excessive intel-centrism...
-        if f_os.find("64bit") > 0:
-            tf_3 = "x86_64_v2"
-        else:
-            tf_3 = "x86"
+        tf_3 = "x86_64_v2"
 
         logging.debug("spack_arch(%s) -> %s-%s-%s" % (self.flav, tf_1, tf_2, tf_3))
         return "%s-%s-%s" % (tf_1, tf_2, tf_3)
@@ -930,7 +926,7 @@ endif()
         # check that we have a ups_to_spack repository...
         if not os.access(uts_repo_yaml, os.R_OK):
             os.system("spack repo create %s ups_to_spack" % uts_repo)
-            os.system("spack repo add --scope=default %s" % uts_repo )
+            os.system("spack repo add --scope=site %s" % uts_repo )
 
         self.get_namespace(pkg)
         # pick out path parts before/after version...
@@ -1917,7 +1913,7 @@ use_spack = []
 # just pick off any leading "--" options
 #
 while sys.argv[1][:2] == "--":
-    print("parsing: %s" % repr(sys.argv))
+    #print("parsing: %s" % repr(sys.argv))
     if sys.argv[1][:6] == "--pdr=" :
         pdr = sys.argv[1][6:]
         #print("pdr=%s" % pdr)
@@ -1934,14 +1930,16 @@ while sys.argv[1][:2] == "--":
 
     else:
         print("Unknown flag %s" % sys.argv[1])
+        usage()
+        exit(1)
 
     sys.argv = sys.argv[:1] + sys.argv[2:]
 
 uts = ups_to_spack(pdr=pdr)
 
 if not os.path.exists("/tmp/empty.tar"):
-    d = os.path.dirname(os.path.dirname(__FILE__))
-    os.system("cp {0}/templates/emtpy.tar /tmp/empty.tar .".format(d))
+    d = os.path.dirname(os.path.dirname(__file__))
+    os.system("cp {0}/templates/empty.tar /tmp/empty.tar".format(d))
 
 # handle --use_spack args: prepopulate conversion cache
 for us in use_spack:
