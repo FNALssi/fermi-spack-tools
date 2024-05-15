@@ -52,7 +52,14 @@ parse_args() {
         x--) shift; break;;
         esac
     done
+     
     dest=${1:-$PWD}
+
+    # ensure absolute path to dest
+    case x$dest in
+    x/*) ;;
+    x*)  dest=$PWD/$dest;;
+    esac
 }
 
 detail_log() {
@@ -122,7 +129,7 @@ main() {
     PATH=$dest/fermi-spack-tools/$ver/NULL/bin:$PATH
 
     message "Setting up with make_spack"
-    make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
+    make_spack -v $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
 
     message "Finding compilers"
     source $dest/setup-env.sh
