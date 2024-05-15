@@ -250,7 +250,6 @@ parse_args() {
     then
         eval set : $x
         shift
-        shift
     else
         usage
         exit 1
