@@ -32,8 +32,14 @@ parse_args() {
     verbose=false
     plain=false
 
-    eval set : $(getopt --longoptions with_padding,spack_release:,spack_repo,local_env:,dev_pkgs: --options vtup -- "$@")
-    shift
+    if x=$(getopt --longoptions with_padding,spack_release:,spack_repo,local_env:,dev_pkgs: --options vtup -- "$@")
+    then
+        eval set : $x
+        shift
+    else
+        usage
+        exit 1
+    fi
 
     while echo x$1 | grep x- > /dev/null
     do
@@ -188,10 +194,7 @@ test -d $SPACK_ROOTd || mkdir -p $SPACK_ROOTd
 message git clone-ing spack
 
 cd $SPACK_ROOTd
-case "$spack_root" in
-*github.com*) args="--depth 4" ;;
-*) args="";;
-esac
+args="--depth 2"
 
 # default to just doing a fs-based clone, which saves lots of space and time
 if [ $spack_repo = default ]

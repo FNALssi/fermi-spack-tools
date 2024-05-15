@@ -367,36 +367,44 @@ _cache_info() {
   fi
 }
 
-# Split each spec into hash and indent (=dependency) level, identifying
-# root hashes (level==0).
+# Split each spec into name, hash and indent (=dependency) level,
+# identifying root hashes (level==0).
 _classify_concretized_specs() {
   local all_concrete_specs=()
   _identify_concrete_specs || return
   local regex='^([^[:space:]]+) ( *)([^[:space:]@+~%]*)'
   local n_speclines=${#all_concrete_specs[@]} specline_idx=0
   while (( specline_idx < n_speclines )); do
-    _report $DEBUG_3 "examining line $specline_idx/$n_speclines: ${all_concrete_specs[$specline_idx]}"
+    _report $DEBUG_4 "examining line $((specline_idx + 1))/$n_speclines: ${all_concrete_specs[$specline_idx]}"
     [[ "${all_concrete_specs[$((specline_idx++))]}" =~ $regex ]] || continue
-    local hash="${BASH_REMATCH[3]}/${BASH_REMATCH[1]}"
-    local level=$(( ${#BASH_REMATCH[2]} / 4 ))
+    local namespace_name="${BASH_REMATCH[3]}"
+    local hash="${BASH_REMATCH[1]}"
+    local level=${#BASH_REMATCH[2]}
     if (( level )); then
-      non_root_hashes+=("$hash")
+      non_root_hashes+=("$namespace_name/$hash")
     else
-      root_hashes+=("$hash")
+      root_hashes+=("$namespace_name/$hash")
     fi
-    hashes+=("$hash")
-    levels+=($level)
+    hashes+=("$namespace_name/$hash")
   done
-  # Sort root hashes for efficient checking.
-  local OIFS="$IFS"; IFS=$'\n'; root_hashes=($(echo "${root_hashes[*]}" | sort -u)); IFS="$OIFS"
-  _report $DEBUG_2 "root_hashes=\n             ${root_hashes[@]/%/$'\n'  }"
+  _report $DEBUG_4 "hashes:\n            ${hashes[@]/%/$'\n'           }"
+  _report $DEBUG_2 "root hashes:\n            ${root_hashes[@]/%/$'\n'           }"
+  # Remove namespace.name for future use
+  root_hashes=(${root_hashes[@]##*/})
+  non_root_hashes=(${non_root_hashes[@]##*/})
+  # Sort hashes for efficient checking.
+  local OIFS="$IFS"; IFS=$'\n'
+  # Unique hash-only.
+  root_hashes=($(echo "${root_hashes[*]}" | sort -u))
+  non_root_hashes=($(echo "${non_root_hashes[*]}" | sort -u))
+  IFS="$OIFS"
   # Make sure root hashes that are also dependencies of other roots are
   # all removed from non_root_hashes.
   _remove_hash non_root_hashes "${root_hashes[@]}"
   # Record the number of hashes we need to deal with, and report info.
-  idx=${#hashes[@]}
-  local n_unique=$(IFS=$'\n'; echo "${hashes[*]}" | sort -u | wc -l)
-  _report $DEBUG_1 "examined $specline_idx speclines and found ${#root_hashes[@]} roots and $n_unique unique packages"
+  n_hashes=${#hashes[@]}
+  local n_unique=$(( ${#root_hashes[@]} + ${#non_root_hashes[@]} ))
+  _report $DEBUG_1 "examined $specline_idx speclines and found ${#root_hashes[@]} root(s) and $n_unique unique package(s)"
 }
 
 # Report and execute this command.
@@ -439,8 +447,28 @@ _configure_recipe_repos() {
         done
         path="$path-$((bnum + 1))"
       fi
-      _cmd $DEBUG_1 git clone ${branch_etc:+-b "$branch_etc"} "$url" "$path" ||
-        _die "unable to clone $url to $path to configure Spack recipe repo"
+      if [ -d "$path" ]; then
+        if [ "$(_cmd $DEBUG_2 $PIPE git -C "$path" remote)" = "origin" ] &&
+             [ "$(_cmd $DEBUG_2 $PIPE git -C "$path" remote get-url origin)" = "$url" ]; then
+          if [ "$(_cmd $DEBUG_2 $PIPE git -C "$path" branch --show-current)" = "$branch_etc" ]; then
+            :
+          elif (( $(_cmd $DEBUG_2 $PIPE git -C "$path" status -s | wc -l) == 0 )) &&
+                 [ -n "$branch_etc" ]; then
+            _report $INFO "Switching to branch $branch_etc in $path"
+            _cmd $DEBUG_1 git -C "$path" switch "$branch_etc"
+          fi
+        else
+          false
+        fi
+      elif ! [ -e "$path" ]; then
+        _cmd $DEBUG_1 git clone ${branch_etc:+-b "$branch_etc"} "$url" "$path" ||
+          _die "unable to clone $url to $path to configure Spack recipe repo"
+      else
+        false
+      fi
+      if (( $? )); then
+        _die "unable to reconcile requested repo $repo_element with existing path $path"
+      fi
     else
       path="$repo_element"
     fi
@@ -463,6 +491,20 @@ _configure_spack() {
     _report $PROGRESS "clearing default mirrors list"
     _cmd $PROGRESS cp "$default_mirrors" "$mirrors_cfg"
   fi
+
+  ####################################
+  # Check whether spack mirror add supports --type
+  mirror_add_help="$(spack mirror add --help | grep -Ee '^[[:space:]]*--type[[:space:]]+')"
+  [ -n "$mirror_add_help" ] && have_mirror_add_type=1
+  ####################################
+
+  ####################################
+  # Check whether spack buildcache create still needs -r
+  local buildcache_create_help="$(spack buildcache create --help | grep -Ee '^[[:space:]]-r\b')"
+  [ -z "$buildcache_create_help" ] ||
+    [[ "$buildcache_create_help" == *"(deprecated)"* ]] ||
+    buildcache_rel_arg="-r"
+  ####################################
 
   ####################################
   # Configure Spack according to user specifications.
@@ -495,7 +537,7 @@ _configure_spack() {
   done
   # 3. Caches
   _report $PROGRESS "configuring user-specified cache locations"
-  local cache_spec cache_url cache_name
+  local cache_spec cache_url cache_name cache_type
   for cache_spec in \
     ${cache_specs[*]:+"${cache_specs[@]}"} \
     ${concretizing_cache_specs[*]:+"${concretizing_cache_specs[@]}"}
@@ -503,8 +545,9 @@ _configure_spack() {
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site ${cache_type:+--type "${cache_type}"} "$cache_name" "$cache_url" \
-      || _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site ${cache_type:+--type \"${cache_type}\"} \"$cache_name\" \"$cache_url\""
+         mirror add --scope=site ${cache_type:+--type "${cache_type}"} \
+         "$cache_name" "$cache_url"  ||
+      _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site ${cache_type:+--type \"${cache_type}\"} \"$cache_name\" \"$cache_url\""
   done
   # 4. Spack recipe repos.
   _report $PROGRESS "configuring user-specified recipe repositories"
@@ -512,10 +555,11 @@ _configure_spack() {
 
   _report $PROGRESS "configuring local caches"
   # Add mirror as buildcache for locally-built packages.
-  local cache_spec cache_name cache_url
   for cache_spec in ${local_caches[*]:+"${local_caches[@]}"}; do
     _cache_info "$cache_spec"
-    _cmd $DEBUG_1 spack mirror add --scope=site $cache_name "$cache_url"
+    _cmd $DEBUG_1 spack \
+         mirror add --scope=site ${cache_type:+--type "${cache_type}"} \
+         "$cache_name" "$cache_url"
   done
 
   # Make a cut-down mirror configuration for safe concretization.
@@ -523,20 +567,6 @@ _configure_spack() {
     _report $PROGRESS "preparing cache configuration for safe concretization"
     _make_concretize_mirrors_yaml "$concretize_mirrors"
   fi
-
-  ####################################
-  # Check whether spack buildcache create still needs -r
-  local buildcache_create_help="$(spack buildcache create --help | grep -Ee '^[[:space:]]-r\b')"
-  [ -z "$buildcache_create_help" ] ||
-    [[ "$buildcache_create_help" == *"(deprecated)"* ]] ||
-    buildcache_rel_arg="-r"
-  ####################################
-
-  ####################################
-  # Check whether spack mirror add supports --type
-  mirror_add_help="$(spack mirror add --help | grep -Ee '^[[:space:]]--type[[:space:]]+')"
-  [ -n "$mirror_add_help" ] && have_mirror_add_type=1
-  ####################################
 
   ####################################
   # Make sure we know about compilers.
@@ -569,7 +599,7 @@ _configure_spack() {
 _copy_back_logs() {
   local tar_tmp="$working_dir/copyBack/tmp"
   local spack_env= env_spec= install_prefix=
-  _report $INFO "end-of-job copy-back..."
+  _report $INFO "end-of-job copy-back"
   trap 'status=$?; _report $INFO "end-of-job copy-back PREEMPTED by signal $((status - 128))"; exit $status' INT
   mkdir -p "$tar_tmp/"{spack_env,spack-stage}
   cd "$spack_env_top_dir"
@@ -630,13 +660,8 @@ _do_build_and_test() {
   )
   local extra_cmd_opts=(${env_tests_arg:+"$env_tests_arg"})
   if ! (( is_nonterminal_compiler_env )) && [ "$tests_type" = "root" ]; then
-    extra_cmd_opts+=(--no-cache) # Ensure roots are built even if in cache.
-    local installed_deps=()
-    # Build non-root dependencies.
-    local deps_tranche_counter=0
-    while (( idx > 0 )); do
-      _piecemeal_build || return
-    done
+    # Build non-root dependencies first, followed by roots.
+    _piecemeal_build || return
   else
     # Build the whole environment.
     _report $PROGRESS "building environment $env_name"
@@ -654,17 +679,16 @@ _identify_concrete_specs() {
       -e $env_name \
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
       --color=never \
-      find  --no-groups --show-full-compiler -cfNdvpL \
+      find  --no-groups --show-full-compiler -cfNdvL \
       > "$TMP/$env_name-concrete.txt"
-    sed -Ene '/^==> (\[.*\] )?Concretized roots$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; p; }' \
-        "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt"
-    sed -Ene 's&^([^[:space:]]+)[[:space:]]*(\^?[a-z].*)$&\1 \2&; t WORKING; b; : WORKING; s&^([^[:space:]]+ )builtin\.(.*[^[:space:]])[[:space:]]+/usr$&\1external.\2&; s&[[:space:]]+/scratch.*$&&; s&^([^[:space:]]+) ([^.]+)\.([^@]+)@([^%]+).*$&"\1","\2","\3","\4"&; p' "$TMP/$env_name-concrete-filtered.txt" | sort -u -t, -k 3 > "$env_name.csv"
+      sed -Ene '/^==> (\[.*\] )?Concretized roots$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; p; }' \
+          "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt"
   } 2>/dev/null
+  local status=$?
   _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt") lines"
   while IFS='' read -r line; do
     all_concrete_specs+=("$line")
   done < "$TMP/$env_name-concrete-filtered.txt"
-  local status=$?
   _report $DEBUG_1 "found ${#all_concrete_specs[@]} concrete specs"
   return $status
 }
@@ -713,44 +737,79 @@ _make_concretize_mirrors_yaml() {
 
 _maybe_cache_binaries() {
   [ "${cache_write_binaries:-none}" == "none" ] && return
-  local binary_mirror= hashes_to_cache=() msg_extra=
+  local binary_mirror msg_extra= cache
   if (( is_compiler_env )); then
     binary_mirror=compiler
   else
     binary_mirror=binary
   fi
+  local hashes_to_cache_tmp=(${non_root_hashes[*]:+"${non_root_hashes[@]}"})
   if [ "$cache_write_binaries" = "no_roots" ] && ! (( is_compiler_env )); then
-    hashes_to_cache=(${non_root_hashes[*]:+"${non_root_hashes[@]//*\///}"})
     msg_extra=" $cache_write_binaries"
   else
-    hashes_to_cache=(${hashes[*]:+"${hashes[@]//*\///}"})
+    hashes_to_cache_tmp+=("${root_hashes[@]}")
   fi
+  # We need to ask Spack for the location prefix of possibly many
+  # packages in order to avoid writing packages to build cache that were
+  # already installed from build cache. Do this in one Spack session to
+  # avoid unnecessary overhead.
+  {
+    cat > "$TMP/location_cmds.py" <<\EOF
+import spack.cmd
+import spack.environment
+
+env = spack.environment.active_environment()
+EOF
+  } ||
+    _die "I/O error writing to $TMP/location_cmds.py"
+  for hash in ${hashes_to_cache_tmp[*]:+"${hashes_to_cache_tmp[@]}"}; do
+    _report $DEBUG_4 "scheduling location lookup of $hash"
+    echo 'print("'"$hash"'", spack.cmd.disambiguate_spec("'"/${hash//*\///}"'", env, False).prefix)' >> "$TMP/location_cmds.py"
+  done ||
+    _die "I/O error writing to $TMP/location_cmds.py"
+  local hashes_to_cache=(
+    $(
+      _cmd $DEBUG_1 $PIPE spack \
+           -e $env_name \
+           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+           python "$TMP/location_cmds.py" |
+        while read hash prefix; do
+          _report $DEBUG_4 "looking for binary_distribution marker for $hash in $prefix/.spack/"
+          if [  -f "$prefix/.spack/binary_distribution" ]; then
+	          _report_stderr=1 _report $DEBUG_1 "skip package installed from buildcache: $hash"
+	        else
+	          _report_stderr=1 _report $DEBUG_2 "save package in buildcache: $hash"
+            echo "${hash//*\///}"
+          fi
+        done
+    )
+  )
+  (( $? == 0 )) ||
+    _die "unexpected result executing Python script $TMP/location_cmds.py:\n$(cat "$TMP/location_cmds.py")"
+
   if (( ${#hashes_to_cache[@]} )); then
-    local cache=
     for cache in "$working_dir/copyBack/spack-$binary_mirror-cache" \
                    ${extra_sources_write_cache[*]:+"${extra_sources_write_cache[@]}"}; do
-      _report $PROGRESS "caching$msg_extra binary packages for environment $env_name to $cache"
-      for hash in "${hashes_to_cache[@]}"; do
-        if [  -f "$(spack location -i $hash)/.spack/binary_distribution" ]; then
-	        _report $DEBUG_1 "Skipping package installed from buildcache $hash"
-	      else
-          _cmd $DEBUG_1 $PROGRESS \
-               spack \
-               ${__debug_spack_buildcache:+-d} \
-               ${__verbose_spack_buildcache:+-v} \
-               ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-               buildcache create --only package \
-               ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
-               ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
-               ${buildcache_rel_arg} "$cache" \
-               $hash
-	      fi
-      done
-      _report $PROGRESS "updating build cache index"
+      _report $PROGRESS "caching ${#hashes_to_cache[@]}$msg_extra binary packages for environment $env_name to $cache"
       _cmd $DEBUG_1 $PROGRESS \
            spack \
+           ${__debug_spack_buildcache:+-d} \
+           ${__verbose_spack_buildcache:+-v} \
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-           buildcache update-index -k "$cache"
+           buildcache create --only package \
+           ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
+           ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
+           ${buildcache_rel_arg} "$cache" \
+           "${hashes_to_cache[@]/#//}" ||
+        _die "failure caching packages to $cache"
+      if [ -d "$cache/build_cache/index.json" ]; then
+        _report $PROGRESS "updating build cache index at $cache"
+        _cmd $DEBUG_1 $PROGRESS \
+             spack \
+             ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+             buildcache update-index -k "$cache" ||
+          _report $ERROR "failure to update build cache index: manual intervention required for $cache"
+      fi
     done
   fi
 }
@@ -825,64 +884,38 @@ _maybe_swap_mirror_config() {
 }
 
 _piecemeal_build() {
-  local buildable_dep_hashes=() build_root_hash=
-  local remaining_root_hashes="${root_hashes[@]}"
-  _report $DEBUG_2 "started piecemeal build analysis with $idx entries remaining"
-  while (( idx-- )); do
-    if _in_sorted_hashlist "${hashes[$idx]}" ${remaining_root_hashes[*]:+"${remaining_root_hashes[@]}"}; then
-      build_root_hash="${hashes[$idx]}"
-      _remove_hash remaining_root_hashes "${hashes[$idx]}"
-      break;
-    fi
-    # This is a dependency we should build if we haven't already.
-    buildable_dep_hashes+=("${levels[$idx]}/${hashes[$idx]}")
-  done
-  _report $DEBUG_1 "found ${#buildable_dep_hashes[@]} dependencies buildable at this time"
-  _report $DEBUG_2 "finished piecemeal build analysis with $idx entries remaining"
-  # Uniquify hashes.
-  local sorted_buildable_dep_hashes=()
-  local OIFS="$IFS"; IFS=$'\n'
-  while IFS='' read -r dep_hash; do
-    sorted_buildable_dep_hashes+=("$dep_hash")
-  done < <(echo "${buildable_dep_hashes[*]}" | sort -ut / -k 1nr -k 2,3)
-  IFS="$OIFS"
-  # Build identified dependencies.
-  local dep_idx=-1 ndeps=${#sorted_buildable_dep_hashes[@]}
-  _report $DEBUG_1 "sorted $ndeps buildable dependencies"
-  while (( dep_idx++ < ndeps )); do
-    local same_level_deps=()
-    local dep_level=${sorted_buildable_dep_hashes[$dep_idx]%%/*}
-    while (( dep_idx < ndeps )) && (( ${sorted_buildable_dep_hashes[$dep_idx]%%/*} == dep_level )); do
-      local dep=${sorted_buildable_dep_hashes[$((dep_idx++))]#*/}
-      _in_sorted_hashlist "$dep" ${installed_deps[*]:+"${installed_deps[@]}"} \
-        || same_level_deps+=("$dep")
-    done
-    (( ++deps_tranche_counter ))
-    _report $PROGRESS "building ${#same_level_deps[@]} dependencies of root packages in environment $env_name (tranche #$deps_tranche_counter)"
-    _report $DEBUG_2 "  ${same_level_deps[@]/%/$'\n'              }"
+  local extra_cmd_opts+=(--no-cache) # Ensure roots are built even if in cache.
+  {
+    cat > "$TMP/dep_hash_cmds.py" <<\EOF
+import spack.cmd as cmd
+import spack.traverse
+import spack.environment as ev
+
+env = ev.active_environment()
+concretized_root_specs = [env.specs_by_hash[h] for h in env.concretized_order]
+specs = list(spack.traverse.traverse_nodes(concretized_root_specs, root=False))
+filtered_hashes = [s.format("{namespace}.{name}{/hash}") for s in specs if not (s.installed or any(c in s for c in concretized_root_specs))]
+if filtered_hashes:
+    print(*filtered_hashes, sep="\n")
+EOF
+  } || _die "I/O error writing to $TMP/dep_hash_cmds.py"
+  local hashes_to_install=(
+    $(_cmd $DEBUG_1 $PIPE spack \
+           -e $env_name \
+           ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+           python "$TMP/dep_hash_cmds.py")
+  )
+  (( $? == 0 )) ||
+    _die "unexpected result executing Python script $TMP/dep_hash_cmds.py:\n$(cat "$TMP/dep_hash_cmds.py")"
+  if (( ${#hashes_to_install[@]} )); then
+    _report $DEBUG_2 "building ${#hashes_to_install[@]} non-root dependencies in environment $env_name"
+    _report $DEBUG_4 "            ${hashes_to_install[@]/%/$'\n'           }"
     _cmd $DEBUG_1 $INFO \
          "${spack_install_cmd[@]}" \
-         ${same_level_deps[*]:+"${same_level_deps[@]//*\///}"} \
-      || return
-    # Add deps to list of installed deps.
-    installed_deps+=(${same_level_deps[*]:+"${same_level_deps[@]##*/}"})
-  done
-  # Build identified root or the whole environment if we've run out of
-  # intermediate roots to build.
-  _report $PROGRESS "building${build_root_hash:+ root package $build_root_hash in} environment $env_name"
-  local spack_build_root_cmd=(
-    "${spack_install_cmd[@]}" \
-      ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"} \
-      ${build_root_hash:+--no-add "/${build_root_hash##*/}"}
-  )
-  _cmd $DEBUG_1 $INFO "${spack_build_root_cmd[@]}" || return
-  installed_deps+=(${build_root_hash:+"$build_root_hash"})
-  if (( ndeps )) || [ -n "$build_root_hash" ]; then
-    OIFS="$IFS"; IFS=$'\n'
-    installed_deps=($(echo "${installed_deps[*]}" | sort -u))
-    IFS="$OIFS"
+         ${hashes_to_install[*]:+"${hashes_to_install[@]/*\///}"} || return
   fi
-  return 0
+  _report $PROGRESS "building${hashes_to_install[*]:+ remaining package(s) in} environment $env_name"
+  _cmd $DEBUG_1 $INFO "${spack_install_cmd[@]}" ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"}
 }
 
 _process_environment() {
@@ -938,7 +971,7 @@ _process_environment() {
   _report $PROGRESS "concretizing environment $env_name${concretize_safely:+ safely}"
   local env_tests_arg=
   (( is_nonterminal_compiler_env )) || env_tests_arg=${tests_arg:+"$tests_arg"}
-  local hashes=() non_root_hashes=() root_hashes=() levels=() idx=
+  local hashes=() non_root_hashes=() root_hashes=() n_hashes= idx=0
   _maybe_swap_mirror_config &&
     _cmd $DEBUG_1 $PROGRESS \
          spack \
@@ -990,12 +1023,15 @@ _quote() {
 _remove_hash() {
   local hashes_var="$1"
   shift
-  local OIFS="$IFS"; IFS=$'\n'; IFS="$OIFS"; handled_hashes=($(echo "$*" | sort -u)); IFS="$OIFS"
+  local OIFS="$IFS"; IFS=$'\n'; IFS="$OIFS"
+  handled_hashes=($(echo "$*" | sort -u))
+  IFS="$OIFS"
   eval local "hashes=(\${$hashes_var[*]:+\"\${$hashes_var[@]}\"})"
   (( ${#hashes[@]} )) || return
   local filtered_hashes=()
   for hash in ${hashes[*]:+"${hashes[@]}"}; do
-    _in_sorted_hashlist "$hash" "${handled_hashes[@]}" || filtered_hashes+=("$hash")
+    _in_sorted_hashlist "$hash" "${handled_hashes[@]}" ||
+      filtered_hashes+=("$hash")
   done
   eval $hashes_var="(\${filtered_hashes[*]:+\"\${filtered_hashes[@]}\"})"
 }
@@ -1006,7 +1042,7 @@ _report() {
   local severity=$DEFAULT_VERBOSITY redirect=">&$STDOUT"
   if [[ "$1" =~ ^-?[0-9]*$ ]]; then (( severity = $1 )); shift; fi
   (( VERBOSITY < severity )) && return # Diagnostics suppression.
-  (( severity < INFO )) && redirect=">&$STDERR" # Important to stderr.
+  (( _report_stderr || severity < INFO )) && redirect=">&$STDERR" # Important to stderr.
   local severity_tag="$(_severity_tag $severity)"
   eval printf '"${severity_tag:+$severity_tag }${is_cmd:+executing }$*\n"' \
        $redirect \
@@ -1094,10 +1130,6 @@ SPACK_ROOT=$SPACK_ROOT
 
 $(spack env status)"
 fi
-
-# Temporary working area (and cleanup trap).
-TMP=`mktemp -d -t build-spack-env.sh.XXXXXX`
-trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null" EXIT
 
 ########################################################################
 # To split bundled single-option arguments in your function or script:
@@ -1228,10 +1260,14 @@ if [ -z "$TMPDIR" ]; then
 fi
 ####################################
 
+# Temporary working area (and cleanup trap).
+TMP="$(mktemp -d -t build-spack-env.sh.XXXXXX)"
+trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null" EXIT
+
 # Local cache locations are derived from $working_dir.
 local_caches=(
-  "__local_binaries|binary:$working_dir/copyBack/spack-packages/binaries"
-  "__local_compilers|binary:$working_dir/copyBack/spack-packages/compilers"
+  "__local_binaries|binary:$working_dir/copyBack/spack-binary-cache"
+  "__local_compilers|binary:$working_dir/copyBack/spack-compiler-cache"
   "__local_sources|source:$working_dir/copyBack/spack-packages/sources"
 )
 
@@ -1328,12 +1364,16 @@ export PATH="$(echo "$PATH" | sed -Ee 's&(^|:)[^/][^:]*&&g')"
 . "$spack_env_top_dir/share/spack/setup-env.sh"
 export SPACK_DISABLE_LOCAL_CONFIG=true
 export SPACK_USER_CACHE_PATH="$spack_env_top_dir/tmp/spack-cache"
+export TMPDIR="\${TMPDIR:-$TMPDIR}"
 EOF
   cat >setup-env.csh <<EOF
 setenv PATH "`echo "$PATH" | sed -Ee 's&(^|:)[^/][^:]*&&g'`"
 source "$spack_env_top_dir/share/spack/setup-env.csh"
 setenv SPACK_DISABLE_LOCAL_CONFIG true
 setenv SPACK_USER_CACHE_PATH "$spack_env_top_dir/tmp/spack-cache"
+if (! $?TMPDIR) then
+  setenv TMPDIR "$TMPDIR"
+endif
 EOF
 fi
 ####################################
@@ -1358,7 +1398,7 @@ trap "trap - EXIT; \
 [ -f \"\$mirrors_cfg~\" ] && mv -f \"\$mirrors_cfg\"{~,}; \
 _copy_back_logs; \
 if (( failed )) && (( want_emergency_buildcache )); then \
-  tag_text=ALERT _report $ERROR \"emergency buildcache dump...\"; \
+  tag_text=ALERT _report $ERROR \"emergency buildcache dump\"; \
   for spec in \$(spack find -L | sed -Ene 's&^([[:alnum:]]+).*\$&/\\1&p');do \
     if [  -f \"\$(spack location -i \$spec)/.spack/binary_distribution\" ]; then
       tag_text=ALERT _report $ERROR skipping package installed from buildcache \$spec;\

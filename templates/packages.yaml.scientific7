@@ -315,6 +315,11 @@ packages:
     - spec: "mkfontscale @7.5 %gcc@4.8.5 os=scientific7"
       prefix: /usr
     buildable: False
+  motif:
+    externals:
+    - spec: "motif @2.3.4 %gcc@4.8.5 os=scientific7"
+      prefix: /usr
+    buildable: False
   mpich:
     externals:
     - spec: "mpich @3.2 %gcc@4.8.5 os=scientific7"

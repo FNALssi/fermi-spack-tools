@@ -81,6 +81,7 @@ mesa-libGL:mesa:$0-devel
 meson:meson:$0
 (xorg-x11-font-utils|mkfontscale):mkfontdir:$0
 (xorg-x11-font-utils|mkfontscale):mkfontscale:$0
+motif:motif:$0
 mpich(-[0-9.]+)?:mpich:$0-devel
 nasm:nasm:$0
 ninja-build:ninja:$0

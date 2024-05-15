@@ -24,8 +24,15 @@ default_fermi_spack_tools_repo=https://github.com/FNALssi/fermi-spack-tools.git
 
 parse_args() {
     with_padding=""
-    eval set : $(getopt --longoptions with_padding,help,query-packages,fermi_spack_tools_release:,spack_release:,spack_repo:,fermi_spack_tools_repo: -- x "$@")
-    shift
+    if x=$(getopt --longoptions with_padding,help,query-packages,fermi_spack_tools_release:,spack_release:,spack_repo:,fermi_spack_tools_repo: -- x "$@")
+    then
+        eval set : $x
+        shift
+    else
+        usage
+        exit 1
+    fi
+
     spack_repo=$default_spack_repo
     fermi_spack_tools_repo=$default_fermi_spack_tools_repo
     ver=$default_fermi_spack_tools_version
@@ -115,7 +122,7 @@ main() {
     PATH=$dest/fermi-spack-tools/$ver/NULL/bin:$PATH
 
     message "Setting up with make_spack"
-    make_spack $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
+    make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
 
     message "Finding compilers"
     source $dest/setup-env.sh
