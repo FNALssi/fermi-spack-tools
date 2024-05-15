@@ -275,7 +275,7 @@ parse_args() {
         esac
     done
 
-    dir=$2
+    dir=$1
     if [ -z "$dir" ]
     then
         usage
