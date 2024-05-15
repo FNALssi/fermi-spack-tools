@@ -18,10 +18,9 @@ usage() {
 
 src=$dir/templates/packagelist
 want_cvmfs=false
-if x=$(getopt --longoptions --long-options help,with-externals,with-cvmfs,debug,packagelist:  -- "$@")
+if x=$(getopt --options "" --longoptions "help,with-externals,with-cvmfs,debug,packagelist:"  -- "$@")
 then
     eval set : $x
-    shift
     shift
 else
     usage
@@ -53,6 +52,7 @@ x--packagelist=*)
     src=`echo $1 | sed -e 's/--packagelist=//'`
     shift
     ;;
+x--)                    shift; break;;
 x*)
     break;;
 esac

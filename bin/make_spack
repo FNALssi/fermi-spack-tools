@@ -246,7 +246,7 @@ parse_args() {
     verbose=false
 
     origargs="$*"
-    if x=$(getopt --longoptions help,depth,with_padding,upgrade,spack_release:,minimal,no_buildcache,spack_repo:,query-packages --options mptuv -- : "$@")
+    if x=$(getopt --longoptions help,depth,with_padding,upgrade,spack_release:,minimal,no_buildcache,repover,spack_repo:,query-packages --options mptuv -- "$@")
     then
         eval set : $x
         shift
