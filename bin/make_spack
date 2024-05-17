@@ -300,6 +300,7 @@ main() {
 
     case $layout in
     plain)
+        do_setup_env=true
         echo "make_spack: INFO: Setting up for plain spack in $dir..."
         export SPACK_ROOT=`make_absolute $dir`
         mkdir -p "$SPACK_ROOT" 
