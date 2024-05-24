@@ -305,7 +305,7 @@ packages:
       prefix: /usr
   mesa-glu:
     externals:
-    - spec: "mesa-glu gl=glx @9.0.1 %gcc@11 os=almalinux9"
+    - spec: "mesa-glu @9.0.1 %gcc@11 os=almalinux9"
       prefix: /usr
     buildable: False
   mesa:
