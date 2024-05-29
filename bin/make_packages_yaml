@@ -79,7 +79,7 @@ force_system='^(bdftopcf|damageproto|diffutils|expat|findutils|font-util|gdbm|ge
 force_x86_64='^(hwloc|libpciaccess|libsigsegv)$'
 
 # Global preferred target
-preferred_target=x86_64_v2
+preferred_target=x86_64_v3
 
 teeit="cat"
 #debugging
