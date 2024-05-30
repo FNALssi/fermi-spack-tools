@@ -955,7 +955,7 @@ _process_environment() {
   #
   # then note that fact.
   (( ++env_idx ))
-  [[ "$env_spec"  =~ ^$known_compilers_re([~+@%[:space:]].*)?$ ]] \
+  [[ "$env_spec"  =~ ^$known_compilers_re[@-][0-9] ]] \
     && is_compiler_env=1 \
     && (( num_environments > env_idx )) \
     && is_nonterminal_compiler_env=1
