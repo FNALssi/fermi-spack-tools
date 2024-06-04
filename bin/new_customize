@@ -1,0 +1,57 @@
+#!/bin/sh
+
+#
+# new_customize -- customize an upstream spack instance with fermi customizations
+#
+
+
+add_fermi_submodules() {
+
+    #
+    # Add git submodules we want in our distribution.
+    #
+    # This:
+    # * puts our platform specific configs in the linux subdirectory,
+    # * puts our spack extension packages where the above configs say they are
+    # * adds recipe repositories we want
+    # * we could add a macos or other os specialization as well...
+    #
+
+    while read dir repo
+    do      
+        git submodule add --depth 2 $repo $dir
+    done <<EOF
+        etc/spack/linux	                		https://github.com/marcmengel/fermi-etc-spack-linux
+        var/spack/extensions/spack-subspack		https://github.com/marcmengel/spack-subspack
+        var/spack/extensions/spack-linuxexternas	https://github.com/marcmengel/spack-linuxexternals
+        var/spack/extensions/spack-mpd			https://github.com/knoepfel/spack-mpd
+        var/spack/repos/fnal_art			https://github.com/fnalSSI/fnal_art
+        var/spack/repos/nusofthep-spack-recipes		https://github.com/NuSoftHEP/nusofthep-spack-recipes
+        var/spack/repos/larsoft-spack-recipes		https://github.com/LArSoft/larsoft-spack-recipes
+EOF
+}
+
+add_fermi_setups() {
+
+   #
+   # build toplevel setup-env wrappers that 
+   # * set SPACK flags we want
+   # * call the stock spack ones
+   #
+
+   : > setup-env.sh
+   : > setup-env.csh
+   while read var val
+   do
+      echo setenv $var $val >> setup-env.csh
+      echo export $var=$val >> setup-env.sh
+   done <<EOF
+      SPACK_SKIP_MODULES                true
+      SPACK_DISABLE_LOCAL_CONFIG        true
+EOF
+   echo source $PWD/share/spack/setups.csh >> setup-env.csh
+   echo source $PWD/share/spack/setups.sh >> setup-env.sh
+}
+
+add_fermi_submodules
+add_fermi_setups
