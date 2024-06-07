@@ -19,15 +19,17 @@ add_fermi_submodules() {
 
     while read dir repo
     do      
-        git submodule add --depth 2 $repo $dir
+        git submodule add -f $repo $dir
     done <<EOF
-        etc/spack/linux	                		https://github.com/marcmengel/fermi-etc-spack-linux
-        var/spack/extensions/spack-subspack		https://github.com/marcmengel/spack-subspack
-        var/spack/extensions/spack-linuxexternas	https://github.com/marcmengel/spack-linuxexternals
-        var/spack/extensions/spack-mpd			https://github.com/knoepfel/spack-mpd
-        var/spack/repos/fnal_art			https://github.com/fnalSSI/fnal_art
-        var/spack/repos/nusofthep-spack-recipes		https://github.com/NuSoftHEP/nusofthep-spack-recipes
-        var/spack/repos/larsoft-spack-recipes		https://github.com/LArSoft/larsoft-spack-recipes
+        etc/spack/linux	                		https://github.com/marcmengel/fermi-etc-spack-linux.git
+        var/spack/extensions/spack-installdir		https://github.com/marcmengel/spack-installdir.git
+        var/spack/extensions/spack-subspack		https://github.com/marcmengel/spack-subspack.git
+        var/spack/extensions/spack-linuxexternas	https://github.com/marcmengel/spack-linuxexternals.git
+        var/spack/extensions/spack-mpd			https://github.com/knoepfel/spack-mpd.git
+        var/spack/repos/fnal_art			https://github.com/fnalSSI/fnal_art.git
+        var/spack/repos/nusofthep-spack-recipes		https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
+        var/spack/repos/larsoft-spack-recipes		https://github.com/LArSoft/larsoft-spack-recipes.git
+        var/spack/repos/artdaq-spack                    https://github.com/art-daq/artdaq-spack.git
 EOF
 }
 
@@ -39,18 +41,14 @@ add_fermi_setups() {
    # * call the stock spack ones
    #
 
-   : > setup-env.sh
-   : > setup-env.csh
    while read var val
    do
-      echo setenv $var $val >> setup-env.csh
-      echo export $var=$val >> setup-env.sh
+      echo setenv $var $val >> share/spack/setup-env.csh
+      echo export $var=$val >> share/spack/setup-env.sh
    done <<EOF
       SPACK_SKIP_MODULES                true
       SPACK_DISABLE_LOCAL_CONFIG        true
 EOF
-   echo source $PWD/share/spack/setups.csh >> setup-env.csh
-   echo source $PWD/share/spack/setups.sh >> setup-env.sh
 }
 
 add_fermi_submodules
