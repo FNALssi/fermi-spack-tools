@@ -3,6 +3,13 @@
 #
 # Script to make a Fermi-ized spack repository 
 #
+find_ourselves() {
+    spackbindir=`echo $0 | sed -e 's;make_spack;;' `
+    case x$spackbindir in
+    x/*) ;;
+    x*)  spackbindir="$PWD/$spackbindir"
+    esac
+}
 
 clone_repos() {
 
@@ -11,11 +18,12 @@ clone_repos() {
         git clone -b $branch --depth $depth $repo $ddir
     done <<EOF                                   
         $dir                                            $spack_release  $spack_repo
-        $dir/etc/spack/linux	               	        $spack_release  https://github.com/marcmengel/fermi-etc-spack-linux.git
+        $dir/etc/spack/linux	               	        main            https://github.com/marcmengel/fermi-etc-spack-linux.git
         $dir/var/spack/extensions/spack-freeze          main	        https://github.com/marcmengel/spack-freeze.git
         $dir/var/spack/extensions/spack-installdir      main 	        https://github.com/marcmengel/spack-installdir.git
         $dir/var/spack/extensions/spack-linuxexternals  main		https://github.com/marcmengel/spack-linuxexternals.git
         $dir/var/spack/extensions/spack-localbuildcache main		https://github.com/marcmengel/spack-localbuildcache.git
+        $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
         $dir/var/spack/extensions/spack-mpd	        main		https://github.com/knoepfel/spack-mpd.git
         $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
         $dir/var/spack/repos/fnal_art		        main		https://github.com/fnalSSI/fnal_art.git
@@ -151,9 +159,11 @@ parse_args() {
 }
 
 main() {
+
+    : starting: $*
+    find_ourselves
     parse_args "$@"
 
-    cd $parent
     clone_repos
     add_fermi_setups
     do_padding

@@ -17,8 +17,10 @@ usage: bootstrap [options] [dest_dir]
 EOF
 }
 # note, other scripts pull these values for defaults
-default_fermi_spack_tools_version=main
-default_spack_version=fnal-develop
+#default_fermi_spack_tools_version=main
+#default_spack_version=fnal-develop
+default_fermi_spack_tools_version=new_make_spack
+default_spack_version=v0.21.0-fermi
 default_spack_repo=https://github.com/FNALssi/spack.git
 default_fermi_spack_tools_repo=https://github.com/FNALssi/fermi-spack-tools.git
 
