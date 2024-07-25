@@ -27,7 +27,7 @@ clone_repos() {
         $dir/var/spack/extensions/spack-mpd	        main		https://github.com/knoepfel/spack-mpd.git
         $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
         $dir/var/spack/repos/fnal_art		        develop		https://github.com/fnalSSI/fnal_art.git
-        $dir/var/spack/repos/scd_recipes	        main		https://github.com/marcmenge/scd_recipes.git
+        $dir/var/spack/repos/scd_recipes	        main		https://github.com/marcmengel/scd_recipes.git 
         $dir/var/spack/repos/nusofthep-spack-recipes    main		https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
         $dir/var/spack/repos/larsoft-spack-recipes      main		https://github.com/LArSoft/larsoft-spack-recipes.git
         $dir/var/spack/repos/artdaq-spack               develop		https://github.com/art-daq/artdaq-spack.git
