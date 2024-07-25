@@ -157,7 +157,7 @@ parse_args() {
 
 do_spack_bootstrap() {
     osstr=$(spack arch -o) 
-    spack bootstrap root $dest/.bootstrap.$osstr
+    spack bootstrap root $dir/.bootstrap.$osstr
     spack bootstrap now
 }
 
