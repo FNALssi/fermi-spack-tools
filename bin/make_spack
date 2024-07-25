@@ -26,7 +26,7 @@ clone_repos() {
         $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
         $dir/var/spack/extensions/spack-mpd	        main		https://github.com/knoepfel/spack-mpd.git
         $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
-        $dir/var/spack/repos/fnal_art		        main		https://github.com/fnalSSI/fnal_art.git
+        $dir/var/spack/repos/fnal_art		        develop		https://github.com/fnalSSI/fnal_art.git
         $dir/var/spack/repos/nusofthep-spack-recipes    main		https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
         $dir/var/spack/repos/larsoft-spack-recipes      main		https://github.com/LArSoft/larsoft-spack-recipes.git
         $dir/var/spack/repos/artdaq-spack               develop		https://github.com/art-daq/artdaq-spack.git
@@ -155,6 +155,12 @@ parse_args() {
     fi
 }
 
+do_spack_bootstrap() {
+    osstr=$(spack arch -o) 
+    spack bootstrap root $dest/.bootstrap.$osstr
+    spack bootstrap now
+}
+
 main() {
 
     : starting: $*
@@ -164,6 +170,7 @@ main() {
     clone_repos
     add_fermi_setups
     do_padding
+    do_spack_bootstrap
     query_packages
 }
 
