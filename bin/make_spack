@@ -4,7 +4,7 @@
 # Script to make a Fermi-ized spack repository 
 #
 find_ourselves() {
-    spackbindir=`echo $0 | sed -e 's;make_spack;;' `
+    spackbindir=`echo $0 | sed -e 's;make_spack$;;' `
     case x$spackbindir in
     x/*) ;;
     x*)  spackbindir="$PWD/$spackbindir"
@@ -29,7 +29,7 @@ clone_repos() {
         $dir/var/spack/repos/fnal_art		        main		https://github.com/fnalSSI/fnal_art.git
         $dir/var/spack/repos/nusofthep-spack-recipes    main		https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
         $dir/var/spack/repos/larsoft-spack-recipes      main		https://github.com/LArSoft/larsoft-spack-recipes.git
-        $dir/var/spack/repos/artdaq-spack               main		https://github.com/art-daq/artdaq-spack.git
+        $dir/var/spack/repos/artdaq-spack               develop		https://github.com/art-daq/artdaq-spack.git
 EOF
 }
 
