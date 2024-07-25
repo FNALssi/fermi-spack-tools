@@ -41,11 +41,8 @@ add_fermi_setups() {
    # * set SPACK environment variables we want
    #
 
-   (
-       cd $dir
-       ln -s share/spack/setup-env.sh setup-env.sh 
-       ln -s share/spack/setup-env.csh setup-env.csh 
-   )
+   echo source $dir/share/spack/setup-env.sh >  $dir/setup-env.sh 
+   echo source $dir/share/spack/setup-env.csh > $dir/setup-env.csh 
 
    while read var val
    do

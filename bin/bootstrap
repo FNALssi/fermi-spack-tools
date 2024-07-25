@@ -115,23 +115,23 @@ main() {
     parse_args "$@"
 
     detail_log
-    mkdir -p $dest/fermi-spack-tools/$ver
+    mkdir -p $dest/../fermi-spack-tools
     cd $dest
 
     message "Cloning FNALssi fermi-spack-tools  repository"
-    git clone -b $ver $fermi_spack_tools_repo fermi-spack-tools/$ver/NULL/
+    git clone -b $ver $fermi_spack_tools_repo ../fermi-spack-tools
 
-    PATH=$dest/fermi-spack-tools/$ver/NULL/bin:$PATH
+    PATH=$dest/../fermi-spack-tools/bin:$PATH
 
     message "Setting up with make_spack"
-    sh -x $dest/fermi-spack-tools/$ver/NULL/bin/make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
+    sh -x $dest/../fermi-spack-tools/bin/make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
 
     message "Finding compilers"
     source $dest/setup-env.sh
 
     spack compiler find --scope=site
 
-    cd $dest/fermi-spack-tools/$ver/NULL && bin/declare_simple fermi-spack-tools $ver
+    spack install fermi-spack-tools
 
     check_bootstrap
 }
