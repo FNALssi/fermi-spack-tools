@@ -22,11 +22,12 @@ add_fermi_submodules() {
         git submodule add -f $repo $dir
     done <<EOF
         etc/spack/linux	                		https://github.com/marcmengel/fermi-etc-spack-linux.git
+        var/spack/extensions/spack-freeze		https://github.com/marcmengel/spack-freeze.git
         var/spack/extensions/spack-installdir		https://github.com/marcmengel/spack-installdir.git
-        var/spack/extensions/spack-subspack		https://github.com/marcmengel/spack-subspack.git
         var/spack/extensions/spack-linuxexternals	https://github.com/marcmengel/spack-linuxexternals.git
         var/spack/extensions/spack-localbuildcache	https://github.com/marcmengel/spack-localbuildcache.git
         var/spack/extensions/spack-mpd			https://github.com/knoepfel/spack-mpd.git
+        var/spack/extensions/spack-subspack		https://github.com/marcmengel/spack-subspack.git
         var/spack/repos/fnal_art			https://github.com/fnalSSI/fnal_art.git
         var/spack/repos/nusofthep-spack-recipes		https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
         var/spack/repos/larsoft-spack-recipes		https://github.com/LArSoft/larsoft-spack-recipes.git

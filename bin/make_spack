@@ -1,214 +1,73 @@
 #!/bin/bash
 
-
-spackbindir=`echo $0 | sed -e 's;make_spack;;' `
-case x$spackbindir in
-x/*) ;;
-x*)  spackbindir="$PWD/$spackbindir"
-esac
-
 #
-# binary cache to use
+# Script to make a Fermi-ized spack repository 
 #
-binary_cache=https://spack-cache-1.fnal.gov/binaries/
-binary_cache_bak=https://scisoft.fnal.gov/scisoft/spack-mirror/
 
-install_latest() {
-    pkg="$1"
-    if $use_buildcache
-    then 
-        hash_pkg_ver=`spack -k buildcache list --long --allarch "$pkg $plat" | tail -1`
-        echo "make_spack: info: latest $pkg is $hash_pkg_ver"
-        hash=`echo $hash_pkg_ver | sed -e 's/ .*//'`
-        spack -k buildcache install -o -m "/$hash"
+clone_repos() {
+
+    while read ddir branch repo
+    do      
+        git clone -b $branch --depth $depth $repo $ddir
+    done <<EOF                                   
+        $dir                                            $spack_release  $spack_repo
+        $dir/etc/spack/linux	               	        $spack_release  https://github.com/marcmengel/fermi-etc-spack-linux.git
+        $dir/var/spack/extensions/spack-freeze          main	        https://github.com/marcmengel/spack-freeze.git
+        $dir/var/spack/extensions/spack-installdir      main 	        https://github.com/marcmengel/spack-installdir.git
+        $dir/var/spack/extensions/spack-linuxexternals  main		https://github.com/marcmengel/spack-linuxexternals.git
+        $dir/var/spack/extensions/spack-localbuildcache main		https://github.com/marcmengel/spack-localbuildcache.git
+        $dir/var/spack/extensions/spack-mpd	        main		https://github.com/knoepfel/spack-mpd.git
+        $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
+        $dir/var/spack/repos/fnal_art		        main		https://github.com/fnalSSI/fnal_art.git
+        $dir/var/spack/repos/nusofthep-spack-recipes    main		https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
+        $dir/var/spack/repos/larsoft-spack-recipes      main		https://github.com/LArSoft/larsoft-spack-recipes.git
+        $dir/var/spack/repos/artdaq-spack               main		https://github.com/art-daq/artdaq-spack.git
+EOF
+}
+
+
+add_fermi_setups() {
+
+   #
+   # * symlink setup-env.{csh,sh} to $SPACK_ROOT 
+   # * set SPACK environment variables we want
+   #
+
+   (
+       cd $dir
+       ln -s share/spack/setup-env.sh setup-env.sh 
+       ln -s share/spack/setup-env.csh setup-env.csh 
+   )
+
+   while read var val
+   do
+      echo setenv $var $val >> $dir/share/spack/setup-env.csh
+      echo export $var=$val >> $dir/share/spack/setup-env.sh
+   done <<EOF
+      SPACK_SKIP_MODULES                true
+      SPACK_DISABLE_LOCAL_CONFIG        true
+EOF
+    # source the setup...
+    source $dir/share/spack/setup-env.sh
+}
+
+do_padding() {
+    if $padding; then
+        echo "turning on padding."
+        spack config --scope=site add config:install_tree:padded_length:255
     else
-        spack -k install "$pkg $plat"
+        spack config --scope=site rm config:install_tree:padded_length
     fi
 }
 
-#
-# Spack needs patchelf installed to do binary installs:
-# which creates a catch-22 when trying to do a binary install of patchelf.
-# However, it turns out we don't *actually* need to patchelf patchelf itself, 
-# as it only relies on system libraries.
-# So we can lie to spack about there being a system patchelf long enough to
-# install patchelf, and then take the lie away.
-#
-# I have a patch for spack that obviates this... then you can just
-# install with spack buildcache install patchelf...
-#
-
-bootstrap_patchelf() {
-
-    #
-    # under 0.17 we need patchelf to bootstrap clingo etc, so we just 
-    # snag the binary and then install it "properly"...
-    #
-
-    pdir=/tmp/pth$$
-    export pdir
-    mkdir $pdir
-    PATH="$pdir:$PATH"
-    (curl -OJL --max-redirs 0 --silent --fail $binary_cache/bootstrap/patchelf.linux-scientific7-x86_64 || curl -OJL --max-redirs 0 --silent --fail  $binary_cache_bak/patchelf.linux-scientific7-x86_64) || (echo "patchelf bootstrap download failed"; exit 111)
-    mv patchelf.linux-scientific7-x86_64 $pdir/patchelf
-
-    chmod +x $pdir/patchelf
-
-    # set the cache path for the bootstrap so we can symlink individual cache areas to it later...
-
-    spack bootstrap root $dir/.bootstrap
-    spack bootstrap now
-    spack bootstrap status
-
-    spack mirror add --scope site fnal $binary_cache
-
-    install_latest patchelf
-
-    rm -rf $pdir
-
-    patchelf_dir=`spack find --paths patchelf | tail -1 | sed -e 's/.* //'`
-    PATH="$patchelf_dir/bin:$PATH"
+query_packages() {
+   if $query_packages; then
+       osstr=$(spack arch -o) 
+       spack linuxexternals --scope=linux/$osstr
+   fi
 }
 
-find_compilers() {
-    source $SPACK_ROOT/share/spack/setup-env.sh
-    spack compiler find --scope=site
-
-    if [ "$(spack arch --o)" = "almalinux9" ]
-    then
-	# deal with almalinux 11.3.1/11.4.1 compiler confusion
-	# put add 11.3.1 in as also living in /usr/bin...
-	cf=$SPACK_ROOT/etc/spack/compilers.yaml
-        sed -e '1d' -e 's/11.4.1/11.3.1/' < $cf >> $cf
-    fi
-}
-
-bootstrap_spack() {
-    # bootstrap_patchelf
-    find_compilers
-    if echo $spack_release | grep rollout > /dev/null
-    then
-        install_latest environment-modules
-        install_latest lmod
-    fi
-    if $minimal
-    then
-        :
-    else
-        install_latest py-machotools
-    fi
-    os=`spack arch --operating-system`
-    test -d  $SPACK_ROOT/etc/spack/${os} || mkdir $SPACK_ROOT/etc/spack/${os}
-    if $query_packages
-    then
-        make_packages_yaml $SPACK_ROOT
-    else
-        spack_version="$(spack --version)"
-        if [ "$spack_version" '>' "0.20.0" ]
-        then
-            sd="$(spack arch --platform)/"
-        else
-            sd=""
-        fi
-        echo "Installing stock packages.yaml in $SPACK_ROOT/etc/spack/${sd}${os}"
-        mkdir -p "$SPACK_ROOT/etc/spack/${sd}${os}" &&
-          cp -v "$spackbindir/../templates/packages.yaml.${os}" \
-             "$SPACK_ROOT/etc/spack/${sd}${os}/packages.yaml"
-    fi
-}
-
-add_recipe_repos() {
-    git clone https://github.com/FNALssi/fnal_art.git $SPACK_ROOT/var/spack/repos/fnal_art
-    spack repo add --scope=site $SPACK_ROOT/var/spack/repos/fnal_art
-
-    git clone https://github.com/marcmengel/scd_recipes.git $SPACK_ROOT/var/spack/repos/scd_recipes
-    spack repo add --scope=site $SPACK_ROOT/var/spack/repos/scd_recipes
-
-    for rv in $repovers
-    do
-         IFS=":$IFS" set $rv
-         r=$1; v=$2
-         echo "checking out version $v in repository $r"
-         (cd $SPACK_ROOT/var/spack/repos/$r && git checkout $v)
-    done
-
-#    spack repo create $SPACK_ROOT/var/spack/repos/ups_to_spack
-#    spack repo add --scope=site $SPACK_ROOT/var/spack/repos/ups_to_spack
-}
-
-create_spack() {
-    d=`dirname $SPACK_ROOT`
-    b=`basename $SPACK_ROOT`
-    mkdir -p $d
-    if cd $d
-    then 
-        case "$spack_root" in
-        *github.com*) args="--depth 4" ;;
-        *) args="";;
-        esac
-        git clone $args --depth 2 -b $spack_release $spack_repo $b
-
-        if cd $b
-        then 
-            echo "make_spack: INFO: running: $add_config"
-            eval "$add_config"
-            spack config --scope=site update  --yes-to-all config
-            case $spack_release in
-            rollout*|0.1[67]*) ;;
-            *) if $padding; then
-                 echo "turning on padding."
-                 spack config --scope=site add config:install_tree:padded_length:255
-               else
-                 spack config --scope=site rm config:install_tree:padded_length
-               fi
-               extra=.new
-               ;;
-            esac
-            export plat="target=`uname -i` os=`spack arch --operating-system`"
-            spack mirror add --scope site fnal $binary_cache
-            spack mirror add --scope site scisoft $binary_cache_bak
-	    spack gpg list
-	    # sometimes the buildcache keys doesn't work, so try
-	    # a second timde if it fails?
-            spack buildcache keys --install --trust --force ||
-                spack buildcache keys --install --trust --force 
-	    spack gpg list
-
-	    add_recipe_repos
-
-            if $upgrading
-            then
-                spack reindex
-            else
-                bootstrap_spack
-            fi
-        else
-            echo "echo make_spack: ERROR: Unable to git clone $spack_repo as $b" >&2
-            echo "FAILED"
-            exit 1
-        fi
-    else
-        echo "make_spack: ERROR: Unable to make/change directories to $d" >&2
-        echo "FAILED"
-        exit 1
-    fi
-}
-
-make_absolute() {
-   case x$1 in
-   x.)   echo $PWD;;
-   x./*) echo $PWD/$1;;
-   x/*)  echo $1;;
-   *)    echo $PWD/$1;;
-   esac
-}
-
-#
-# where to git clone spack from, and what branch/release
-#
-#spack_repo=https://cdcvs.fnal.gov/projects/spack-infrastructure-spack
-
-usage(){
+usage() {
         echo "Usage: $0 [options] -[utp] /base/directory"
         echo " options:"
         echo "  --upgrade"
@@ -216,6 +75,7 @@ usage(){
         echo "  --query-packages"
         echo "  --spack_release ver"
         echo "  --spack_repo url"
+        echo "  --depth n"
         echo "  --minimal"
         echo "  -u fermi 'unified' layout"
         echo "  -t fermi 'traditional' layout"
@@ -225,7 +85,7 @@ usage(){
         echo ""
         echo "  make a spack instance with given layout"
         echo "  --query-packages turns on running make_packages_yaml (slow)"
-        echo "  --depth is passed to git clone for spack"
+        echo "  --depth is passed to git clone calls (default 1)"
         exit 1
 }
 
@@ -244,6 +104,7 @@ parse_args() {
     query_packages=false
     repovers=""
     verbose=false
+    depth=1  
 
     origargs="$*"
     if x=$(getopt --longoptions help,depth,with_padding,upgrade,spack_release:,minimal,no_buildcache,repover,spack_repo:,query-packages --options mptuv -- "$@")
@@ -257,8 +118,9 @@ parse_args() {
     while echo x$1 | grep x- > /dev/null
     do
         case "x$1" in
+        x--depth)               depth=$2; shift;;
         x--with_padding)        padding=true; shift ;;
-        x--upgrade)             upgrading=true; shift;;
+        x--upgrade)             echo "Deprecated option --upgrade ignored";  shift;;
         x--spack_release)       spack_release=$2; shift; shift ;;
         x--spack_repo)          spack_repo=$2; shift; shift;;
         x--minimal)             minimal=true; shift ;;
@@ -266,10 +128,10 @@ parse_args() {
         x--help)                usage; exit;;
         x--no_buildcache)       use_buildcache=false; shift;;
         x--repover)             repovers="$repovers $2"; shift; shift;;
-        x-u)                    layout=unified; shift;;
-        x-t)                    layout=traditional; shift;;
-        x-p)                    layout=plain; shift;;
-        x-m)                    minimal=true; shift;;
+        x-u)                    echo "Deprecated option -u ignored"; shift;;
+        x-t)                    echo "Deprecated option -t ignored"; shift;;
+        x-p)                    echo "Deprecated option -p is now default" ; shift;;
+        x-m)                    echo "Deprecated option -m ignored"; shift;;
         x-v)                    verbose=true; shift;;
         x--)                    shift; break;;
         esac
@@ -291,84 +153,11 @@ parse_args() {
 main() {
     parse_args "$@"
 
-    export SPACK_DISABLE_LOCAL_CONFIG=true
-
-    case $spack_release in
-    rollout*|0.1[67]*) extra="";;
-    *)                 extra=".new";;
-    esac
-
-    case $layout in
-    plain)
-        echo "make_spack: INFO: Setting up for plain spack in $dir..."
-        export SPACK_ROOT=`make_absolute $dir`
-        mkdir -p "$SPACK_ROOT" 
-        if [ ! -d "$SPACK_ROOT" -o ! -w "$SPACK_ROOT" ]
-        then
-            echo "make_spack: ERROR: Unable to make writable directory '$SPACK_ROOT'" >&2
-            echo "FAILED" >&2
-            exit 1
-        fi
-        ;;
-    traditional)
-        echo "make_spack: INFO: setting up for traditional ups layout under $dir"
-        do_setup_env=true
-        dir=`make_absolute "$dir"`
-        mkdir -p "$dir" 
-        if [ ! -d "$dir" -o ! -w "$dir" ]
-        then
-            echo "make_spack: ERROR: Unable to make writable directory '$dir'" >&2
-            echo "FAILED" >&2
-            exit 1
-        fi
-        export SPACK_ROOT=$dir/prd/spack/$spack_release/NULL
-
-        export add_config="spack config --scope site add -f $spackbindir/../templates/config.yaml.traditional${extra}"
-        add_config="$add_config; spack config --scope site add -f $spackbindir/../templates/modules.yaml.unified"
-        ;;
-     unified)
-        echo "make_spack: INFO: setting up for unified layout under $dir"
-        do_setup_env=true
-        dir=`make_absolute "$dir"`
-        mkdir -p "$dir" 
-        if [ ! -d "$dir" -o ! -w "$dir" ]
-        then
-            echo "make_spack: ERROR: Unable to make writable directory '$dir'" >&2
-            echo "FAILED" >&2
-            exit 1
-        fi
-        export SPACK_ROOT=$dir/spack/$spack_release/NULL
-
-        export add_config="spack config --scope site add -f $spackbindir/../templates/config.yaml.unified${extra}"
-        add_config="$add_config; spack config --scope site add -f $spackbindir/../templates/modules.yaml.unified"
-      ;;
-    esac
-
-    export PATH=$SPACK_ROOT/bin:$PATH
-    create_spack
-
-    if [ -n "$dir" ] && [ -d "$dir/spack" ]; then
-      rm -f $dir/spack/current
-      ln -s $dir/spack/$spack_release $dir/spack/current
-    fi
-
-    # save setup-env creation/update till the end so if we're upgrading and it
-    # dies, we don't change it until the end.
-
-    if [ -n "$do_setup_env" ]; then
-
-        echo  > $dir/setup-env.sh
-        echo "export SPACK_SKIP_MODULES=true" >> $dir/setup-env.sh
-        echo "export SPACK_DISABLE_LOCAL_CONFIG=true" >> $dir/setup-env.sh
-        echo ". $SPACK_ROOT/share/spack/setup-env.sh" >> $dir/setup-env.sh
-
-
-        echo  > $dir/setup-env.csh
-        echo "setenv SPACK_SKIP_MODULES true" >> $dir/setup-env.csh
-        echo "setenv SPACK_DISABLE_LOCAL_CONFIG true" >> $dir/setup-env.csh
-        echo "source $SPACK_ROOT/share/spack/setup-env.csh" >> $dir/setup-env.csh
-
-        mkdir -p $dir/tmp/bootstrap
-    fi
+    cd $parent
+    clone_repos
+    add_fermi_setups
+    do_padding
+    query_packages
 }
+
 main "$@"
