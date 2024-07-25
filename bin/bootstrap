@@ -126,11 +126,18 @@ main() {
     message "Setting up with make_spack"
     sh -x $dest/../fermi-spack-tools/bin/make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
 
-    message "Finding compilers"
+    message "Setting up new instance"
+
     source $dest/setup-env.sh
+
+    message "Finding compilers"
 
     spack compiler find --scope=site
 
+    message "Bootstrapping..."
+    spack bootstrap now
+
+    message "installing fermi-spack-tools..."
     spack install fermi-spack-tools
 
     check_bootstrap
