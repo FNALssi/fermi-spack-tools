@@ -690,7 +690,7 @@ _identify_concrete_specs() {
           "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt"
   } 2>/dev/null
   local status=$?
-  _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt") lines"
+  _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt" | cut -d' ' -f 1) lines"
   while IFS='' read -r line; do
     all_concrete_specs+=("$line")
   done < "$TMP/$env_name-concrete-filtered.txt"
