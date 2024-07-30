@@ -75,6 +75,7 @@ BRIEF OPTIONS
   --clear-mirrors
   --color[= ](auto|always|never)
   --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install)
+  --debug-tmp
   --fermi-spack-tools-root[= ]<repo>
   --fermi-spack-tools-version[= ]<version>
   --(no-)?emergency-buildcache
@@ -132,6 +133,10 @@ HELP AND DIAGNOSTIC OPTIONS
   --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install)
 
     Add -d or -v options to appropriate invocations of Spack.
+
+  --debug-tmp
+
+    Preserve script-generated temporary files.
 
   --color[= ](auto|always|never)
 
@@ -1176,6 +1181,7 @@ while (( $# )); do
     --color) color="$2"; shift;;
     --color=*) color="${1#*=}";;
     --debug-spack-*|--verbose-spack-*) eval "${1//-/_}=1";;
+    --debug-tmp) debug_tmp=1;;
     --emergency-buildcache) want_emergency_buildcache=1;;
     --fail-fast) fail_fast=1;;
     --help|-h|-\?) usage 2; exit 1;;
@@ -1262,7 +1268,8 @@ fi
 
 # Temporary working area (and cleanup trap).
 TMP="$(mktemp -d -t build-spack-env.sh.XXXXXX)"
-trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null" EXIT
+(( debug_tmp )) && _report $INFO "generated files will be preserved in $TMP"
+trap "! (( debug_tmp )) && [ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null" EXIT
 
 # Local cache locations are derived from $working_dir.
 local_caches=(
@@ -1394,7 +1401,7 @@ _configure_spack
 ####################################
 # Safe, comprehensive cleanup.
 trap "trap - EXIT; \
-[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
+! (( debug_tmp )) && [ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
 [ -f \"\$mirrors_cfg~\" ] && mv -f \"\$mirrors_cfg\"{~,}; \
 _copy_back_logs; \
 if (( failed )) && (( want_emergency_buildcache )); then \
