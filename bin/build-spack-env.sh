@@ -377,18 +377,21 @@ _cache_info() {
 _classify_concretized_specs() {
   local all_concrete_specs=()
   _identify_concrete_specs || return
-  local regex='^([^[:space:]]+) ( *)([^[:space:]@+~%]*)'
+  local regex='^(.{4,5})?([^[:space:]]{32,}) ( *)([^[:space:]@+~%]*)'
   local n_speclines=${#all_concrete_specs[@]} specline_idx=0
+  local new_format=0
   while (( specline_idx < n_speclines )); do
     _report $DEBUG_4 "examining line $((specline_idx + 1))/$n_speclines: ${all_concrete_specs[$specline_idx]}"
     [[ "${all_concrete_specs[$((specline_idx++))]}" =~ $regex ]] || continue
-    local namespace_name="${BASH_REMATCH[3]}"
-    local hash="${BASH_REMATCH[1]}"
-    local level=${#BASH_REMATCH[2]}
-    if (( level )); then
-      non_root_hashes+=("$namespace_name/$hash")
-    else
+    local hash="${BASH_REMATCH[2]}"
+    local namespace_name="${BASH_REMATCH[4]}"
+    if (( ${#BASH_REMATCH[1]} == 4 )); then
+      new_format=1
       root_hashes+=("$namespace_name/$hash")
+    elif ! { (( new_format )) || (( ${#BASH_REMATCH[3] )); }; then
+      root_hashes+=("$namespace_name/$hash")
+    else
+      non_root_hashes+=("$namespace_name/$hash")
     fi
     hashes+=("$namespace_name/$hash")
   done
@@ -686,7 +689,7 @@ _identify_concrete_specs() {
       --color=never \
       find  --no-groups --show-full-compiler -cfNdvL \
       > "$TMP/$env_name-concrete.txt"
-      sed -Ene '/^==> (\[.*\] )?Concretized roots$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; p; }' \
+      sed -Ene '/^==> (\[.*\] )?(Concretized roots|[[:digit:]]+ root specs)$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; /^.{4,5}?[^[:space:]]{32,}/ p; }' \
           "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt"
   } 2>/dev/null
   local status=$?
