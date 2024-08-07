@@ -103,7 +103,7 @@ stop_monitor() {
 message() {
     stop_monitor
     echo $* >&3
-    start_monitor $logfile 458
+    start_monitor $logfile 255
 }
 
 check_bootstrap() {
@@ -141,9 +141,6 @@ main() {
     message "Finding compilers"
 
     spack compiler find --scope=site
-
-    message "Bootstrapping..."
-    spack bootstrap now
 
     message "installing fermi-spack-tools..."
     pyspec=$(spack config get packages | grep python | grep spec: | sed -e 's/ - spec://') 
