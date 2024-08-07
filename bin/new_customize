@@ -28,7 +28,7 @@ add_fermi_submodules() {
         var/spack/extensions/spack-localbuildcache	https://github.com/marcmengel/spack-localbuildcache.git
         var/spack/extensions/spack-mpd			https://github.com/knoepfel/spack-mpd.git
         var/spack/extensions/spack-subspack		https://github.com/marcmengel/spack-subspack.git
-        var/spack/repos/fnal_art			https://github.com/fnalSSI/fnal_art.git
+        var/spack/repos/fnal_art			https://github.com/FNALssi/fnal_art.git
         var/spack/repos/nusofthep-spack-recipes		https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
         var/spack/repos/larsoft-spack-recipes		https://github.com/LArSoft/larsoft-spack-recipes.git
         var/spack/repos/artdaq-spack                    https://github.com/art-daq/artdaq-spack.git
