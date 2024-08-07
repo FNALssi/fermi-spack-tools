@@ -54,7 +54,7 @@ parse_args() {
         x--) shift; break;;
         esac
     done
-    dest=${1:-$PWD}
+    dest=${1:-$PWD/spack}
 }
 
 detail_log() {
