@@ -55,6 +55,11 @@ parse_args() {
         esac
     done
     dest=${1:-$PWD/spack}
+    if [ -d $dest ]
+    then
+        echo "FAIL: Destination directory $d already exists. " >&2
+        exit 1
+    fi
 }
 
 detail_log() {

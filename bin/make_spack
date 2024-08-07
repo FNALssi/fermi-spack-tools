@@ -160,6 +160,7 @@ do_spack_bootstrap() {
     osstr=$(spack arch -o) 
     spack bootstrap root $dir/.bootstrap.$osstr
     spack bootstrap now
+    spack buildcache keys --install --force --trust
 }
 
 main() {
