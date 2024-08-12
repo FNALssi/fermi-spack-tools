@@ -252,9 +252,8 @@ SPACK CONFIGURATION OPTIONS
   --no-ups
   --ups[= ](plain|traditional|unified|-[ptu])
 
-    Create and populate a traditional, unified ("relocatable") or no UPS
-    area to allow the use of installed Spack packages via UPS. Default
-    is unified.
+    These options are deprecated: all except --ups=plain a.k.a. --no-ups
+    (the default) are ignored.
 
   --with-padding
 
@@ -612,7 +611,12 @@ _copy_back_logs() {
   mkdir -p "$tar_tmp/"{spack_env,spack-stage}
   cd "$spack_env_top_dir"
   _cmd $DEBUG_3 spack clean -dmp
-  _cmd $DEBUG_3 $PIPE tar -c $spack_source_dir/*.log $spack_source_dir/*-out.txt $spack_source_dir/*.yaml $spack_source_dir/etc $spack_source_dir/var/spack/environments \
+  _cmd $DEBUG_3 $PIPE tar -c \
+       "$spack_source_dir"/*.log \
+       "$spack_source_dir"/*-out.txt \
+       "$spack_source_dir"/*.yaml \
+       "$spack_source_dir"/etc \
+       "$spack_source_dir"/var/spack/environments \
     | _cmd $DEBUG_3 tar -C "$tar_tmp/spack_env" -x
   _cmd $DEBUG_3 $PIPE tar -C "$(spack location -S)" -c . \
     | _cmd $DEBUG_3 tar -C "$tar_tmp/spack-stage" -x
@@ -1166,8 +1170,9 @@ si_root=https://github.com/FNALssi/fermi-spack-tools.git
 si_ver=main
 spack_config_cmds=()
 spack_config_files=()
-spack_ver=v0.19.0-dev.fermi
-ups_opt=-u
+spack_source_dir="./"
+spack_ver=v0.22.0-fermi
+ups_opt=-p
 want_emergency_buildcache=1
 
 eval "$ssi_split_options"
@@ -1283,9 +1288,8 @@ local_caches=(
 
 spack_env_top_dir="$working_dir/spack_env"
 case "$ups_opt" in
-    -p) spack_source_dir="./";;
-    -u) spack_source_dir="./spack/$spack_ver/NULL/";;
-    -t) spack_source_dir="./spack/$spack_ver/NULL/";;
+    -p) :;;
+    -[ut]) _report $WARNING "deprecated --ups option \"$ups_opt\" ignored.";;
     -*) _die $EXIT_CONFIG_FAILURE "unrecognized --ups option $ups_opt\n$(usage)";;
     *) break
 esac
@@ -1368,7 +1372,8 @@ if ! [ -f "$spack_env_top_dir/setup-env.sh" ]; then
 fi
 
 # Enhanced setup scripts.
-if [ "$ups_opt" = "-p" ]; then
+if ! { [ -e "setup-env.sh" ] || [ -e "setup-env.csh" ]; } &&
+    [ "$ups_opt" = "-p" ]; then
   cat >setup-env.sh <<EOF
 export PATH="$(echo "$PATH" | sed -Ee 's&(^|:)[^/][^:]*&&g')"
 . "$spack_env_top_dir/share/spack/setup-env.sh"
@@ -1434,28 +1439,6 @@ OIFS="$IFS"
 IFS='|'
 known_compilers_re="(${known_compilers[*]})"
 IFS="$OIFS"
-
-####################################
-# Set up the build environment.
-if ! [ "$ups_opt" = "-p" ]; then
-  _report $PROGRESS "declaring fermi-spack-tools package to UPS"
-  { source /grid/fermiapp/products/common/etc/setups \
-      || source /products/setup \
-      || source /cvmfs/mu2e.opensciencegrid.org/artexternals/setups \
-      || source /cvmfs/larsoft.opensciencegrid.org/products/setups \
-      || _die $EXIT_UPS_ERROR "unable to set up UPS"
-  } >/dev/null 2>&1
-  PRODUCTS="$spack_env_top_dir:$PRODUCTS"
-
-  cd $TMP \
-    && {
-    _cmd $DEBUG_1 ups exist fermi-spack-tools $si_upsver \
-      || _cmd $DEBUG_1 "$TMP/bin/declare_simple" fermi-spack-tools $si_upsver
-  } \
-    || _die $EXIT_UPS_ERROR "unable to declare fermi-spack-tools $si_ver to UPS"
-  cd - >/dev/null
-fi
-####################################
 
 environment_specs=("$@")
 num_environments=${#environment_specs[@]}
