@@ -298,7 +298,7 @@ packages:
       prefix: /usr
   mesa-glu:
     externals:
-    - spec: "mesa-glu gl=glx @9.0.0 %gcc@4.8.5 os=scientific7"
+    - spec: "mesa-glu @9.0.0 %gcc@4.8.5 os=scientific7"
       prefix: /usr
     buildable: False
   mesa:

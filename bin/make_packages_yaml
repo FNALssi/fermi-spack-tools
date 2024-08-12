@@ -18,9 +18,9 @@ usage() {
 
 src=$dir/templates/packagelist
 want_cvmfs=false
-if x=$(getopt --options "" --longoptions "help,with-externals,with-cvmfs,debug,packagelist:"  -- "$@")
+if al=$(getopt --options "" --longoptions "help,with-externals,with-cvmfs,debug,packagelist:"  -- "$@")
 then
-    eval set : $x
+    eval set : $al
     shift
 else
     usage
@@ -48,11 +48,12 @@ x--debug)
     set -x
     shift
     ;;
-x--packagelist=*)
-    src=`echo $1 | sed -e 's/--packagelist=//'`
+x--packagelist*)
+    src=$2
+    shift
     shift
     ;;
-x--)                    shift; break;;
+x--)                    shift;;
 x*)
     break;;
 esac
@@ -78,7 +79,7 @@ force_system='^(bdftopcf|damageproto|diffutils|expat|findutils|font-util|gdbm|ge
 force_x86_64='^(hwloc|libpciaccess|libsigsegv)$'
 
 # Global preferred target
-preferred_target=x86_64_v2
+preferred_target=x86_64_v3
 
 teeit="cat"
 #debugging

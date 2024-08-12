@@ -6,7 +6,7 @@ packages:
       - gcc
       - clang
     target:
-      - x86_64_v2
+      - x86_64_v3
     providers:
       pkgconfig::
         - pkg-config
@@ -176,7 +176,7 @@ packages:
   hwloc:
     require:
       - one_of:
-        - "target=x86_64_v2"
+        - "target=x86_64_v3"
       - one_of:
         - "%gcc@11"
         - "%clang@15.0.7"
@@ -202,7 +202,7 @@ packages:
   libpciaccess:
     require:
       - one_of:
-        - "target=x86_64_v2"
+        - "target=x86_64_v3"
       - one_of:
         - "%gcc@11"
         - "%clang@15.0.7"
@@ -305,7 +305,7 @@ packages:
       prefix: /usr
   mesa-glu:
     externals:
-    - spec: "mesa-glu gl=glx @9.0.1 %gcc@11 os=almalinux9"
+    - spec: "mesa-glu @9.0.1 %gcc@11 os=almalinux9"
       prefix: /usr
     buildable: False
   mesa:

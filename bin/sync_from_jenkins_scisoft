@@ -1,36 +1,60 @@
 #!/bin/bash
-curl -OL https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/label1=$1/$2/artifact/copyBack/jenkins-build-spack-env-label1=$1-$2.tar.bz2
-mkdir $1-$2; tar -x  -C $1-$2 -f jenkins-build-spack-env-label1=$1-$2.tar.bz2
-#if (curl https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$2/artifact/copyBack/spack-emergency-cache/ 2>/dev/null | grep -q 404 ); then
-	spack mirror add $1-$2e --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-emergency-cache/
-#fi
-#if (curl https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$2/artifact/copyBack/spack-binary-cache/ 2>/dev/null | grep -q 404 ); then
-	spack mirror add $1-$2b --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-binary-cache/
-#fi
-#if (curl https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$2/artifact/copyBack/spack-compiler-cache/ 2>/dev/null | grep -q 404 );then 
-	spack mirror add $1-$2c --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-compiler-cache
-#fi
-spack mirror list
-if [ -d $1-$2/spack_env/var/spack/environments ]; then
-	for env in $(ls -d $1-$2/spack_env/var/spack/environments/*);do
-		spack -e $env buildcache sync $1-$2b local-binary-plain
-		spack -e $env buildcache sync $1-$2e local-binary-plain
-	done
-        spack buildcache update index local-binary-plain
-	for env in $(ls -d $1-$2/spack_env/var/spack/environments/{gcc,clang}*);do
-		spack -e $env buildcache sync $1-$2c local-compiler-plain
-	done
-        spack buildcache update index local-compiler-plain
-fi
-if [ -d $1-$2/spack_env/spack/v0.21.0-fermi/NULL/var/spack/environments ]; then
-	for env in $(ls -d $1-$2/spack_env/spack/v0.21.0-fermi/NULL/var/spack/environments/*);do
-		spack -e $env buildcache sync $1-$2b local-binary-unified
-		spack -e $env buildcache sync $1-$2e local-binary-unified
-	done
-        spack buildcache update index local-binary-unified
-	for env in $(ls -d $1-$2/spack_env/spack/v0.21.0-fermi/NULL/var/spack/environments/{gcc,clang}*);do
-		spack -e $env buildcache sync $1-$2b local-compiler-unified
-	done
-        spack buildcache update index local-compiler-unified
-fi
 
+extract_from_env() {
+  local env="$1"
+  stem="${env##*/}"
+  stem="${stem//[@.]/-}"
+  # Extract and create a suitable new name for the environment's
+  # spack.yaml file.
+  [ -f "$env/spack.yaml" ] && cp -v "$env/spack.yaml" "$stem.yaml"
+  if [ -f "$env/spack.lock" ]; then
+    # Extract and create a suitable new name for the environment's
+    # spack.lock file.
+    local targets=()
+    local platform_oss=()
+    eval "$(perl -e 'use JSON::PP; my $json=JSON::PP->new->utf8->pretty->relaxed; open(FILE, "<'"$env"'/spack.lock"); my $data = join("\n", <FILE>); close(FILE); my $struct=$json->decode($data); print($json->encode($struct));' | sed -Ene 's&^[[:space:]]+"(target|platform_os)" : "([^"]+)".*$&\1s+=("\2")&p' 2>/dev/null)"
+    OIFS="$IFS"
+    IFS=$'\n'
+    platform_os="$platform_oss"
+    target="$(echo "${targets[*]}" | sort | uniq -c | sort -n -r -k 1 | head -1 | awk '{ print $2; }')"
+    IFS="$OIFS"
+    cp -v "$env/spack.lock" "$stem-$platform_os-$target.json"
+  fi
+}
+
+curl --fail -OL https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/label1=$1/$2/artifact/copyBack/jenkins-build-spack-env-label1=$1-$2.tar.bz2
+rm -rf $1-$2 && mkdir $1-$2 && tar -x -C $1-$2 -f jenkins-build-spack-env-label1=$1-$2.tar.bz2
+spack mirror rm $1-$2e || true
+spack mirror add $1-$2e --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-emergency-cache
+spack mirror rm $1-$2b || true
+spack mirror add $1-$2b --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-binary-cache
+spack mirror rm $1-$2c || true
+spack mirror add $1-$2c --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-compiler-cache
+spack mirror list
+
+if [ -d $1-$2/spack_env/var/spack/environments ]; then
+	for env in $(ls -d $1-$2/spack_env/var/spack/environments/* 2>/dev/null);do
+    extract_from_env "$env"
+		spack -e $env buildcache sync $1-$2b local-binary-plain || true
+		spack -e $env buildcache sync $1-$2e local-binary-plain || true
+	done
+  spack buildcache update-index local-binary-plain || true
+	for env in $(ls -d $1-$2/spack_env/var/spack/environments/{gcc,clang}* 2>/dev/null);do
+    extract_from_env "$env"
+		spack -e $env buildcache sync $1-$2c local-compiler-plain || true
+	done
+  spack buildcache update-index local-compiler-plain || true
+fi
+if [ -d $1-$2/spack_env/spack/*/NULL/var/spack/environments ]; then
+	for env in $(ls -d $1-$2/spack_env/spack/*/NULL/var/spack/environments/* 2>/dev/null);do
+    extract_from_env "$env"
+		spack -e $env buildcache sync $1-$2b local-binary-unified || true
+		spack -e $env buildcache sync $1-$2e local-binary-unified || true
+	done
+  spack buildcache update-index local-binary-unified || true
+	for env in $(ls -d $1-$2/spack_env/spack/*/NULL/var/spack/environments/{gcc,clang}* 2>/dev/null);do
+    extract_from_env "$env"
+		spack -e $env buildcache sync $1-$2b local-compiler-unified || true
+	done
+  spack buildcache update-index local-compiler-unified || true
+fi
