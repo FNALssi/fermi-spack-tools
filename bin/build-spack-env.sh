@@ -430,7 +430,7 @@ _cmd() {
 # Configure specified Spack recipe repos.
 _configure_recipe_repos() {
   local configured_repos=($(_cmd $DEBUG_1 $PIPE spack repo list | \
-                              _cmd $DEBUG_1 $PIPE sed -Ene 's&^([A-Za-z0-9_.-]+).*$&\1&p'))
+                              _cmd $DEBUG_2 $PIPE sed -Ene 's&^([A-Za-z0-9_.-]+).*$&\1&p'))
   for repo_element in ${recipe_repos[*]:+"${recipe_repos[@]}"}; do
     local path=
     if [[ "$repo_element" =~ ^(file|https?)://(.*)$ ]]; then
@@ -443,35 +443,40 @@ _configure_recipe_repos() {
       else
         url="$url_type://${url_remainder%|*}"
       fi
-      local path="${url%.git}" rpath=
+      local path="${url%.git}"
       path="$SPACK_ROOT/${path##*/}"
-      local bnum=0
-      if [ -f "$path" ]; then
-        while read -r rpath < <(_cmd $DEBUG_2 $PIPE ls -1 "$path"-*); do
-          [[ "$rpath" =~ -([0-9]+)$ ]] &&
-            (( "${BASH_REMATCH[1]}" > bnum )) &&
-            (( bnum = "${BASH_REMATCH[1]}" ))
-        done
-        path="$path-$((bnum + 1))"
-      fi
-      if [ -d "$path" ]; then
-        if [ "$(_cmd $DEBUG_2 $PIPE git -C "$path" remote)" = "origin" ] &&
-             [ "$(_cmd $DEBUG_2 $PIPE git -C "$path" remote get-url origin)" = "$url" ]; then
-          if [ "$(_cmd $DEBUG_2 $PIPE git -C "$path" branch --show-current)" = "$branch_etc" ]; then
-            :
-          elif (( $(_cmd $DEBUG_2 $PIPE git -C "$path" status -s | wc -l) == 0 )) &&
+      local configure_namespace=1
+      if [ -d "$path" ]; then # We already have a repo here.
+        orig_namespace="$(_cmd $DEBUG_3 $PIPE sed -Ene 's&^[[:space:]]*namespace[[:space:]]*:[[:space:]]*'"'([^']+)'"'$&\1&p' "$path/repo.yaml")"
+        if [ "$(_cmd $DEBUG_3 $PIPE git -C "$path" remote)" = "origin" ] &&
+             [ "$(_cmd $DEBUG_3 $PIPE git -C "$path" remote get-url origin)" = "$url" ]; then
+          if [ "$(_cmd $DEBUG_3 $PIPE git -C "$path" branch --show-current)" = "$branch_etc" ]; then
+            # Nothing to do, existing repo is what we want.
+            configure_namespace=0
+          elif (( $(_cmd $DEBUG_3 $PIPE git -C "$path" status -s | wc -l) == 0 )) &&
                  [ -n "$branch_etc" ]; then
-            _report $INFO "Switching to branch $branch_etc in $path"
+            # Deactivate existing namespace.
+            _deactivate_repo $orig_namespace
+            # Switch to desired branch.
+            _report $INFO "switching to branch $branch_etc in $path"
             _cmd $DEBUG_1 git -C "$path" switch "$branch_etc"
           fi
         else
-          false
+          local bnum=0 rpath= orig_path="$path"
+          while read -r rpath < <(_cmd $DEBUG_3 $PIPE ls -1 "$orig_path"-*); do
+            [[ "$rpath" =~ -([0-9]+)$ ]] &&
+              (( "${BASH_REMATCH[1]}" > bnum )) &&
+              (( bnum = "${BASH_REMATCH[1]}" ))
+          done
+          path="$orig_path-$((bnum + 1))"
+          _report $INFO "cloning Git repository $url${branch_etc:+:$branch_etc} to $path"
+          _cmd $DEBUG_1 git clone ${branch_etc:+-b "$branch_etc"} "$url" "$path" ||
+            _die "unable to clone $url to $path to configure Spack recipe repository"
         fi
-      elif ! [ -e "$path" ]; then
-        _cmd $DEBUG_1 git clone ${branch_etc:+-b "$branch_etc"} "$url" "$path" ||
-          _die "unable to clone $url to $path to configure Spack recipe repo"
       else
-        false
+        _report $INFO "cloning Git repository $url${branch_etc:+:$branch_etc} to $path"
+        _cmd $DEBUG_1 git clone ${branch_etc:+-b "$branch_etc"} "$url" "$path" ||
+          _die "unable to clone $url to $path to configure Spack recipe repository"
       fi
       if (( $? )); then
         _die "unable to reconcile requested repo $repo_element with existing path $path"
@@ -479,16 +484,14 @@ _configure_recipe_repos() {
     else
       path="$repo_element"
     fi
-    local namespace="$(_cmd $DEBUG_1 $PIPE sed -Ene 's&^[[:space:]]*namespace[[:space:]]*:[[:space:]]*'"'([^']+)'"'$&\1&p' "$path/repo.yaml")"
-    for rrepo in ${configured_repos[*]:+"${configured_repos[@]}"}; do
-      [ "$namespace" = "$rrepo" ] || continue
-      _report $PROGRESS "deactivating existing repo $rrepo"
-      _cmd $DEBUG_1 spack repo rm $rrepo ||
-        _die "unable to unconfigure existing repo $rrepo"
-    done
-    _report $INFO "configuring Spack recipe repo $namespace at $path"
-    _cmd $DEBUG_1 spack repo add "$path" ||
-      _die "unable to add repo $namespace at $path"
+    if (( configure_namespace )); then
+      local namespace="$(_cmd $DEBUG_3 $PIPE sed -Ene 's&^[[:space:]]*namespace[[:space:]]*:[[:space:]]*'"'([^']+)'"'$&\1&p' "$path/repo.yaml")"
+      # Deactivate namespace if it is configured.
+      _deactivate_repo $namespace
+      _report $INFO "configuring Spack recipe repo $namespace${scope:+ in scope $scope} at $path"
+      _cmd $DEBUG_1 spack repo add${scope:+ --scope $scope} "$path" ||
+        _die "unable to add repo $namespace${scope:+ in scope $scope} at $path"
+    fi
   done
 }
 
@@ -647,6 +650,22 @@ _copy_back_logs() {
   _cmd $DEBUG_3 rm -rf "$tar_tmp"
   _report $INFO "end-of-job copy-back COMPLETE"
 } 2>/dev/null
+
+_deactivate_repo() {
+  local namespace="$1" rrepo=
+  for rrepo in ${configured_repos[*]:+"${configured_repos[@]}"}; do
+    [ "$namespace" = "$rrepo" ] || continue
+    local path="$(_cmd $DEBUG_2 $PIPE spack repo list | _cmd $DEBUG_3 $PIPE grep -Ee "^$namespace")"
+    local path_basename="${path##*/}"
+    scope="$(_cmd $DEBUG_2 $PIPE spack config blame repos | _cmd $DEBUG_3 $PIPE sed -Ene '\&/'"$path_basename"'$& s&/repos\.yaml:[[:digit:]]+[[:space:]]+.*$&/&p')"
+    scope="${scope##*/etc/spack/}"
+    scope="${scope%/*}"
+    [[ scope == defaults/* ]] || scope="site${scope:+/$scope}"
+    _report $PROGRESS "deactivating existing repo $rrepo in scope $scope at $path"
+    _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo ||
+      _die "unable to deactivate existing repo $rrepo in scope $scope at $path"
+  done
+}
 
 # Print a message and exit with the specifed numeric first argument or 1
 # as status code.
