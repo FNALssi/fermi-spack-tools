@@ -75,6 +75,7 @@ BRIEF OPTIONS
   --clear-mirrors
   --color[= ](auto|always|never)
   --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install)
+  --debug-tmp
   --fermi-spack-tools-root[= ]<repo>
   --fermi-spack-tools-version[= ]<version>
   --(no-)?emergency-buildcache
@@ -132,6 +133,10 @@ HELP AND DIAGNOSTIC OPTIONS
   --(debug|verbose)-spack-(bootstrap|buildcache|concretize|install)
 
     Add -d or -v options to appropriate invocations of Spack.
+
+  --debug-tmp
+
+    Preserve script-generated temporary files.
 
   --color[= ](auto|always|never)
 
@@ -247,9 +252,8 @@ SPACK CONFIGURATION OPTIONS
   --no-ups
   --ups[= ](plain|traditional|unified|-[ptu])
 
-    Create and populate a traditional, unified ("relocatable") or no UPS
-    area to allow the use of installed Spack packages via UPS. Default
-    is unified.
+    These options are deprecated: all except --ups=plain a.k.a. --no-ups
+    (the default) are ignored.
 
   --with-padding
 
@@ -372,18 +376,21 @@ _cache_info() {
 _classify_concretized_specs() {
   local all_concrete_specs=()
   _identify_concrete_specs || return
-  local regex='^([^[:space:]]+) ( *)([^[:space:]@+~%]*)'
+  local regex='^(.{4,5})?([^[:space:]]{32,}) ( *)([^[:space:]@+~%]*)'
   local n_speclines=${#all_concrete_specs[@]} specline_idx=0
+  local new_format=0
   while (( specline_idx < n_speclines )); do
     _report $DEBUG_4 "examining line $((specline_idx + 1))/$n_speclines: ${all_concrete_specs[$specline_idx]}"
     [[ "${all_concrete_specs[$((specline_idx++))]}" =~ $regex ]] || continue
-    local namespace_name="${BASH_REMATCH[3]}"
-    local hash="${BASH_REMATCH[1]}"
-    local level=${#BASH_REMATCH[2]}
-    if (( level )); then
-      non_root_hashes+=("$namespace_name/$hash")
-    else
+    local hash="${BASH_REMATCH[2]}"
+    local namespace_name="${BASH_REMATCH[4]}"
+    if (( ${#BASH_REMATCH[1]} == 4 )); then
+      new_format=1
       root_hashes+=("$namespace_name/$hash")
+    elif ! { (( new_format )) || (( ${#BASH_REMATCH[3] )); }; then
+      root_hashes+=("$namespace_name/$hash")
+    else
+      non_root_hashes+=("$namespace_name/$hash")
     fi
     hashes+=("$namespace_name/$hash")
   done
@@ -423,7 +430,7 @@ _cmd() {
 # Configure specified Spack recipe repos.
 _configure_recipe_repos() {
   local configured_repos=($(_cmd $DEBUG_1 $PIPE spack repo list | \
-                              _cmd $DEBUG_1 $PIPE sed -Ene 's&^([A-Za-z0-9_.-]+).*$&\1&p'))
+                              _cmd $DEBUG_2 $PIPE sed -Ene 's&^([A-Za-z0-9_.-]+).*$&\1&p'))
   for repo_element in ${recipe_repos[*]:+"${recipe_repos[@]}"}; do
     local path=
     if [[ "$repo_element" =~ ^(file|https?)://(.*)$ ]]; then
@@ -436,35 +443,40 @@ _configure_recipe_repos() {
       else
         url="$url_type://${url_remainder%|*}"
       fi
-      local path="${url%.git}" rpath=
+      local path="${url%.git}"
       path="$SPACK_ROOT/${path##*/}"
-      local bnum=0
-      if [ -f "$path" ]; then
-        while read -r rpath < <(_cmd $DEBUG_2 $PIPE ls -1 "$path"-*); do
-          [[ "$rpath" =~ -([0-9]+)$ ]] &&
-            (( "${BASH_REMATCH[1]}" > bnum )) &&
-            (( bnum = "${BASH_REMATCH[1]}" ))
-        done
-        path="$path-$((bnum + 1))"
-      fi
-      if [ -d "$path" ]; then
-        if [ "$(_cmd $DEBUG_2 $PIPE git -C "$path" remote)" = "origin" ] &&
-             [ "$(_cmd $DEBUG_2 $PIPE git -C "$path" remote get-url origin)" = "$url" ]; then
-          if [ "$(_cmd $DEBUG_2 $PIPE git -C "$path" branch --show-current)" = "$branch_etc" ]; then
-            :
-          elif (( $(_cmd $DEBUG_2 $PIPE git -C "$path" status -s | wc -l) == 0 )) &&
+      local configure_namespace=1
+      if [ -d "$path" ]; then # We already have a repo here.
+        orig_namespace="$(_cmd $DEBUG_3 $PIPE sed -Ene 's&^[[:space:]]*namespace[[:space:]]*:[[:space:]]*'"'([^']+)'"'$&\1&p' "$path/repo.yaml")"
+        if [ "$(_cmd $DEBUG_3 $PIPE git -C "$path" remote)" = "origin" ] &&
+             [ "$(_cmd $DEBUG_3 $PIPE git -C "$path" remote get-url origin)" = "$url" ]; then
+          if [ "$(_cmd $DEBUG_3 $PIPE git -C "$path" branch --show-current)" = "$branch_etc" ]; then
+            # Nothing to do, existing repo is what we want.
+            configure_namespace=0
+          elif (( $(_cmd $DEBUG_3 $PIPE git -C "$path" status -s | wc -l) == 0 )) &&
                  [ -n "$branch_etc" ]; then
-            _report $INFO "Switching to branch $branch_etc in $path"
+            # Deactivate existing namespace.
+            _deactivate_repo $orig_namespace
+            # Switch to desired branch.
+            _report $INFO "switching to branch $branch_etc in $path"
             _cmd $DEBUG_1 git -C "$path" switch "$branch_etc"
           fi
         else
-          false
+          local bnum=0 rpath= orig_path="$path"
+          while read -r rpath < <(_cmd $DEBUG_3 $PIPE ls -1 "$orig_path"-*); do
+            [[ "$rpath" =~ -([0-9]+)$ ]] &&
+              (( "${BASH_REMATCH[1]}" > bnum )) &&
+              (( bnum = "${BASH_REMATCH[1]}" ))
+          done
+          path="$orig_path-$((bnum + 1))"
+          _report $INFO "cloning Git repository $url${branch_etc:+:$branch_etc} to $path"
+          _cmd $DEBUG_1 git clone ${branch_etc:+-b "$branch_etc"} "$url" "$path" ||
+            _die "unable to clone $url to $path to configure Spack recipe repository"
         fi
-      elif ! [ -e "$path" ]; then
-        _cmd $DEBUG_1 git clone ${branch_etc:+-b "$branch_etc"} "$url" "$path" ||
-          _die "unable to clone $url to $path to configure Spack recipe repo"
       else
-        false
+        _report $INFO "cloning Git repository $url${branch_etc:+:$branch_etc} to $path"
+        _cmd $DEBUG_1 git clone ${branch_etc:+-b "$branch_etc"} "$url" "$path" ||
+          _die "unable to clone $url to $path to configure Spack recipe repository"
       fi
       if (( $? )); then
         _die "unable to reconcile requested repo $repo_element with existing path $path"
@@ -472,16 +484,14 @@ _configure_recipe_repos() {
     else
       path="$repo_element"
     fi
-    local namespace="$(_cmd $DEBUG_1 $PIPE sed -Ene 's&^[[:space:]]*namespace[[:space:]]*:[[:space:]]*'"'([^']+)'"'$&\1&p' "$path/repo.yaml")"
-    for rrepo in ${configured_repos[*]:+"${configured_repos[@]}"}; do
-      [ "$namespace" = "$rrepo" ] || continue
-      _report $PROGRESS "deactivating existing repo $rrepo"
-      _cmd $DEBUG_1 spack repo rm $rrepo ||
-        _die "unable to unconfigure existing repo $rrepo"
-    done
-    _report $INFO "configuring Spack recipe repo $namespace at $path"
-    _cmd $DEBUG_1 spack repo add "$path" ||
-      _die "unable to add repo $namespace at $path"
+    if (( configure_namespace )); then
+      local namespace="$(_cmd $DEBUG_3 $PIPE sed -Ene 's&^[[:space:]]*namespace[[:space:]]*:[[:space:]]*'"'([^']+)'"'$&\1&p' "$path/repo.yaml")"
+      # Deactivate namespace if it is configured.
+      _deactivate_repo $namespace
+      _report $INFO "configuring Spack recipe repo $namespace${scope:+ in scope $scope} at $path"
+      _cmd $DEBUG_1 spack repo add${scope:+ --scope $scope} "$path" ||
+        _die "unable to add repo $namespace${scope:+ in scope $scope} at $path"
+    fi
   done
 }
 
@@ -604,7 +614,12 @@ _copy_back_logs() {
   mkdir -p "$tar_tmp/"{spack_env,spack-stage}
   cd "$spack_env_top_dir"
   _cmd $DEBUG_3 spack clean -dmp
-  _cmd $DEBUG_3 $PIPE tar -c $spack_source_dir/*.log $spack_source_dir/*-out.txt $spack_source_dir/*.yaml $spack_source_dir/etc $spack_source_dir/var/spack/environments \
+  _cmd $DEBUG_3 $PIPE tar -c \
+       "$spack_source_dir"/*.log \
+       "$spack_source_dir"/*-out.txt \
+       "$spack_source_dir"/*.yaml \
+       "$spack_source_dir"/etc \
+       "$spack_source_dir"/var/spack/environments \
     | _cmd $DEBUG_3 tar -C "$tar_tmp/spack_env" -x
   _cmd $DEBUG_3 $PIPE tar -C "$(spack location -S)" -c . \
     | _cmd $DEBUG_3 tar -C "$tar_tmp/spack-stage" -x
@@ -635,6 +650,22 @@ _copy_back_logs() {
   _cmd $DEBUG_3 rm -rf "$tar_tmp"
   _report $INFO "end-of-job copy-back COMPLETE"
 } 2>/dev/null
+
+_deactivate_repo() {
+  local namespace="$1" rrepo=
+  for rrepo in ${configured_repos[*]:+"${configured_repos[@]}"}; do
+    [ "$namespace" = "$rrepo" ] || continue
+    local path="$(_cmd $DEBUG_2 $PIPE spack repo list | _cmd $DEBUG_3 $PIPE grep -Ee "^$namespace")"
+    local path_basename="${path##*/}"
+    scope="$(_cmd $DEBUG_2 $PIPE spack config blame repos | _cmd $DEBUG_3 $PIPE sed -Ene '\&/'"$path_basename"'$& s&/repos\.yaml:[[:digit:]]+[[:space:]]+.*$&/&p')"
+    scope="${scope##*/etc/spack/}"
+    scope="${scope%/*}"
+    [[ scope == defaults/* ]] || scope="site${scope:+/$scope}"
+    _report $PROGRESS "deactivating existing repo $rrepo in scope $scope at $path"
+    _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo ||
+      _die "unable to deactivate existing repo $rrepo in scope $scope at $path"
+  done
+}
 
 # Print a message and exit with the specifed numeric first argument or 1
 # as status code.
@@ -681,11 +712,11 @@ _identify_concrete_specs() {
       --color=never \
       find  --no-groups --show-full-compiler -cfNdvL \
       > "$TMP/$env_name-concrete.txt"
-      sed -Ene '/^==> (\[.*\] )?Concretized roots$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; p; }' \
+      sed -Ene '/^==> (\[.*\] )?(Concretized roots|[[:digit:]]+ root specs)$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; /^.{4,5}?[^[:space:]]{32,}/ p; }' \
           "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt"
   } 2>/dev/null
   local status=$?
-  _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt") lines"
+  _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt" | cut -d' ' -f 1) lines"
   while IFS='' read -r line; do
     all_concrete_specs+=("$line")
   done < "$TMP/$env_name-concrete-filtered.txt"
@@ -802,7 +833,7 @@ EOF
            ${buildcache_rel_arg} "$cache" \
            "${hashes_to_cache[@]/#//}" ||
         _die "failure caching packages to $cache"
-      if [ -d "$cache/build_cache/index.json" ]; then
+      if [ -f "$cache/build_cache/index.json" ]; then
         _report $PROGRESS "updating build cache index at $cache"
         _cmd $DEBUG_1 $PROGRESS \
              spack \
@@ -955,7 +986,7 @@ _process_environment() {
   #
   # then note that fact.
   (( ++env_idx ))
-  [[ "$env_spec"  =~ ^$known_compilers_re([~+@%[:space:]].*)?$ ]] \
+  [[ "$env_spec"  =~ ^$known_compilers_re[@-][0-9] ]] \
     && is_compiler_env=1 \
     && (( num_environments > env_idx )) \
     && is_nonterminal_compiler_env=1
@@ -1158,8 +1189,9 @@ si_root=https://github.com/FNALssi/fermi-spack-tools.git
 si_ver=main
 spack_config_cmds=()
 spack_config_files=()
-spack_ver=v0.19.0-dev.fermi
-ups_opt=-u
+spack_source_dir="./"
+spack_ver=v0.22.0-fermi
+ups_opt=-p
 want_emergency_buildcache=1
 
 eval "$ssi_split_options"
@@ -1176,6 +1208,7 @@ while (( $# )); do
     --color) color="$2"; shift;;
     --color=*) color="${1#*=}";;
     --debug-spack-*|--verbose-spack-*) eval "${1//-/_}=1";;
+    --debug-tmp) debug_tmp=1;;
     --emergency-buildcache) want_emergency_buildcache=1;;
     --fail-fast) fail_fast=1;;
     --help|-h|-\?) usage 2; exit 1;;
@@ -1262,7 +1295,8 @@ fi
 
 # Temporary working area (and cleanup trap).
 TMP="$(mktemp -d -t build-spack-env.sh.XXXXXX)"
-trap "[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null" EXIT
+(( debug_tmp )) && _report $INFO "generated files will be preserved in $TMP"
+trap "! (( debug_tmp )) && [ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null" EXIT
 
 # Local cache locations are derived from $working_dir.
 local_caches=(
@@ -1273,9 +1307,8 @@ local_caches=(
 
 spack_env_top_dir="$working_dir/spack_env"
 case "$ups_opt" in
-    -p) spack_source_dir="./";;
-    -u) spack_source_dir="./spack/$spack_ver/NULL/";;
-    -t) spack_source_dir="./spack/$spack_ver/NULL/";;
+    -p) :;;
+    -[ut]) _report $WARNING "deprecated --ups option \"$ups_opt\" ignored.";;
     -*) _die $EXIT_CONFIG_FAILURE "unrecognized --ups option $ups_opt\n$(usage)";;
     *) break
 esac
@@ -1348,6 +1381,7 @@ if ! [ -f "$spack_env_top_dir/setup-env.sh" ]; then
     --minimal
     $ups_opt
   )
+  (( VERBOSITY < DEBUG_1 )) || make_spack_cmd+=(--verbose)
   (( query_packages )) && make_spack_cmd+=(--query-packages)
   (( with_padding )) && make_spack_cmd+=(--with_padding)
   make_spack_cmd+=("$spack_env_top_dir")
@@ -1358,7 +1392,8 @@ if ! [ -f "$spack_env_top_dir/setup-env.sh" ]; then
 fi
 
 # Enhanced setup scripts.
-if [ "$ups_opt" = "-p" ]; then
+if ! { [ -e "setup-env.sh" ] || [ -e "setup-env.csh" ]; } &&
+    [ "$ups_opt" = "-p" ]; then
   cat >setup-env.sh <<EOF
 export PATH="$(echo "$PATH" | sed -Ee 's&(^|:)[^/][^:]*&&g')"
 . "$spack_env_top_dir/share/spack/setup-env.sh"
@@ -1394,7 +1429,7 @@ _configure_spack
 ####################################
 # Safe, comprehensive cleanup.
 trap "trap - EXIT; \
-[ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
+! (( debug_tmp )) && [ -d \"$TMP\" ] && rm -rf \"$TMP\" 2>/dev/null; \
 [ -f \"\$mirrors_cfg~\" ] && mv -f \"\$mirrors_cfg\"{~,}; \
 _copy_back_logs; \
 if (( failed )) && (( want_emergency_buildcache )); then \
@@ -1424,28 +1459,6 @@ OIFS="$IFS"
 IFS='|'
 known_compilers_re="(${known_compilers[*]})"
 IFS="$OIFS"
-
-####################################
-# Set up the build environment.
-if ! [ "$ups_opt" = "-p" ]; then
-  _report $PROGRESS "declaring fermi-spack-tools package to UPS"
-  { source /grid/fermiapp/products/common/etc/setups \
-      || source /products/setup \
-      || source /cvmfs/mu2e.opensciencegrid.org/artexternals/setups \
-      || source /cvmfs/larsoft.opensciencegrid.org/products/setups \
-      || _die $EXIT_UPS_ERROR "unable to set up UPS"
-  } >/dev/null 2>&1
-  PRODUCTS="$spack_env_top_dir:$PRODUCTS"
-
-  cd $TMP \
-    && {
-    _cmd $DEBUG_1 ups exist fermi-spack-tools $si_upsver \
-      || _cmd $DEBUG_1 "$TMP/bin/declare_simple" fermi-spack-tools $si_upsver
-  } \
-    || _die $EXIT_UPS_ERROR "unable to declare fermi-spack-tools $si_ver to UPS"
-  cd - >/dev/null
-fi
-####################################
 
 environment_specs=("$@")
 num_environments=${#environment_specs[@]}
