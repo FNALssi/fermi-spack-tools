@@ -69,7 +69,7 @@ do_padding() {
 query_packages() {
    if $query_packages; then
        osstr=$(spack arch -o) 
-       spack linuxexternals --scope=linux/$osstr
+       spack linuxexternals --scope=site/linux/$osstr
    fi
 }
 
