@@ -6,7 +6,7 @@ packages:
       - gcc
       - clang
     target:
-      - x86_64_v3
+      - x86_64_v2
     providers:
       pkgconfig::
         - pkg-config
@@ -176,7 +176,7 @@ packages:
   hwloc:
     require:
       - one_of:
-        - "target=x86_64_v3"
+        - "target=x86_64_v2"
       - one_of:
         - "%gcc@11"
         - "%clang@15.0.7"
@@ -202,7 +202,7 @@ packages:
   libpciaccess:
     require:
       - one_of:
-        - "target=x86_64_v3"
+        - "target=x86_64_v2"
       - one_of:
         - "%gcc@11"
         - "%clang@15.0.7"
