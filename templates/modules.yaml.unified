@@ -1,9 +1,4 @@
 modules:
   default:
-    roots:
-      ups_table: $spack/../../..
-      ups_version: $spack/../../..
     enable:
     - tcl
-    - ups_table
-    - ups_version
