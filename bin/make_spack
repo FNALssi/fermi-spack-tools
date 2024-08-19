@@ -217,6 +217,7 @@ usage(){
         echo "  --spack_release ver"
         echo "  --spack_repo url"
         echo "  --minimal"
+        echo "  --verbose"
         echo "  -u fermi 'unified' layout"
         echo "  -t fermi 'traditional' layout"
         echo "  -p plain spack default layout"
@@ -266,6 +267,7 @@ parse_args() {
         x--help)                usage; exit;;
         x--no_buildcache)       use_buildcache=false; shift;;
         x--repover)             repovers="$repovers $2"; shift; shift;;
+        x--verbose)             verbose=true; shift ;;
         x-u)                    layout=unified; shift;;
         x-t)                    layout=traditional; shift;;
         x-p)                    layout=plain; shift;;
