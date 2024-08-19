@@ -1381,7 +1381,7 @@ if ! [ -f "$spack_env_top_dir/setup-env.sh" ]; then
     --minimal
     $ups_opt
   )
-  (( VERBOSITY < DEBUG_1 )) || make_spack_cmd+=(--verbose)
+  (( VERBOSITY < DEBUG_1 )) || make_spack_cmd+=(-v)
   (( query_packages )) && make_spack_cmd+=(--query-packages)
   (( with_padding )) && make_spack_cmd+=(--with_padding)
   make_spack_cmd+=("$spack_env_top_dir")
