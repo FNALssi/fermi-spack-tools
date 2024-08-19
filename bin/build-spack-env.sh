@@ -786,16 +786,23 @@ _maybe_cache_binaries() {
   # avoid unnecessary overhead.
   {
     cat > "$TMP/location_cmds.py" <<\EOF
-import spack.cmd
 import spack.environment
+import spack.store
 
-env = spack.environment.active_environment()
+all_hashes = spack.environment.active_environment().all_hashes()
+
+
+def print_prefix_for_hash(spec, hash):
+    matching_specs = spack.store.STORE.db.query(hash, hashes=all_hashes, installed=True)
+    if len(matching_specs) == 1:
+      print(spec, matching_specs[0].prefix)
+
 EOF
   } ||
     _die "I/O error writing to $TMP/location_cmds.py"
   for hash in ${hashes_to_cache_tmp[*]:+"${hashes_to_cache_tmp[@]}"}; do
     _report $DEBUG_4 "scheduling location lookup of $hash"
-    echo 'print("'"$hash"'", spack.cmd.disambiguate_spec("'"/${hash//*\///}"'", env, False).prefix)' >> "$TMP/location_cmds.py"
+    echo 'print_prefix_for_hash("'"$hash"'", "'"/${hash//*\///}"'")' >> "$TMP/location_cmds.py"
   done ||
     _die "I/O error writing to $TMP/location_cmds.py"
   local hashes_to_cache=(
