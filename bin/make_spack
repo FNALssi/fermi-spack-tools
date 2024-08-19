@@ -271,6 +271,7 @@ parse_args() {
         x-p)                    layout=plain; shift;;
         x-m)                    minimal=true; shift;;
         x-v)                    verbose=true; shift;;
+        x--verbose)                    verbose=true; shift;;
         x--)                    shift; break;;
         esac
     done
