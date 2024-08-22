@@ -1,0 +1,10 @@
+#!/bin/sh
+
+cd $SPACK_ROOT
+find etc var -maxdepth 5  -name .git -print | 
+    while read dir 
+    do 
+        echo $dir
+        (cd $dir/.. && git pull)
+    done
+

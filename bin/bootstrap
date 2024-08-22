@@ -52,7 +52,12 @@ parse_args() {
         x--) shift; break;;
         esac
     done
-    dest=${1:-$PWD}
+    dest=${1:-$PWD/spack}
+    if [ -d $dest ]
+    then
+        echo "FAIL: Destination directory $d already exists. " >&2
+        exit 1
+    fi
 }
 
 detail_log() {
@@ -96,7 +101,7 @@ stop_monitor() {
 message() {
     stop_monitor
     echo $* >&3
-    start_monitor $logfile 458
+    start_monitor $logfile 255
 }
 
 check_bootstrap() {
@@ -113,25 +118,36 @@ main() {
     parse_args "$@"
 
     detail_log
-    mkdir -p $dest/fermi-spack-tools/$ver
+    mkdir -p $dest
     cd $dest
 
-    message "Cloning FNALssi fermi-spack-tools  repository"
-    git clone -b $ver $fermi_spack_tools_repo fermi-spack-tools/$ver/NULL/
+    
 
-    PATH=$dest/fermi-spack-tools/$ver/NULL/bin:$PATH
+    message "Cloning FNALssi fermi-spack-tools  repository"
+    fst=/tmp/fst$$
+    git clone -b $ver $fermi_spack_tools_repo $fst
+
+    PATH=$fst/bin:$PATH
 
     message "Setting up with make_spack"
-    make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
+    sh -x $fst/bin/make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
+
+    message "Setting up new instance"
+
+    source $dest/setup-env.sh
 
     message "Finding compilers"
-    source $dest/setup-env.sh
 
     spack compiler find --scope=site
 
-    cd $dest/fermi-spack-tools/$ver/NULL && bin/declare_simple fermi-spack-tools $ver
+    message "installing fermi-spack-tools..."
+    pyspec=$(spack config get packages | grep python | grep spec: | sed -e 's/ - spec://') 
+    spack install fermi-spack-tools ^$pyspec
 
     check_bootstrap
+ 
+    # cleanup
+    rm -rf $fst &
 }
 
 main "$@"
