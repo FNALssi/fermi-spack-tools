@@ -61,7 +61,7 @@ def make_recipe( namespace, name, version, tarfile,  pathvar='IGNORE'):
         print("unlinking")
         os.unlink( "%s/packages/%s/package.py" % (rd, name))
 
-    f = os.popen("unset VISUAL; EDITOR=/bin/ed spack create -N %s --template generic --name %s" % (namespace, name), "w")
+    f = os.popen("unset VISUAL; unset SPACK_EDITOR; EDITOR=/bin/ed spack create -N %s --template generic --name %s" % (namespace, name), "w")
     dict = {
        'name': name, 
        'NAME': name.upper().replace('-','_'), 
@@ -109,6 +109,5 @@ def make_instance(name, version):
     tfn = make_tarfile(name,version)
     make_recipe(namespace, name, version, tfn,  'PATH')
     os.system("spack install --no-checksum %s@%s" % (name, version))
-
 
 make_instance(sys.argv[1], sys.argv[2])
