@@ -24,7 +24,7 @@ clone_repos() {
         $dir/var/spack/extensions/spack-linuxexternals  main		https://github.com/marcmengel/spack-linuxexternals.git
         $dir/var/spack/extensions/spack-localbuildcache main		https://github.com/marcmengel/spack-localbuildcache.git
         $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
-        $dir/var/spack/extensions/spack-mpd             main		https://github.com/knoepfel/spack-mpd.git
+        $dir/var/spack/extensions/spack-mpd             main		https://github.com/FNALssi/spack-mpd.git
         $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
         $dir/var/spack/repos/fnal_art                   develop		https://github.com/FNALssi/fnal_art.git
         $dir/var/spack/repos/scd_recipes                master		https://github.com/marcmengel/scd_recipes.git
