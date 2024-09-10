@@ -32,7 +32,7 @@ parse_args() {
     verbose=false
     plain=false
 
-    if x=$(getopt --longoptions with_padding,spack_release:,spack_repo,local_env:,dev_pkgs: --options vtup -- "$@")
+    if x=$(getopt --longoptions with_padding,spack_release:,spack_repo:,local_env:,dev_pkgs: --options vtup -- "$@")
     then
         eval set : $x
         shift
