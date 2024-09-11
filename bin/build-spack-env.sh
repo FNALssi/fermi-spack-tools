@@ -840,7 +840,8 @@ EOF
            ${buildcache_rel_arg} "$cache" \
            "${hashes_to_cache[@]/#//}" ||
         _die "failure caching packages to $cache"
-      if [ -f "$cache/build_cache/index.json" ]; then
+      if [ -d "$cache/build_cache" ] &&
+           (( $({ ls -1 "$cache/build_cache/*.json*" | wc -l; } 2>/dev/null) )); then
         _report $PROGRESS "updating build cache index at $cache"
         _cmd $DEBUG_1 $PROGRESS \
              spack \
