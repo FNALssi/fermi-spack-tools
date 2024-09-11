@@ -882,15 +882,21 @@ _maybe_register_compiler() {
                     -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
                      location --install-dir binutils 2>/dev/null)"
-    _report $DEBUG_1 "registering compiler at $compiler_path with Spack"
+    local compilers_scope="$(_cmd $DEBUG_2 $PIPE spack \
+                    -e $env_name \
+                    ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+                    arch)"
+    compilers_scope="${compilers_scope%-*}"
+    compilers_scope="site${compilers_scope:+/${compilers_scope//-//}}"
+    _report $DEBUG_1 "registering compiler $compiler_spec at $compiler_path with Spack"
     _cmd $DEBUG_1 spack \
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-      compiler find --scope site "$compiler_path"
+      compiler find --mixed-toolchain --scope "$compilers_scope" "$compiler_path"
     if [ -n "$binutils_path" ]; then
       # Modify the compiler configuration to prepend binutils to PATH.
       local compilers_yaml="$(_cmd $DEBUG_2 $PIPE spack \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-                     config --scope site edit --print-file compilers)"
+                     config --scope "$compilers_scope" edit --print-file compilers)"
       _cmd $DEBUG_2 perl -wapi'' -e 'm&\bcompiler:\s*$&msx and $in_compiler=1; $in_compiler and m&spec:\s*\Q'"$compiler_spec"'\E&msx and $in_wanted_compiler=1; $in_wanted_compiler and s&(^\s*environment:\s*).*$&$1\{ prepend_path: \{ PATH: "'"$binutils_path"'/bin" \} \}\n&msx and undef $in_wanted_compiler and undef $in_compiler' "$compilers_yaml" || _die $EXIT_SPACK_CONFIG_FAILURE "unable to configure compiler binutils path for $compiler_spec"
     fi
     if [[ "$compiler_spec" == *clang* ]]; then
