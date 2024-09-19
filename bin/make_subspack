@@ -33,7 +33,7 @@ parse_args() {
     verbose=false
     plain=false
 
-    if x=$(getopt --longoptions with_caches,with_padding,spack_release:,spack_repo:,local_env:,dev_pkgs: --options vtup -- "$@")
+    if x=$(getopt --longoptions without_caches,with_padding,spack_release:,spack_repo:,local_env:,dev_pkgs: --options vtup -- "$@")
     then
         eval set : $x
         shift
@@ -45,7 +45,7 @@ parse_args() {
     while echo x$1 | grep x- > /dev/null
     do
         case "x$1" in
-        x--with_caches)  disable_caches=true; shift ;;
+        x--without_caches)  disable_caches=true; shift ;;
         x--with_padding)  padding=true; shift ;;
         x--spack_release) spack_release=$2; shift; shift;;
         x--spack_repo)    spack_repo=$2; shift; shift;;
