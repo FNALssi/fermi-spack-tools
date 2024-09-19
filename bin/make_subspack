@@ -12,7 +12,7 @@ get_from_bootstrap() {
 usage() {
         echo "usage: make_subspack [options] [-t|-u] path/to/existing/spack /path/to/new/area"
         echo " options are:"
-	echo "--without_caches       enable buildcache mirrors
+	echo "--without_caches    disable buildcache mirrors"
         echo "--with_padding      enable directory padding in config"
         echo "--spack_release xx  install spack release xx"
         echo "--spack_repo url    use spack repo url"
