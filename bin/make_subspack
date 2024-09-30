@@ -186,7 +186,7 @@ SPACK_ROOTb=`basename $SPACK_ROOT`
 SPACK_ROOTd=`dirname $SPACK_ROOT`
 
 binary_cache=https://spack-cache-1.fnal.gov/binaries/
-binary_cache_bak=https://scisoft.fnal.gov/spack-mirror/
+binary_cache_bak=https://scisoft.fnal.gov/scisoft/spack-mirror/spack-binary-cache-plain/
 
 mkdir -p $SPACK_ROOTd
 export SPACK_ROOT
@@ -327,6 +327,7 @@ if [ "$local_env" != "" ]
 then
     message creating ${local_env}_local environment ...
     $SPACK_ROOT/bin/spack env create ${local_env}_local $src/var/spack/environments/${local_env}/spack.yaml
+    cp $src/var/spack/environments/${local_env}/freeze.*.yaml $SPACK_ROOT/var/spack/environments/${local_env}_local
 fi
 
 if [ "$dev_pkgs" != "" ]
