@@ -677,6 +677,7 @@ _die() {
 }
 
 _do_build_and_test() {
+  extra_install_opts+=(--no-check-signature --reuse --no-checksum)
   local spack_install_cmd=(
     spack
     -e $env_name
