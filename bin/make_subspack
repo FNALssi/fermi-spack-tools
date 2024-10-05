@@ -228,8 +228,8 @@ fi
 os=`$SPACK_ROOT/bin/spack arch --operating-system`
 
 message "installing packages.yaml"
-test -d  $SPACK_ROOT/etc/spack/${os} || mkdir $SPACK_ROOT/etc/spack/${os}
-cp $src/etc/spack/${os}/packages.yaml $SPACK_ROOT/etc/spack/${os}/packages.yaml
+test -d  $SPACK_ROOT/etc/spack/linux/${os} || mkdir -p $SPACK_ROOT/etc/spack/linux/${os}
+cp $src/etc/spack/linux/${os}/packages.yaml $SPACK_ROOT/etc/spack/linux/${os}/packages.yaml
 
 
 message "installing upstreams.yaml..."
