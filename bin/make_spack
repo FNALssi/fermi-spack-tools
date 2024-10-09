@@ -28,10 +28,14 @@ clone_repos() {
         $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
         $dir/var/spack/repos/fnal_art                   develop		https://github.com/FNALssi/fnal_art.git
         $dir/var/spack/repos/scd_recipes                master		https://github.com/marcmengel/scd_recipes.git
-        $dir/var/spack/repos/nusofthep-spack-recipes    main		https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
-        $dir/var/spack/repos/larsoft-spack-recipes      main		https://github.com/LArSoft/larsoft-spack-recipes.git
         $dir/var/spack/repos/artdaq-spack               develop		https://github.com/art-daq/artdaq-spack.git
 EOF
+    if [ "$customize" == "larsoft" ]; then
+        git clone -b main --depth $depth https://github.com/NuSoftHEP/nusofthep-spack-recipes.git $dir/var/spack/repos/nusofthep-spack-recipes
+        git clone -b main --depth $depth https://github.com/LArSoft/larsoft-spack-recipes.git     $dir/var/spack/repos/larsoft-spack-recipes
+    elif [ "$customize" == "mu2e" ]; then
+        git clone -b main --depth $depth https://github.com/Mu2e/mu2e-spack.git                   $dir/var/spack/repos/mu2e-spack
+    fi
 }
 
 
@@ -73,6 +77,12 @@ query_packages() {
    fi
 }
 
+do_customize() {
+    if [ "$customize" == "mu2e" ]; then
+        echo "  mu2e: https://spack-cache-1.fnal.gov/binaries/mu2e" >> $dir/etc/spack/linux/mirrors.yaml
+    fi
+}
+
 usage() {
         echo "Usage: $0 [options] -[utp] /base/directory"
         echo " options:"
@@ -83,6 +93,7 @@ usage() {
         echo "  --spack_repo url"
         echo "  --depth n"
         echo "  --minimal"
+        echo "  --customize variant_name"
         echo "  --verbose"
         echo "  -u fermi 'unified' layout (deprecated)"
         echo "  -t fermi 'traditional' layout (deprecated)"
@@ -105,6 +116,7 @@ parse_args() {
     spack_release=$(get_from_bootstrap default_spack_version)
     use_buildcache=true
     minimal=false
+    customize=larsoft
     upgrading=false
     padding=false
     layout=unified
@@ -114,7 +126,7 @@ parse_args() {
     depth=1
 
     origargs="$*"
-    if x=$(getopt --longoptions help,depth,with_padding,upgrade,spack_release:,minimal,no_buildcache,repover,spack_repo:,query-packages,verbose --options mptuv -- "$@")
+    if x=$(getopt --longoptions help,depth,with_padding,upgrade,spack_release:,minimal,customize:,no_buildcache,repover,spack_repo:,query-packages,verbose --options mptuv -- "$@")
     then
         eval set : $x
         shift
@@ -131,6 +143,7 @@ parse_args() {
         x--spack_release)       spack_release=$2; shift; shift ;;
         x--spack_repo)          spack_repo=$2; shift; shift;;
         x--minimal)             minimal=true; shift ;;
+        x--customize)           customize=$2; shift; shift ;;
         x--query-packages)      query_packages=true; shift ;;
         x--help)                usage; exit;;
         x--no_buildcache)       use_buildcache=false; shift;;
@@ -173,6 +186,7 @@ main() {
     clone_repos
     add_fermi_setups
     do_padding
+    do_customize
     do_spack_bootstrap
     query_packages
 }
