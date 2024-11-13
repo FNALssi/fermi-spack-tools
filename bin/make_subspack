@@ -202,6 +202,8 @@ args="--depth 2"
 if [ $spack_repo = default ]
 then
     spack_repo=$src/.git
+    # prevent bogus file permission fails on cvmfs...
+    git config --global --add safe.directory $spack_repo
 fi
 if [ $spack_release = default ]
 then
@@ -209,6 +211,7 @@ then
 else
     branchbits="-b $spack_release"
 fi
+
 git clone $args $branchbits $spack_repo $SPACK_ROOTb
 cd $SPACK_ROOT
 

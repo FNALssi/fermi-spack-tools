@@ -53,9 +53,13 @@ parse_args() {
         esac
     done
     dest=${1:-$PWD/spack}
+    case x$dest in
+    x/*) ;;
+    x*)  echo "Error: Destination diretory $dest must be an absolute path"; exit 1;;
+    esac
     if [ -d $dest ]
     then
-        echo "FAIL: Destination directory $d already exists. " >&2
+        echo "FAIL: Destination directory $dest already exists. " >&2
         exit 1
     fi
 }
