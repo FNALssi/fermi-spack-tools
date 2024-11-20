@@ -1015,7 +1015,7 @@ _process_environment() {
   # 3. Download and save sources to copyBack for mirroring.
   # 4. Install the environment.
   _report $PROGRESS "concretizing environment $env_name${concretize_safely:+ safely}"
-  local env_tests_arg="--deprecated"
+  local env_tests_arg=
   (( is_nonterminal_compiler_env )) || env_tests_arg=${tests_arg:+"$tests_arg"}
   local hashes=() non_root_hashes=() root_hashes=() n_hashes= idx=0
   _maybe_swap_mirror_config &&
@@ -1025,7 +1025,7 @@ _process_environment() {
          ${__debug_spack_concretize:+-d} \
          ${__verbose_spack_concretize:+-v} \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         concretize ${env_tests_arg:+"$env_tests_arg"}  &&
+         concretize --deprecated ${env_tests_arg:+"$env_tests_arg"}  &&
     _maybe_restore_mirror_config &&
     _classify_concretized_specs &&
     _maybe_cache_sources &&
