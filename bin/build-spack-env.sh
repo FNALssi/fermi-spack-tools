@@ -1069,7 +1069,7 @@ _process_environment() {
          ${__debug_spack_concretize:+-d} \
          ${__verbose_spack_concretize:+-v} \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         concretize ${env_tests_arg:+"$env_tests_arg"}  &&
+         concretize --deprecated ${env_tests_arg:+"$env_tests_arg"}  &&
     _maybe_restore_mirror_config &&
     _classify_concretized_specs &&
     _maybe_cache_sources &&
