@@ -94,7 +94,7 @@ usage() {
         echo "  --query-packages turns on running make_packages_yaml (slow)"
         echo "  --depth is passed to git clone calls (default 1)"
         exit 1
-}
+} 1>&2
 
 get_from_bootstrap() {
     grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//'
