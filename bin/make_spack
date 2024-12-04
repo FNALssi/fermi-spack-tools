@@ -12,7 +12,6 @@ find_ourselves() {
 }
 
 clone_repos() {
-
     while read ddir branch repo
     do
         git clone -b $branch --depth $depth $repo $ddir
@@ -22,16 +21,16 @@ clone_repos() {
         $dir/var/spack/extensions/spack-freeze          main            https://github.com/marcmengel/spack-freeze.git
         $dir/var/spack/extensions/spack-installdir      main            https://github.com/marcmengel/spack-installdir.git
         $dir/var/spack/extensions/spack-intersection    main            https://github.com/marcmengel/spack-intersection.git
-        $dir/var/spack/extensions/spack-linuxexternals  main		https://github.com/marcmengel/spack-linuxexternals.git
-        $dir/var/spack/extensions/spack-localbuildcache main		https://github.com/marcmengel/spack-localbuildcache.git
-        $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
-        $dir/var/spack/extensions/spack-mpd             main		https://github.com/FNALssi/spack-mpd.git
-        $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
-        $dir/var/spack/repos/fnal_art                   develop		https://github.com/FNALssi/fnal_art.git
-        $dir/var/spack/repos/scd_recipes                master		https://github.com/marcmengel/scd_recipes.git
-        $dir/var/spack/repos/nusofthep-spack-recipes    main		https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
-        $dir/var/spack/repos/larsoft-spack-recipes      main		https://github.com/LArSoft/larsoft-spack-recipes.git
-        $dir/var/spack/repos/artdaq-spack               develop		https://github.com/art-daq/artdaq-spack.git
+        $dir/var/spack/extensions/spack-linuxexternals  main            https://github.com/marcmengel/spack-linuxexternals.git
+        $dir/var/spack/extensions/spack-localbuildcache main            https://github.com/marcmengel/spack-localbuildcache.git
+        $dir/var/spack/extensions/spack-subspack        main            https://github.com/marcmengel/spack-subspack.git
+        $dir/var/spack/extensions/spack-mpd             main            https://github.com/FNALssi/spack-mpd.git
+        $dir/var/spack/extensions/spack-subspack        main            https://github.com/marcmengel/spack-subspack.git
+        $dir/var/spack/repos/fnal_art                   develop         https://github.com/FNALssi/fnal_art.git
+        $dir/var/spack/repos/scd_recipes                master          https://github.com/marcmengel/scd_recipes.git
+        $dir/var/spack/repos/nusofthep-spack-recipes    main            https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
+        $dir/var/spack/repos/larsoft-spack-recipes      main            https://github.com/LArSoft/larsoft-spack-recipes.git
+        $dir/var/spack/repos/artdaq-spack               develop         https://github.com/art-daq/artdaq-spack.git
 EOF
 }
 
