@@ -21,6 +21,7 @@ clone_repos() {
         $dir/etc/spack/linux                            main            https://github.com/marcmengel/fermi-etc-spack-linux.git
         $dir/var/spack/extensions/spack-freeze          main            https://github.com/marcmengel/spack-freeze.git
         $dir/var/spack/extensions/spack-installdir      main            https://github.com/marcmengel/spack-installdir.git
+        $dir/var/spack/extensions/spack-intersection    main            https://github.com/marcmengel/spack-intersection.git
         $dir/var/spack/extensions/spack-linuxexternals  main		https://github.com/marcmengel/spack-linuxexternals.git
         $dir/var/spack/extensions/spack-localbuildcache main		https://github.com/marcmengel/spack-localbuildcache.git
         $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
