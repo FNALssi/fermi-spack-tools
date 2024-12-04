@@ -1387,23 +1387,23 @@ fi
 mkdir -p "$spack_env_top_dir" \
   || _die $EXIT_PATH_FAILURE "unable to make directory structure for spack environment installation"
 cd "$spack_env_top_dir"
-if ! [ -f "$spack_env_top_dir/setup-env.sh" ]; then
-  make_spack_cmd=(
-    make_spack
-    ${spack_root:+--spack_repo "$spack_root"}
-    --spack_release $spack_ver
-    --minimal
-    $ups_opt
-  )
-  (( VERBOSITY < DEBUG_1 )) || make_spack_cmd+=(-v)
-  (( query_packages )) && make_spack_cmd+=(--query-packages)
-  (( with_padding )) && make_spack_cmd+=(--with_padding)
-  make_spack_cmd+=("$spack_env_top_dir")
-  _report $PROGRESS "bootstrapping Spack $spack_ver"
-  PATH="$TMP/bin:$PATH" \
-      _cmd $PROGRESS ${make_spack_cmd[*]:+"${make_spack_cmd[@]}"} \
-    || _die "unable to install Spack $spack_ver"
-fi
+make_spack_cmd=(
+  make_spack
+  ${spack_root:+--spack_repo "$spack_root"}
+  --spack_release $spack_ver
+  --minimal
+  --upgrade-etc
+  --upgrade-extensions
+  $ups_opt
+)
+(( VERBOSITY < DEBUG_1 )) || make_spack_cmd+=(-v)
+(( query_packages )) && make_spack_cmd+=(--query-packages)
+(( with_padding )) && make_spack_cmd+=(--with_padding)
+make_spack_cmd+=("$spack_env_top_dir")
+_report $PROGRESS "bootstrapping Spack $spack_ver"
+PATH="$TMP/bin:$PATH" \
+    _cmd $PROGRESS ${make_spack_cmd[*]:+"${make_spack_cmd[@]}"} \
+  || _die "unable to install Spack $spack_ver"
 
 # Enhanced setup scripts.
 if ! { [ -e "setup-env.sh" ] || [ -e "setup-env.csh" ]; } &&
