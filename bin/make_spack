@@ -12,25 +12,73 @@ find_ourselves() {
 }
 
 clone_repos() {
-
     while read ddir branch repo
     do
-        git clone -b $branch --depth $depth $repo $ddir
+      if [ -e "$ddir/.git" ]; then
+        if [ "$repo" = "$spack_repo" ] ; then
+          repo_type=spack
+        elif [[ "${ddir#$dir/}" == etc/* ]]; then
+          repo_type=etc
+        elif [[ "${ddir#$dir/var/spack/}" == extensions/* ]]; then
+          repo_type=extensions
+        else
+          unset repo_type
+        fi
+        if [ -n "$repo_type" ]; then
+          eval "upgrade_repo=\$upgrade_$repo_type"
+        else
+          unset upgrade_repo
+        fi
+        current_branch=$(git -C "$ddir" branch --show-current)
+        if (( upgrade_repo )); then
+          if [ "$current_branch" = "$branch" ]; then
+            if $verbose; then
+              echo "$(date --iso-8601=seconds) Updating Git repository at $ddir"
+            fi
+            if ! git -C "$ddir" pull; then
+              echo "$(date --iso-8601=seconds) Unable to update Git repository at" 1>&2
+              echo "$(date --iso-8601=seconds)   $ddir" 1>&2
+              echo "$(date --iso-8601=seconds) Fix manually" 1>&2
+            fi
+          else
+            echo "$(date --iso-8601=seconds) Refusing to update Git repository from branch $current_branch to $branch at" 1>&2
+            echo "$(date --iso-8601=seconds)   $ddir" 1>&2
+            echo "$(date --iso-8601=seconds) Fix manually" 1>&2
+            exit 2
+          fi
+        else
+          echo "$(date --iso-8601=seconds) Using existing repository on branch $current_branch at "
+          echo "$(date --iso-8601=seconds)   $ddir"
+          echo "$(date --iso-8601=seconds) Use --upgrade-$repo_type or upgrade manually"
+        fi
+      else
+        if $verbose; then
+          echo "$(date --iso-8601=seconds) Cloning Git repository on branch $branch at"
+          echo "$(date --iso-8601=seconds)   $ddir"
+        fi
+        if ! git clone -b $branch --depth $depth $repo $ddir; then
+          echo "$(date --iso-8601=seconds) Unable to clone Git repository on branch $branch at" 1>&2
+          echo "$(date --iso-8601=seconds)   $ddir" 1>&2
+          echo "$(date --iso-8601=seconds) Fix manually" 1>&2
+          exit 2
+        fi
+      fi
     done <<EOF
         $dir                                            $spack_release  $spack_repo
         $dir/etc/spack/linux                            main            https://github.com/marcmengel/fermi-etc-spack-linux.git
         $dir/var/spack/extensions/spack-freeze          main            https://github.com/marcmengel/spack-freeze.git
         $dir/var/spack/extensions/spack-installdir      main            https://github.com/marcmengel/spack-installdir.git
-        $dir/var/spack/extensions/spack-linuxexternals  main		https://github.com/marcmengel/spack-linuxexternals.git
-        $dir/var/spack/extensions/spack-localbuildcache main		https://github.com/marcmengel/spack-localbuildcache.git
-        $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
-        $dir/var/spack/extensions/spack-mpd             main		https://github.com/FNALssi/spack-mpd.git
-        $dir/var/spack/extensions/spack-subspack        main		https://github.com/marcmengel/spack-subspack.git
-        $dir/var/spack/repos/fnal_art                   develop		https://github.com/FNALssi/fnal_art.git
-        $dir/var/spack/repos/scd_recipes                master		https://github.com/marcmengel/scd_recipes.git
-        $dir/var/spack/repos/nusofthep-spack-recipes    main		https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
-        $dir/var/spack/repos/larsoft-spack-recipes      main		https://github.com/LArSoft/larsoft-spack-recipes.git
-        $dir/var/spack/repos/artdaq-spack               develop		https://github.com/art-daq/artdaq-spack.git
+        $dir/var/spack/extensions/spack-intersection    main            https://github.com/marcmengel/spack-intersection.git
+        $dir/var/spack/extensions/spack-linuxexternals  main            https://github.com/marcmengel/spack-linuxexternals.git
+        $dir/var/spack/extensions/spack-localbuildcache main            https://github.com/marcmengel/spack-localbuildcache.git
+        $dir/var/spack/extensions/spack-subspack        main            https://github.com/marcmengel/spack-subspack.git
+        $dir/var/spack/extensions/spack-mpd             main            https://github.com/FNALssi/spack-mpd.git
+        $dir/var/spack/extensions/spack-subspack        main            https://github.com/marcmengel/spack-subspack.git
+        $dir/var/spack/repos/fnal_art                   develop         https://github.com/FNALssi/fnal_art.git
+        $dir/var/spack/repos/scd_recipes                master          https://github.com/marcmengel/scd_recipes.git
+        $dir/var/spack/repos/nusofthep-spack-recipes    main            https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
+        $dir/var/spack/repos/larsoft-spack-recipes      main            https://github.com/LArSoft/larsoft-spack-recipes.git
+        $dir/var/spack/repos/artdaq-spack               develop         https://github.com/art-daq/artdaq-spack.git
 EOF
 }
 
@@ -76,7 +124,10 @@ query_packages() {
 usage() {
         echo "Usage: $0 [options] -[utp] /base/directory"
         echo " options:"
-        echo "  --upgrade"
+        echo "  --upgrade (deprecated, ignored)"
+        echo "  --upgrade-etc"
+        echo "  --upgrade-extensions"
+        echo "  --upgrade-spack"
         echo "  --no-buildcache"
         echo "  --query-packages"
         echo "  --spack_release ver"
@@ -94,7 +145,7 @@ usage() {
         echo "  --query-packages turns on running make_packages_yaml (slow)"
         echo "  --depth is passed to git clone calls (default 1)"
         exit 1
-}
+} 1>&2
 
 get_from_bootstrap() {
     grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//'
@@ -114,7 +165,7 @@ parse_args() {
     depth=1
 
     origargs="$*"
-    if x=$(getopt --longoptions help,depth,with_padding,upgrade,spack_release:,minimal,no_buildcache,repover,spack_repo:,query-packages,verbose --options mptuv -- "$@")
+    if x=$(getopt --longoptions help,depth,with_padding,upgrade,upgrade-etc,upgrade-extensions,upgrade-spack,spack_release:,minimal,no_buildcache,repover,spack_repo:,query-packages,verbose --options mptuv -- "$@")
     then
         eval set : $x
         shift
@@ -127,7 +178,8 @@ parse_args() {
         case "x$1" in
         x--depth)               depth=$2; shift;;
         x--with_padding)        padding=true; shift ;;
-        x--upgrade)             echo "Deprecated option --upgrade ignored";  shift;;
+        x--upgrade)             echo "Deprecated option --upgrade ignored: use --upgrade-{etc,extensions,spack} ";  shift;;
+        x--upgrade-*)           upgrade_${1##*-}=1; shift;;
         x--spack_release)       spack_release=$2; shift; shift ;;
         x--spack_repo)          spack_repo=$2; shift; shift;;
         x--minimal)             minimal=true; shift ;;
