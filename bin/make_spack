@@ -179,7 +179,7 @@ parse_args() {
         x--depth)               depth=$2; shift;;
         x--with_padding)        padding=true; shift ;;
         x--upgrade)             echo "Deprecated option --upgrade ignored: use --upgrade-{etc,extensions,spack} ";  shift;;
-        x--upgrade-*)           upgrade_${1##*-}=1; shift;;
+        x--upgrade-*)           eval upgrade_${1##*-}=1; shift;;
         x--spack_release)       spack_release=$2; shift; shift ;;
         x--spack_repo)          spack_repo=$2; shift; shift;;
         x--minimal)             minimal=true; shift ;;
