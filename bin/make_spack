@@ -44,7 +44,6 @@ clone_repos() {
             echo "$(date --iso-8601=seconds) Refusing to update Git repository from branch $current_branch to $branch at" 1>&2
             echo "$(date --iso-8601=seconds)   $ddir" 1>&2
             echo "$(date --iso-8601=seconds) Fix manually" 1>&2
-            exit 2
           fi
         else
           echo "$(date --iso-8601=seconds) Using existing repository on branch $current_branch at "
@@ -60,7 +59,6 @@ clone_repos() {
           echo "$(date --iso-8601=seconds) Unable to clone Git repository on branch $branch at" 1>&2
           echo "$(date --iso-8601=seconds)   $ddir" 1>&2
           echo "$(date --iso-8601=seconds) Fix manually" 1>&2
-          exit 2
         fi
       fi
     done <<EOF
