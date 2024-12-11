@@ -82,7 +82,7 @@ BRIEF OPTIONS
   --(no-)?fail-fast
   --(no-)?query-packages
   --(no-)?safe-concretize
-  --(no-)?upgrade-(etc|extensions|spack)
+  --(no-)?upgrade-(etc|extensions|recipes|spack)
   --no-view
   --spack-python[= ]<python-exec>
   --spack-config-cmd[= ]<config-cmd-string>+
@@ -216,13 +216,14 @@ SPACK CONFIGURATION OPTIONS
     Control whether to concretize environments with only a minimal set
     of mirrors configured to improve reproducibility (default yes).
 
-  --(no-)?upgrade-(etc|extensions|spack)
+  --(no-)?upgrade-(etc|extensions|recipes|spack)
 
     Control whether to upgrade the corresponding component(s) of an
     existing Spack installation:
 
     * `etc/` (default yes)
     * Spack extensions (default yes)
+    * recipe repositories including those specified with --spack-repo (default no)
     * the Spack installation itself (default no).
 
   --no-view
@@ -457,23 +458,27 @@ _configure_recipe_repos() {
       path="$SPACK_ROOT/${path##*/}"
       local configure_namespace=1
       if [ -d "$path" ]; then # We already have a repo here.
-        orig_namespace="$(_cmd $DEBUG_3 $PIPE sed -Ene 's&^[[:space:]]*namespace[[:space:]]*:[[:space:]]*'"'([^']+)'"'$&\1&p' "$path/repo.yaml")"
+        # Deactivate existing namespace.
+        _deactivate_repo_at "$path"
         if [ "$(_cmd $DEBUG_3 $PIPE git -C "$path" remote)" = "origin" ] &&
              [ "$(_cmd $DEBUG_3 $PIPE git -C "$path" remote get-url origin)" = "$url" ]; then
           if [ "$(_cmd $DEBUG_3 $PIPE git -C "$path" branch --show-current)" = "$branch_etc" ]; then
-            # Nothing to do, existing repo is what we want.
-            configure_namespace=0
+            :
           elif (( $(_cmd $DEBUG_3 $PIPE git -C "$path" status -s | wc -l) == 0 )) &&
                  [ -n "$branch_etc" ]; then
-            # Deactivate existing namespace.
-            _deactivate_repo $orig_namespace
             # Switch to desired branch.
             _report $INFO "switching to branch $branch_etc in $path"
             _cmd $DEBUG_1 git -C "$path" switch "$branch_etc"
           fi
+          if (( upgrade_recipes )); then
+            _report $INFO "upgrading recipe repository on branch $branch_etc at $path"
+            _cmd $DEBUG_1 git -C "$path" pull ||
+              _die "unable to update recipe repository on branch $branch_etc at $path"
+          fi
         else
           local bnum=0 rpath= orig_path="$path"
           while read -r rpath < <(_cmd $DEBUG_3 $PIPE ls -1 "$orig_path"-*); do
+            _deactivate_repo_at "$rpath"
             [[ "$rpath" =~ -([0-9]+)$ ]] &&
               (( "${BASH_REMATCH[1]}" > bnum )) &&
               (( bnum = "${BASH_REMATCH[1]}" ))
@@ -494,14 +499,12 @@ _configure_recipe_repos() {
     else
       path="$repo_element"
     fi
-    if (( configure_namespace )); then
-      local namespace="$(_cmd $DEBUG_3 $PIPE sed -Ene 's&^[[:space:]]*namespace[[:space:]]*:[[:space:]]*'"'([^']+)'"'$&\1&p' "$path/repo.yaml")"
-      # Deactivate namespace if it is configured.
-      _deactivate_repo $namespace
-      _report $INFO "configuring Spack recipe repo $namespace${scope:+ in scope $scope} at $path"
-      _cmd $DEBUG_1 spack repo add${scope:+ --scope $scope} "$path" ||
-        _die "unable to add repo $namespace${scope:+ in scope $scope} at $path"
-    fi
+    local new_namespace="$(_cmd $DEBUG_3 $PIPE sed -Ene 's&^[[:space:]]*namespace[[:space:]]*:[[:space:]]*'"'([^']+)'"'$&\1&p' "$path/repo.yaml")"
+    # Deactivate namespace if it is configured.
+    _deactivate_repo $new_namespace
+    _report $INFO "configuring Spack recipe repo $new_namespace${scope:+ in scope $scope} at $path"
+    _cmd $DEBUG_1 spack repo add${scope:+ --scope $scope} "$path" ||
+      _die "unable to add repo $new_namespace${scope:+ in scope $scope} at $path"
   done
 }
 
@@ -675,6 +678,12 @@ _deactivate_repo() {
     _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo ||
       _die "unable to deactivate existing repo $rrepo in scope $scope at $path"
   done
+}
+
+_deactivate_repo_at() {
+  local path="$1"
+  local orig_namespace="$(_cmd $DEBUG_3 $PIPE sed -Ene 's&^[[:space:]]*namespace[[:space:]]*:[[:space:]]*'"'([^']+)'"'$&\1&p' "$path/repo.yaml")"
+  _deactivate_repo $orig_namespace
 }
 
 # Print a message and exit with the specifed numeric first argument or 1
@@ -1217,6 +1226,7 @@ spack_source_dir="./"
 spack_ver=v0.22.0-fermi
 upgrade_etc=1
 upgrade_extensions=1
+upgrade_recipes=
 upgrade_spack=
 ups_opt=-p
 want_emergency_buildcache=1
@@ -1248,6 +1258,7 @@ while (( $# )); do
     --no-safe-concretize) unset concretize_safely;;
     --no-upgrade-etc) unset upgrade_etc;;
     --no-upgrade-extensions) unset upgrade_extensions;;
+    --no-upgrade-recipes) unset upgrade_recipes;;
     --no-upgrade-spack) unset upgrade_spack;;
     --no-ups) ups_opt=-p;;
     --query-packages) query_packages=1;;
@@ -1273,6 +1284,7 @@ while (( $# )); do
     --test=*) tests_type="${1#*=}";;
     --upgrade-etc) upgrade_etc=1;;
     --upgrade-extensions) upgrade_extensions=1;;
+    --upgrade-recipes) upgrade_recipes=1;;
     --upgrade-spack) upgrade_spack=1;;
     --ups) ups_opt="$(_ups_string_to_opt "$2")" || exit; shift;;
     --ups=*) ups_opt="$(_ups_string_to_opt "${1#*=}")" || exit;;
@@ -1413,6 +1425,7 @@ make_spack_cmd=(
   --minimal
   ${upgrade_etc:+"--upgrade-etc"}
   ${upgrade_extensions:+"--upgrade-extensions"}
+  ${upgrade_recipes:+"--upgrade-recipes"}
   ${upgrade_spack:+"--upgrade-spack"}
   $ups_opt
 )
