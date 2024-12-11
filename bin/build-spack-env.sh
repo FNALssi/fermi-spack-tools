@@ -82,6 +82,7 @@ BRIEF OPTIONS
   --(no-)?fail-fast
   --(no-)?query-packages
   --(no-)?safe-concretize
+  --(no-)?upgrade-(etc|extensions|spack)
   --no-view
   --spack-python[= ]<python-exec>
   --spack-config-cmd[= ]<config-cmd-string>+
@@ -214,6 +215,15 @@ SPACK CONFIGURATION OPTIONS
 
     Control whether to concretize environments with only a minimal set
     of mirrors configured to improve reproducibility (default yes).
+
+  --(no-)?upgrade-(etc|extensions|spack)
+
+    Control whether to upgrade the corresponding component(s) of an
+    existing Spack installation:
+
+    * `etc/` (default yes)
+    * Spack extensions (default yes)
+    * the Spack installation itself (default no).
 
   --no-view
 
@@ -1205,6 +1215,9 @@ spack_config_cmds=()
 spack_config_files=()
 spack_source_dir="./"
 spack_ver=v0.22.0-fermi
+upgrade_etc=1
+upgrade_extensions=1
+upgrade_spack=
 ups_opt=-p
 want_emergency_buildcache=1
 
@@ -1233,6 +1246,9 @@ while (( $# )); do
     --no-view) view_opt="--without-view";;
     --no-query-packages) unset query_packages;;
     --no-safe-concretize) unset concretize_safely;;
+    --no-upgrade-etc) unset upgrade_etc;;
+    --no-upgrade-extensions) unset upgrade_extensions;;
+    --no-upgrade-spack) unset upgrade_spack;;
     --no-ups) ups_opt=-p;;
     --query-packages) query_packages=1;;
     --quiet|-q) (( VERBOSITY = WARNING ));;
@@ -1255,6 +1271,9 @@ while (( $# )); do
     --spack-version=*) spack_ver="${1#*=}";;
     --test) tests_type="$2"; shift;;
     --test=*) tests_type="${1#*=}";;
+    --upgrade-etc) upgrade_etc=1;;
+    --upgrade-extensions) upgrade_extensions=1;;
+    --upgrade-spack) upgrade_spack=1;;
     --ups) ups_opt="$(_ups_string_to_opt "$2")" || exit; shift;;
     --ups=*) ups_opt="$(_ups_string_to_opt "${1#*=}")" || exit;;
     +v) (( --VERBOSITY ));;
@@ -1392,8 +1411,9 @@ make_spack_cmd=(
   ${spack_root:+--spack_repo "$spack_root"}
   --spack_release $spack_ver
   --minimal
-  --upgrade-etc
-  --upgrade-extensions
+  ${upgrade_etc:+"--upgrade-etc"}
+  ${upgrade_extensions:+"--upgrade-extensions"}
+  ${upgrade_spack:+"--upgrade-spack"}
   $ups_opt
 )
 (( VERBOSITY < DEBUG_1 )) || make_spack_cmd+=(-v)
