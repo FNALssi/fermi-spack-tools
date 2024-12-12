@@ -78,6 +78,7 @@ BRIEF OPTIONS
   --debug-tmp
   --fermi-spack-tools-root[= ]<repo>
   --fermi-spack-tools-version[= ]<version>
+  --no-auto-recipe-repos
   --(no-)?emergency-buildcache
   --(no-)?fail-fast
   --(no-)?query-packages
@@ -194,6 +195,11 @@ SPACK CONFIGURATION OPTIONS
 
 
  Other Spack Configuration
+
+  --no-auto-recipe-repos
+
+    Do not define a default set of recipe repositories to obtain and
+    configure (handled by `make_spack`).
 
   --(no-)?emergency-buildcache
 
@@ -1217,6 +1223,7 @@ concretizing_cache_specs=()
 extra_binaries_write_cache=()
 extra_sources_write_cache=()
 fail_fast=1
+no_auto_recipe_repos=
 recipe_repos=()
 si_root=https://github.com/FNALssi/fermi-spack-tools.git
 si_ver=main
@@ -1249,6 +1256,7 @@ while (( $# )); do
     --emergency-buildcache) want_emergency_buildcache=1;;
     --fail-fast) fail_fast=1;;
     --help|-h|-\?) usage 2; exit 1;;
+    --no-auto-recipe-repos) no_auto_recipe_repos=1;;
     --no-cache-write-binaries) _set_cache_write_binaries "none";;
     --no-cache-write-sources) unset cache_write_sources;;
     --no-emergency-buildcache) unset want_emergency_buildcache;;
@@ -1423,6 +1431,7 @@ make_spack_cmd=(
   ${spack_root:+--spack_repo "$spack_root"}
   --spack_release $spack_ver
   --minimal
+  ${no_auto_recipe_repos:+"--no-recipe-repos"}
   ${upgrade_etc:+"--upgrade-etc"}
   ${upgrade_extensions:+"--upgrade-extensions"}
   ${upgrade_recipes:+"--upgrade-recipes"}

@@ -14,19 +14,22 @@ find_ourselves() {
 clone_repos() {
     while read ddir branch repo
     do
-      if [ -e "$ddir/.git" ]; then
-        if [ "$repo" = "$spack_repo" ] ; then
-          repo_type=spack
-        elif [[ "${ddir#$dir/}" == etc/* ]]; then
-          repo_type=etc
-        elif [[ "${ddir#$dir/var/spack/}" == extensions/* ]]; then
-          repo_type=extensions
-        elif [[ "${ddir#$dir/var/spack/}" == repos/* ]] ||
-               [ -f "$ddir/repo.yaml" ]; then
-          repo_type=recipes
-        else
-          unset repo_type
+      if [ "$repo" = "$spack_repo" ] ; then
+        repo_type=spack
+      elif [[ "${ddir#$dir/}" == etc/* ]]; then
+        repo_type=etc
+      elif [[ "${ddir#$dir/var/spack/}" == extensions/* ]]; then
+        repo_type=extensions
+      elif [[ "${ddir#$dir/var/spack/}" == repos/* ]] ||
+             [ -f "$ddir/repo.yaml" ]; then
+        if $no_recipes; then
+          continue
         fi
+        repo_type=recipes
+      else
+        unset repo_type
+      fi
+      if [ -e "$ddir/.git" ]; then
         if [ -n "$repo_type" ]; then
           eval "upgrade_repo=\$upgrade_$repo_type"
         else
@@ -165,9 +168,10 @@ parse_args() {
     repovers=""
     verbose=false
     depth=1
+    no_recipes=false
 
     origargs="$*"
-    if x=$(getopt --longoptions help,depth,with_padding,upgrade,upgrade-etc,upgrade-extensions,upgrade-recipes,upgrade-spack,spack_release:,minimal,no_buildcache,repover,spack_repo:,query-packages,verbose --options mptuv -- "$@")
+    if x=$(getopt --longoptions help,depth,with_padding,upgrade,upgrade-etc,upgrade-extensions,upgrade-recipes,upgrade-spack,spack_release:,minimal,no-recipe-repos,no_buildcache,repover,spack_repo:,query-packages,verbose --options mptuv -- "$@")
     then
         eval set : $x
         shift
@@ -188,6 +192,7 @@ parse_args() {
         x--query-packages)      query_packages=true; shift ;;
         x--help)                usage; exit;;
         x--no_buildcache)       use_buildcache=false; shift;;
+        x--no-recipe-repos)     no_recipes=true; shift;;
         x--repover)             repovers="$repovers $2"; shift; shift;;
         x-v|x--verbose)         verbose=true; shift;;
         x-u)                    echo "Deprecated option -u ignored"; shift;;
