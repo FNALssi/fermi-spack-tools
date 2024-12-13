@@ -41,7 +41,7 @@ test_bootstrap_xmastree() {
         --with_padding  \
         --fermi_spack_tools_release main \
         --fermi_spack_tools_repo https://github.com/FNALssi/fermi-spack-tools.git \
-        --spack_release HEAD \
+        --spack_release v0.23.0-fermi \
         --spack_repo https://github.com/FNALssi/spack.git \
         $workdir/sp_tst_xmas
 
