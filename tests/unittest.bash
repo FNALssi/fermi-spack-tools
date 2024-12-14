@@ -88,7 +88,7 @@ testsuite() {
 wrapup() {
     echo
     echo ==================================
-    cat /tmp/test_out_$$
+    cat ${TMPDIR:-/tmp}/test_out_$$
     echo ==================================
     echo Ran $n_tests tests with $n_fails failures
     if [ $n_fails = 0 ]
