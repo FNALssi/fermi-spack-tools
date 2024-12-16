@@ -14,16 +14,22 @@ find_ourselves() {
 clone_repos() {
     while read ddir branch repo
     do
-      if [ -e "$ddir/.git" ]; then
-        if [ "$repo" = "$spack_repo" ] ; then
-          repo_type=spack
-        elif [[ "${ddir#$dir/}" == etc/* ]]; then
-          repo_type=etc
-        elif [[ "${ddir#$dir/var/spack/}" == extensions/* ]]; then
-          repo_type=extensions
-        else
-          unset repo_type
+      if [ "$repo" = "$spack_repo" ] ; then
+        repo_type=spack
+      elif [[ "${ddir#$dir/}" == etc/* ]]; then
+        repo_type=etc
+      elif [[ "${ddir#$dir/var/spack/}" == extensions/* ]]; then
+        repo_type=extensions
+      elif [[ "${ddir#$dir/var/spack/}" == repos/* ]] ||
+             [ -f "$ddir/repo.yaml" ]; then
+        if $no_recipes; then
+          continue
         fi
+        repo_type=recipes
+      else
+        unset repo_type
+      fi
+      if [ -e "$ddir/.git" ]; then
         if [ -n "$repo_type" ]; then
           eval "upgrade_repo=\$upgrade_$repo_type"
         else
@@ -44,12 +50,11 @@ clone_repos() {
             echo "$(date --iso-8601=seconds) Refusing to update Git repository from branch $current_branch to $branch at" 1>&2
             echo "$(date --iso-8601=seconds)   $ddir" 1>&2
             echo "$(date --iso-8601=seconds) Fix manually" 1>&2
-            exit 2
           fi
         else
           echo "$(date --iso-8601=seconds) Using existing repository on branch $current_branch at "
           echo "$(date --iso-8601=seconds)   $ddir"
-          echo "$(date --iso-8601=seconds) Use --upgrade-$repo_type or upgrade manually"
+          echo "$(date --iso-8601=seconds) U${repo_type:+se --upgrade-$repo_type or u}pgrade manually"
         fi
       else
         if $verbose; then
@@ -60,7 +65,6 @@ clone_repos() {
           echo "$(date --iso-8601=seconds) Unable to clone Git repository on branch $branch at" 1>&2
           echo "$(date --iso-8601=seconds)   $ddir" 1>&2
           echo "$(date --iso-8601=seconds) Fix manually" 1>&2
-          exit 2
         fi
       fi
     done <<EOF
@@ -127,6 +131,7 @@ usage() {
         echo "  --upgrade (deprecated, ignored)"
         echo "  --upgrade-etc"
         echo "  --upgrade-extensions"
+        echo "  --upgrade-recipes"
         echo "  --upgrade-spack"
         echo "  --no-buildcache"
         echo "  --query-packages"
@@ -163,9 +168,10 @@ parse_args() {
     repovers=""
     verbose=false
     depth=1
+    no_recipes=false
 
     origargs="$*"
-    if x=$(getopt --longoptions help,depth,with_padding,upgrade,upgrade-etc,upgrade-extensions,upgrade-spack,spack_release:,minimal,no_buildcache,repover,spack_repo:,query-packages,verbose --options mptuv -- "$@")
+    if x=$(getopt --longoptions help,depth,with_padding,upgrade,upgrade-etc,upgrade-extensions,upgrade-recipes,upgrade-spack,spack_release:,minimal,no-recipe-repos,no_buildcache,repover,spack_repo:,query-packages,verbose --options mptuv -- "$@")
     then
         eval set : $x
         shift
@@ -178,7 +184,7 @@ parse_args() {
         case "x$1" in
         x--depth)               depth=$2; shift;;
         x--with_padding)        padding=true; shift ;;
-        x--upgrade)             echo "Deprecated option --upgrade ignored: use --upgrade-{etc,extensions,spack} ";  shift;;
+        x--upgrade)             echo "Deprecated option --upgrade ignored: use --upgrade-{etc,extensions,recipes,spack} ";  shift;;
         x--upgrade-*)           eval upgrade_${1##*-}=1; shift;;
         x--spack_release)       spack_release=$2; shift; shift ;;
         x--spack_repo)          spack_repo=$2; shift; shift;;
@@ -186,6 +192,7 @@ parse_args() {
         x--query-packages)      query_packages=true; shift ;;
         x--help)                usage; exit;;
         x--no_buildcache)       use_buildcache=false; shift;;
+        x--no-recipe-repos)     no_recipes=true; shift;;
         x--repover)             repovers="$repovers $2"; shift; shift;;
         x-v|x--verbose)         verbose=true; shift;;
         x-u)                    echo "Deprecated option -u ignored"; shift;;
