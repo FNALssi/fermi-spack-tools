@@ -218,9 +218,17 @@ parse_args() {
 
 do_spack_bootstrap() {
     osstr=$(spack arch -o)
+    # for the 1.0.x.alpha bootstrap, we need to hide our mirrors
+    # with old packages from "spack bootstrap now"...
+    mfl="$(find $SPACK_ROOT/etc \( -name defaults -prune \)  -o \( -name mirrors.yaml -print \))"
+    for mf in $mfl; do  mv $mf $mf.hide; done
+
     spack bootstrap root $dir/.bootstrap.$osstr
     spack bootstrap now
     spack buildcache keys --install --force --trust
+
+    # ... and put them back when we're done
+    for mf in $mfl; do  mv $mf.hide $mf; done
 }
 
 main() {
