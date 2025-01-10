@@ -1,5 +1,5 @@
 diff --git a/lib/spack/spack/config.py b/lib/spack/spack/config.py
-index 1af333e7..caf1d17f 100644
+index 1af333e7..1df62d42 100644
 --- a/lib/spack/spack/config.py
 +++ b/lib/spack/spack/config.py
 @@ -759,13 +759,24 @@ def override(
@@ -13,7 +13,7 @@ index 1af333e7..caf1d17f 100644
 -        f"{name}/{platform}", os.path.join(path, platform), writable=writable
 -    )
 -    cfg.push_scope(scope)
-+def _add_platform_scopes(cfg, scope_type, name, path):
++def _add_platform_scopes(cfg: Configuration, name: str, path: str, writable: bool =True) -> None:
 +    """Add subdirectories for the current platform, os, and target."""
 +    host_platform = spack.platforms.host()
 +    platform = host_platform.name
@@ -22,15 +22,15 @@ index 1af333e7..caf1d17f 100644
 +
 +    scope_name = os.path.join(name, platform)
 +    scope_path = os.path.join(path, platform)
-+    cfg.push_scope(scope_type(scope_name, scope_path))
++    cfg.push_scope(DirectoryConfigScope(scope_name, scope_path, writable=writable))
 +
 +    scope_name = os.path.join(scope_name, oss)
 +    scope_path = os.path.join(scope_path, oss)
-+    cfg.push_scope(scope_type(scope_name, scope_path))
++    cfg.push_scope(DirectoryConfigScope(scope_name, scope_path, writable=writable))
 +
 +    scope_name = os.path.join(scope_name, host_target)
 +    scope_path = os.path.join(scope_path, host_target)
-+    cfg.push_scope(scope_type(scope_name, scope_path))
++    cfg.push_scope(DirectoryConfigScope(scope_name, scope_path, writable=writable))
  
  
  def config_paths_from_entry_points() -> List[Tuple[str, str]]:
