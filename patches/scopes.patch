@@ -52,23 +52,3 @@ index 1af333e7..caf1d17f 100644
  
      return cfg
  
-diff --git a/share/spack/setup-env.csh b/share/spack/setup-env.csh
-index d091caf8..f78a23f2 100644
---- a/share/spack/setup-env.csh
-+++ b/share/spack/setup-env.csh
-@@ -84,3 +84,5 @@ end
- 
- # done: unset sentinel variable as we're no longer initializing
- unsetenv _sp_initializing
-+setenv SPACK_SKIP_MODULES true
-+setenv SPACK_DISABLE_LOCAL_CONFIG true
-diff --git a/share/spack/setup-env.sh b/share/spack/setup-env.sh
-index f3e87fe5..c3c14b6b 100644
---- a/share/spack/setup-env.sh
-+++ b/share/spack/setup-env.sh
-@@ -396,3 +396,5 @@ fi
- # done: unset sentinel variable as we're no longer initializing
- unset _sp_initializing
- export _sp_initializing
-+export SPACK_SKIP_MODULES=true
-+export SPACK_DISABLE_LOCAL_CONFIG=true
