@@ -86,6 +86,18 @@ clone_repos() {
 EOF
 }
 
+add_fermi_patches() {
+    # if we're not a something-fermi release of spack, try to apply our fermi patches
+    case $spack_release in
+    *fermi*) ;;
+    *)
+        for pf in $(echo $spackbindir/../patches/*.patch)
+        do
+           (cd $SPACK_ROOT && patch -p1 < $pf)
+        done
+        ;;
+    esac
+}
 
 add_fermi_setups() {
 
@@ -239,6 +251,7 @@ main() {
 
     clone_repos
     add_fermi_setups
+    add_fermi_patches
     do_padding
     do_spack_bootstrap
     query_packages
