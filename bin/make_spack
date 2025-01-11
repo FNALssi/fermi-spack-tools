@@ -90,12 +90,18 @@ add_fermi_patches() {
     # if we're not a something-fermi release of spack, try to apply our fermi patches
     case $spack_release in
     *fermi*) ;;
-    *)
+    *) (
+        cd $SPACK_ROOT
+        tag=$(git describe --tag)
+        newbranch="${tag}-fermi"
+        git checkout -b $newbranch
         for pf in $(echo $spackbindir/../patches/*.patch)
         do
-           (cd $SPACK_ROOT && patch -p1 < $pf)
+            patch -p1 < $pf
         done
-        ;;
+        git commit -am "bootstrap patches"
+      )
+      ;;
     esac
 }
 
