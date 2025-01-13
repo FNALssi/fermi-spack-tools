@@ -415,7 +415,7 @@ do
         *)
           $did_externals ||
             echo "    externals:" >&3
-          echo "    - spec: \"$spp$opts @$v $comp os=$os$deps\"" >&3
+          echo "    - spec: \"$spp$opts @$v os=$os$deps\"" >&3
           echo "      prefix: $sysprefix" >&3
       esac
       did_externals=true
