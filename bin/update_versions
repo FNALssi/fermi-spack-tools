@@ -49,7 +49,7 @@ cat $1 |
                     echo "."
                     echo "w"
                     echo "q"
-                ) | EDITOR=/bin/ed spack edit $p
+                ) | EDITOR=/usr/bin/ex spack edit $p
                 ;;
            x*md5=*|x*sha256=*)
                 echo "adding spack checksum line"
@@ -64,7 +64,7 @@ cat $1 |
                     echo "."
                     echo "w"
                     echo "q"
-                ) | EDITOR=/bin/ed spack edit $p
+                ) | EDITOR=/usr/bin/ex spack edit $p
                 ;;
            *)
                 echo "don't know how to update $p"

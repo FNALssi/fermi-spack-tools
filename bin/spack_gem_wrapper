@@ -52,7 +52,7 @@ add_version() {
       echo "."
       echo "w"
       echo "q"
-    ) | EDITOR=/bin/ed spack edit -N auto_gems ruby-$uname
+    ) | EDITOR=/usr/bin/ex spack edit -N auto_gems ruby-$uname
 }
 
 make_recipe() {
@@ -96,7 +96,7 @@ EOF
         echo "."
         echo "wq"
 
-    ) | EDITOR=/bin/ed spack create -N auto_gems --template generic --name ruby-$name
+    ) | EDITOR=/usr/bin/ex spack create -N auto_gems --template generic --name ruby-$name
 }
 
 test_make_recipe() {
