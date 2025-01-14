@@ -243,10 +243,18 @@ do_spack_bootstrap() {
 
     spack bootstrap root $dir/.bootstrap.$osstr
     spack bootstrap now
-    spack buildcache keys --install --force --trust
 
     # ... and put them back when we're done
     for mf in $mfl; do  mv $mf.hide $mf; done
+}
+
+do_keys() {
+    # get the keys from our buildcaches
+    # this doesn't seem to happen consistently, so trying doing
+    # it twice, which shouldn't hurt in any case
+    spack buildcache keys --install --force --trust
+    sleep 1
+    spack buildcache keys --install --force --trust
 }
 
 main() {
@@ -260,6 +268,7 @@ main() {
     add_fermi_patches
     do_padding
     do_spack_bootstrap
+    do_keys
     query_packages
 }
 
