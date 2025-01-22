@@ -40,14 +40,16 @@ test_one_release() {
     use_subspack=$2
     spdir="$PWD/test_${rel}_${ds}"
     sspdir="$PWD/test_sub${rel}_${ds}"
+    log=${spdir}_out.txt
+
+    exec | tee log
        
     do_cmd bootstrap --spack_release $rel $spdir
     do_cmd . $spdir/setup-env.sh
 
     oss=$(spack arch -o)
-    hash=$(
-    do_cmd spack install --cache-only gcc/$(hash_of "gcc@13.1.0 os=$oss")
-    do_cmd spack install --cache-only critic/$(hash_of "critic@2.14.00 os=$oss")
+    do_cmd spack install --cache-only gcc/$(hash_of "gcc@13.3.0 os=$oss")
+    do_cmd spack install critic/$(hash_of "critic@2.14.00 os=$oss")
     
     if $use_subspack
     then
@@ -68,5 +70,8 @@ test_one_release() {
 
     check_buildcache
 
-    do_cmd spack_env deactivate
+    do_cmd spack env deactivate
 }
+
+test_one_release v1.0.0-alpha.3 true 
+
