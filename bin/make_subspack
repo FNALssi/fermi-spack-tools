@@ -3,6 +3,13 @@
 # make a sub-spack repository
 # ...but make it unified layout...
 
+find_ourselves() {
+    spackbindir=`echo $0 | sed -e 's;make_subspack$;;' `
+    case x$spackbindir in
+    x/*) ;;
+    x*)  spackbindir="$PWD/$spackbindir"
+    esac
+}
 
 get_from_bootstrap() {
     grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//'
@@ -14,14 +21,14 @@ usage() {
         echo " options are:"
 	echo "--without_caches    disable buildcache mirrors"
         echo "--with_padding      enable directory padding in config"
-        echo "--spack_release xx  install spack release xx"
-        echo "--spack_repo url    use spack repo url"
+        echo "--spack_release xx  install spack release xx, 'upstream' for same as source"
+        echo "--spack_repo url    use spack repo url, 'upstream' to clone spack from source"
         echo "--local_env name     make a local version of 'name' called 'name_local'"
         echo "--dev_pkgs p1:p2... make packages p1, p2, ... development in above"
         echo "-v                  verbose"
         echo "-t                  traditional layout"
-        echo "-u                  unified layout (default)"
-        echo "-p                  plain layout"
+        echo "-u                  unified layout (deprecated)"
+        echo "-p                  plain layout (default)"
 }
 
 parse_args() {
@@ -35,7 +42,8 @@ parse_args() {
 
     if x=$(getopt --longoptions without_caches,with_padding,spack_release:,spack_repo:,local_env:,dev_pkgs: --options vtup -- "$@")
     then
-        eval set : $x
+        echo "here: $*"
+        eval set : $x 
         shift
     else
         usage
@@ -76,280 +84,50 @@ parse_args() {
 }
 
 
-detail_log() {
-    logfile=/tmp/make_subspack_$$.log 
-    # use fd 3 for messages to user, send stdout and stderr to log
-    # redirect stdin from /dev/null, so anything that tries to prompt
-    # for input will fail and not hang because no message gets to the user
-    exec 3>&1 > $logfile 2>&1 < /dev/null
-    echo "Putting detail log in $logfile" >&3 
-}
+process_args() {
+    if [ ${spack_repo} = default ]
+    then
+       spack_repo=$(get_from_bootstrap default_spack_repo)
+    fi 
 
-monitor() {
-   local f=$1
-   local sd=$2
-   local box="[                                                  ]"
-   local lin="[==================================================]"
+    if [ ${spack_release} = default ]
+    then
+        spack_release=$(get_from_bootstrap default_spack_version)
+    fi
 
-   printf "%3d%%$box\r" 0 >&3
-   while :
-   do
-       local duf=$(du -b $f)
-       local ds="${duf%$f}"
-       dpp1=$(( ds / sd ))
-       (( dpp1 > 99 )) && dpp1=99
-       dpp2=$(( dpp1 / 2 + 1 ))
-       printf "%3d%%${lin:0:$dpp2}\r" $dpp1 >&3
-       sleep 2
-   done
-}
-start_monitor() {
-  monitor $* &
-  monitor_pid=$!
-  trap "stop_monitor" EXIT
-}
-stop_monitor() {
-  (( monitor_pid )) && kill $monitor_pid
-  wait
-  clr="                                                         "
-  printf "\r$clr\r" >&3
-}
-message() {
-    stop_monitor
-    echo $* >&3
-    start_monitor $logfile 719
-}
-
-
-spackbindir=`echo $0 | sed -e 's;make_subspack;;' `
-case x$spackbindir in
-x/*) ;;
-x*)  spackbindir="$PWD/$spackbindir"
-esac
-
-: starting: $*
-
-unset SPACK_ENV
-unset SPACK_ROOT
-export SPACK_DISABLE_LOCAL_CONFIG=true
-
-parse_args "$@"
-
-if $verbose
-then
-    message() {
-       echo $*
-    }
-    message Running in verbose mode:
-else
-    detail_log
-    set -x
-fi
-
-# assume unified layout...
-if $plain
-then
-   SPACK_ROOT=$dst
-else
-
-if $unified
-then
-    SPACK_ROOT="$dst/spack/$spack_release/NULL/"
-else
-    SPACK_ROOT="$dst/prd/spack/$spack_release/NULL/"
-fi
-fi
-
-install_tree_path=$src
-src=`ls $src/spack/*/NULL/bin/spack $src/bin/spack $src/prd/spack/*/NULL/bin/spack 2>/dev/null | tail -1 | sed -e 's;/bin/spack;;'`
-echo "src=$src"
-
-install_tcl_path=$src/share/spack/modules
-
-if [ -d $install_tree_path/prd/ ]
-then
-    install_tree_path=$install_tree_path/prd/ 
-fi
-
-if [ -d $install_tree_path/opt/spack/.spack-db ]
-then
-    install_tree_path=$install_tree_path/opt/spack
-fi
-
-if [ -d "$install_tree_path/__spack_path_placeholder__" ]
-then
-    message "Checking for padded .spack-db"
-    install_tree_path=$(find $install_tree_path/__spack_path_placeholder__ -name .spack-db -print | head -1 | sed -e 's;/.spack-db;;')
-fi
-
-SPACK_ROOTb=`basename $SPACK_ROOT`
-SPACK_ROOTd=`dirname $SPACK_ROOT`
-
-binary_cache=https://spack-cache-1.fnal.gov/binaries/
-binary_cache_bak=https://scisoft.fnal.gov/scisoft/spack-mirror/spack-binary-cache-plain/
-
-mkdir -p $SPACK_ROOTd
-export SPACK_ROOT
-
-test -d $SPACK_ROOTd || mkdir -p $SPACK_ROOTd
-
-message git clone-ing spack
-
-cd $SPACK_ROOTd
-args="--depth 2"
-
-# default to just doing a fs-based clone, which saves lots of space and time
-if [ $spack_repo = default ]
-then
-    spack_repo=$src/.git
-    # prevent bogus file permission fails on cvmfs...
-    git config --global --add safe.directory $spack_repo
-fi
-if [ $spack_release = default ]
-then
-    branchbits=""
-else
-    branchbits="-b $spack_release"
-fi
-
-git clone $args $branchbits $spack_repo $SPACK_ROOTb
-cd $SPACK_ROOT
-
-echo "installing config.yaml..."
-if $plain
-then
-   printf "config:\n  deprecated: false\n" >> $SPACK_ROOT/etc/spack/config.yaml
-else
-if $unified
-then
-cp $spackbindir/../templates/config.yaml.unified${extra} $SPACK_ROOT/etc/spack/config.yaml
-else
-cp $spackbindir/../templates/config.yaml.traditional${extra} $SPACK_ROOT/etc/spack/config.yaml
-fi
-fi
-
-os=`$SPACK_ROOT/bin/spack arch --operating-system`
-
-message "installing packages.yaml"
-test -d  $SPACK_ROOT/etc/spack/${os} || mkdir $SPACK_ROOT/etc/spack/${os}
-cp $src/etc/spack/${os}/packages.yaml $SPACK_ROOT/etc/spack/${os}/packages.yaml
-
-
-message "installing upstreams.yaml..."
-cat >> etc/spack/upstreams.yaml <<EOF
-
- upstreams:
-    spack-instance-1:
-      install_tree: $install_tree_path
-      modules:
-        tcl: $install_tcl_path
-EOF
-
-message "building setup-env scripts"
-
-echo  > $dst/setup-env.sh
-echo "export SPACK_SKIP_MODULES=true" >> $dst/setup-env.sh
-echo "export SPACK_DISABLE_LOCAL_CONFIG=true" >> $dst/setup-env.sh
-echo ". $SPACK_ROOT/share/spack/setup-env.sh" >> $dst/setup-env.sh
-
-echo  > $dst/setup-env.csh
-echo "setenv SPACK_SKIP_MODULES true" >> $dst/setup-env.csh
-echo "setenv SPACK_DISABLE_LOCAL_CONFIG true" >> $dst/setup-env.csh
-echo "source $SPACK_ROOT/share/spack/setup-env.csh" >> $dst/setup-env.csh
-
-message "using upstream's bootstrap" 
-
-mkdir -p $dst/tmp
-# reuse upstream clingo bootstrap
-ln -s $install_tree_path/tmp/bootstrap $dst/tmp/bootstrap
-
-case $spack_release in
-rollout*|0.1[67]*) ;;
-*) if $padding; then
-     echo "turning on padding."
-     $SPACK_ROOT/bin/spack config --scope=site add config:install_tree:padded_length:255
-   else
-     $SPACK_ROOT/bin/spack config --scope=site rm config:install_tree:padded_length
-   fi
-   ;;
-esac
-
-
-# copy compilers and packages
-test -d  $SPACK_ROOT/etc/spack/$os ||  mkdir -p  $SPACK_ROOT/etc/spack/$os
-[ -r  $src/etc/spack/compilers.yaml ] && cp $src/etc/spack/compilers.yaml $SPACK_ROOT/etc/spack/compilers.yaml
-[ -r  $src/etc/spack/$os/compilers.yaml ] && cp $src/etc/spack/$os/compilers.yaml $SPACK_ROOT/etc/spack/$os/compilers.yaml
-[ -r  $src/etc/spack/$os/packages.yaml ] && cp $src/etc/spack/$os/packages.yaml $SPACK_ROOT/etc/spack/$os/packages.yaml
-
-# and gpg keys
-[ -r  $src/opt/spack/gpg/pubring.gpg ] && cp $src/opt/spack/gpg/pubring.gpg $SPACK_ROOT/opt/spack/gpg/pubring.gpg
-[ -r  $src/opt/spack/gpg/trustdb.gpg ] && cp $src/opt/spack/gpg/trustdb.gpg $SPACK_ROOT/opt/spack/gpg/trustdb.gpg
-
-# now clone package repos..
-
-message "adding package repos..."
-
-( SPACK_ROOT=$src $src/bin/spack repo list ) | (
-    
-    source $dst/setup-env.sh
-    while read name path
-    do
-        if [ $name != builtin ]
+    if [ ${disable_caches} ]
+    then
+        args="$args --without-caches"
+    fi
+    if [ ${padding} ]
+    then
+        args="$args --with-padding"
+    fi
+    if [ $spack_repo != upstream ]
+    then
+        if [ $spack_repo = default ]
         then
-            echo Adding repo $name $path to $SPACK_ROOT
-            spack repo add --scope=site $path
+            spack_repo=$(get_from_bootstrap default_spack_repo)
         fi
-    done
-)
+        args="$args --remote $spack_repo"
+    fi
+    if [ $spack_release != upstream ]
+    then
+        if [ $spack_release = default ]
+        then
+            spack_release=$(get_from_bootstrap default_spack_version)
+        fi
+        args="$args --remote-branch $spack_release"
+    fi
+}
 
-echo "Adding buildcache $binary_cache"
-$SPACK_ROOT/bin/spack mirror add --scope site fnal $binary_cache
-[ -w "$binary_cache" ] &&
-  $SPACK_ROOT/bin/spack buildcache update-index  -d $binary_cache
-message "Adding backup buildcache $binary_cache_bak"
-$SPACK_ROOT/bin/spack mirror add --scope site scisoft $binary_cache_bak
-[ -w "$binary_cache_bak" ] &&
-  $SPACK_ROOT/bin/spack buildcache update-index  -d $binary_cache_bak
-$SPACK_ROOT/bin/spack -k buildcache keys --install --trust --force
-if [ "$disable_caches" != "" ]
-then
-    echo "Disabling buildcache mirrors."
-    mv $SPACK_ROOT/etc/spack/mirrors.yaml $SPACK_ROOT/etc/spack/mirrors.yaml.bak
-fi
-#symlink in environments from upstream
-cd $SPACK_ROOT/var/spack
-mkdir environments
-cd environments
-for f in $src/var/spack/environments/*
-do
-   ln -s $f .
-done
+run_spack_subspack() {
+    source $src/setup-env.sh
+    echo Running spack subspack $args $dst
+    spack subspack $args $dst
+}
 
-# use the upstream's bootstrap area...
-$SPACK_ROOT/bin/spack bootstrap root --scope=site $(SPACK_ROOT=$src spack bootstrap root)
-
-if [ "$local_env" != "" ]
-then
-    message creating ${local_env}_local environment ...
-    $SPACK_ROOT/bin/spack env create ${local_env}_local $src/var/spack/environments/${local_env}/spack.yaml
-    cp $src/var/spack/environments/${local_env}/freeze.*.yaml $SPACK_ROOT/var/spack/environments/${local_env}_local
-fi
-
-if [ "$dev_pkgs" != "" ]
-then
-   if [ $local_env == "" ]
-   then
-       echo "--test_pkg specified without --test-env, ignoring"
-   else
-       localspackyaml=$SPACK_ROOT/var/spack/environments/${local_env}_local/spack.yaml
-       IFS=":$IFS"  # lazy way to split on colons in for loop, below
-       for pkg in $dev_pkgs
-       do
-           message making $pkg develop in ${local_env}_local environment ...
-           perl -pi -e "s/([ ^]${pkg}@=?)[0-9.]*/\$1develop/g;"  $localspackyaml
-           $SPACK_ROOT/bin/spack --env ${local_env}_local develop $pkg@develop
-       done
-   fi
-fi 
-
-message "Done."
+find_ourselves 
+parse_args "$@"
+process_args
+run_spack_subspack

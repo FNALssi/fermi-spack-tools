@@ -41,9 +41,9 @@ test_one_release() {
     spdir="$PWD/test_${rel}_${ds}"
     sspdir="$PWD/test_sub${rel}_${ds}"
     log=${spdir}_out.txt
+    
+    (
 
-    exec | tee log
-       
     do_cmd bootstrap --spack_release $rel $spdir
     do_cmd . $spdir/setup-env.sh
 
@@ -71,7 +71,8 @@ test_one_release() {
     check_buildcache
 
     do_cmd spack env deactivate
+    ) | tee -a $log
 }
 
-test_one_release v1.0.0-alpha.3 true 
+test_one_release v1.0.0-alpha.3 false
 
