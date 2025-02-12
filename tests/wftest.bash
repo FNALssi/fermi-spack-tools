@@ -37,9 +37,10 @@ do_cmd() {
 test_one_release() {
     test_setup
     rel="$1"
+    reld=$(echo $rel | sed -e 's;/;_;g')
     use_subspack=$2
-    spdir="$PWD/test_${rel}_${ds}"
-    sspdir="$PWD/test_sub${rel}_${ds}"
+    spdir="$PWD/test_${reld}_${ds}"
+    sspdir="$PWD/test_sub${reld}_${ds}"
     log=${spdir}_out.txt
     
     (
@@ -74,5 +75,6 @@ test_one_release() {
     ) | tee -a $log
 }
 
-test_one_release v1.0.0-alpha.3 false
+test_one_release features/compiler-as-nodes true
+#test_one_release v1.0.0-alpha.3 false
 
