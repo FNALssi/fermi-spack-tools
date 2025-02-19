@@ -90,6 +90,7 @@ add_fermi_patches() {
     # if we're not a something-fermi release of spack, try to apply our fermi patches
     case $spack_release in
     *fermi*) ;;
+    *fnal*) ;;
     *) (
         cd $SPACK_ROOT
         tag=$(git describe --tag)
