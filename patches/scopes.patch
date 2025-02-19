@@ -13,7 +13,7 @@ index 1af333e7..1df62d42 100644
 -        f"{name}/{platform}", os.path.join(path, platform), writable=writable
 -    )
 -    cfg.push_scope(scope)
-+def _add_platform_scopes(cfg: Configuration, name: str, path: str, writable: bool =True) -> None:
++def _add_platform_scope(cfg: Configuration, name: str, path: str, writable: bool =True) -> None:
 +    """Add subdirectories for the current platform, os, and target."""
 +    host_platform = spack.platforms.host()
 +    platform = host_platform.name
@@ -34,21 +34,3 @@ index 1af333e7..1df62d42 100644
  
  
  def config_paths_from_entry_points() -> List[Tuple[str, str]]:
-@@ -806,7 +817,7 @@ def _add_command_line_scopes(cfg: Configuration, command_line_scopes: List[str])
-             manifest = env.EnvironmentManifestFile(path)
-         elif os.path.isdir(path):  # directory with config files
-             cfg.push_scope(DirectoryConfigScope(name, path, writable=False))
--            _add_platform_scope(cfg, name, path, writable=False)
-+            _add_platform_scopes(cfg, name, path, writable=False)
-             continue
-         else:
-             raise spack.error.ConfigError(f"Invalid configuration scope: {path}")
-@@ -861,7 +872,7 @@ def create() -> Configuration:
-         cfg.push_scope(DirectoryConfigScope(name, path))
- 
-         # Each scope can have per-platfom overrides in subdirectories
--        _add_platform_scope(cfg, name, path)
-+        _add_platform_scopes(cfg, name, path)
- 
-     return cfg
- 

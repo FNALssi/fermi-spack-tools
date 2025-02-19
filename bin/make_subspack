@@ -3,6 +3,13 @@
 # make a sub-spack repository
 # ...but make it unified layout...
 
+find_ourselves() {
+    spackbindir=`echo $0 | sed -e 's;make_subspack$;;' `
+    case x$spackbindir in
+    x/*) ;;
+    x*)  spackbindir="$PWD/$spackbindir"
+    esac
+}
 
 get_from_bootstrap() {
     grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//'
@@ -35,7 +42,8 @@ parse_args() {
 
     if x=$(getopt --longoptions without_caches,with_padding,spack_release:,spack_repo:,local_env:,dev_pkgs: --options vtup -- "$@")
     then
-        eval set : $x
+        echo "here: $*"
+        eval set : $x 
         shift
     else
         usage
@@ -75,6 +83,7 @@ parse_args() {
     esac
 }
 
+<<<<<<< HEAD
 parse_args()
 if [ ${spack_repo} = default ]
 then
@@ -114,3 +123,53 @@ source $src/setup-env.sh
 echo Running spack subspack $args $dst
 spack subspack $args $dst
 
+=======
+
+process_args() {
+    if [ ${spack_repo} = default ]
+    then
+       spack_repo=$(get_from_bootstrap default_spack_repo)
+    fi 
+
+    if [ ${spack_release} = default ]
+    then
+        spack_release=$(get_from_bootstrap default_spack_version)
+    fi
+
+    if [ ${disable_caches} ]
+    then
+        args="$args --without-caches"
+    fi
+    if [ ${padding} ]
+    then
+        args="$args --with-padding"
+    fi
+    if [ $spack_repo != upstream ]
+    then
+        if [ $spack_repo = default ]
+        then
+            spack_repo=$(get_from_bootstrap default_spack_repo)
+        fi
+        args="$args --remote $spack_repo"
+    fi
+    if [ $spack_release != upstream ]
+    then
+        if [ $spack_release = default ]
+        then
+            spack_release=$(get_from_bootstrap default_spack_version)
+        fi
+        args="$args --remote-branch $spack_release"
+    fi
+}
+
+run_spack_subspack() {
+    source $src/setup-env.sh
+    echo Running spack subspack $args $dst
+    spack subspack $args $dst
+}
+
+find_ourselves 
+parse_args "$@"
+process_args
+run_spack_subspack
+>>>>>>> alpha-1.0-mods
