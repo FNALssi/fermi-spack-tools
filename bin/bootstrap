@@ -107,7 +107,7 @@ stop_monitor() {
 message() {
     stop_monitor
     echo $* >&3
-    start_monitor $logfile 255
+    start_monitor $logfile 360
 }
 
 check_bootstrap() {

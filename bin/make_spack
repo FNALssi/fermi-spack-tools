@@ -242,8 +242,9 @@ do_spack_bootstrap() {
     mfl="$(find $SPACK_ROOT/etc \( -name defaults -prune \)  -o \( -name mirrors.yaml -print \))"
     for mf in $mfl; do  mv $mf $mf.hide; done
 
+    spack clean --all
     spack bootstrap root $dir/.bootstrap.$osstr
-    spack bootstrap now
+    spack -d bootstrap now
 
     # ... and put them back when we're done
     for mf in $mfl; do  mv $mf.hide $mf; done
