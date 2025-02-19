@@ -8,10 +8,7 @@ x*)   testdir=$(dirname $PWD/$0);;
 esac
 prefix=$(dirname $testdir)
 ds=$(date +%s)
-
-test_setup() {
-    PATH=$prefix/bin:$PATH
-}
+PATH=$prefix/bin:$PATH
 
 
 hash_of() {
@@ -35,7 +32,6 @@ do_cmd() {
 }
 
 test_one_release() {
-    test_setup
     rel="$1"
     use_subspack=$2
     spdir="$PWD/test_${rel}_${ds}"
@@ -68,5 +64,5 @@ test_one_release() {
 
     check_buildcache
 
-    do_cmd spack_env deactivate
+    do_cmd spack_env deactivate 
 }
