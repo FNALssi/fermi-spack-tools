@@ -1,16 +1,17 @@
 packages:
   all:
-    compiler:
-      - gcc@11
-      - clang@15.0.7
-      - gcc
-      - clang
     target:
       - x86_64_v2
     providers:
       pkgconfig::
         - pkg-config
         - pkgconf
+      libc::
+        - glibc
+      iconv::
+        - glibc
+      rpc::
+        - glibc
   blas:
     require: openblas
   fftw-api:
@@ -23,9 +24,6 @@ packages:
     require: mesa-glu
   golang:
     require: go
-  iconv:
-    buildable: False
-    require: libc
   java:
     require: openjdk
   jpeg:
@@ -40,9 +38,6 @@ packages:
     require: mesa+osmesa
   mysql-client:
     require:  mariadb-c-client
-  rpc:
-    buildable: False
-    require: libc
   tbb:
     require: intel-tbb-oneapi
   unwind:
@@ -53,150 +48,150 @@ packages:
     require: bison
   asciidoc:
     externals:
-    - spec: "asciidoc @9.1.0 %gcc@11 os=almalinux9"
+    - spec: "asciidoc @9.1.0  os=almalinux9"
       prefix: /usr
   autoconf:
     externals:
-    - spec: "autoconf @2.69 %gcc@11 os=almalinux9"
+    - spec: "autoconf @2.69  os=almalinux9"
       prefix: /usr
   automake:
     externals:
-    - spec: "automake @1.16.2 %gcc@11 os=almalinux9"
+    - spec: "automake @1.16.2  os=almalinux9"
       prefix: /usr
   berkeley-db:
     externals:
-    - spec: "berkeley-db @5.3.28 %gcc@11 os=almalinux9"
+    - spec: "berkeley-db @5.3.28  os=almalinux9"
       prefix: /usr
   binutils:
     externals:
-    - spec: "binutils +gas+gold+ld @2.35.2 %gcc@11 os=almalinux9"
+    - spec: "binutils +gas+gold+ld @2.35.2  os=almalinux9"
       prefix: /usr
   bison:
     externals:
-    - spec: "bison @3.7.4 %gcc@11 os=almalinux9"
+    - spec: "bison @3.7.4  os=almalinux9"
       prefix: /usr
   cigetcert:
     externals:
-    - spec: "cigetcert @1.21 %gcc@11 os=almalinux9"
+    - spec: "cigetcert @1.21  os=almalinux9"
       prefix: /usr
   cmake:
     externals:
-    - spec: "cmake ~ownlibs @3.20.2 %gcc@11 os=almalinux9"
+    - spec: "cmake ~ownlibs @3.20.2  os=almalinux9"
       prefix: /usr
   coreutils:
     externals:
-    - spec: "coreutils @8.32 %gcc@11 os=almalinux9"
+    - spec: "coreutils @8.32  os=almalinux9"
       prefix: /usr
   curl:
     externals:
-    - spec: "curl tls=openssl @7.76.1 %gcc@11 os=almalinux9"
+    - spec: "curl tls=openssl @7.76.1  os=almalinux9"
       prefix: /usr
   damageproto:
     externals:
-    - spec: "damageproto @1.1 %gcc@11 os=almalinux9"
+    - spec: "damageproto @1.1  os=almalinux9"
       prefix: /usr
     buildable: False
   diffutils:
     externals:
-    - spec: "diffutils @3.7 %gcc@11 os=almalinux9"
+    - spec: "diffutils @3.7  os=almalinux9"
       prefix: /usr
     buildable: False
   expat:
     externals:
-    - spec: "expat @2.5.0 %gcc@11 os=almalinux9"
+    - spec: "expat @2.5.0  os=almalinux9"
       prefix: /usr
     buildable: False
   findutils:
     externals:
-    - spec: "findutils @4.8.0 %gcc@11 os=almalinux9"
+    - spec: "findutils @4.8.0  os=almalinux9"
       prefix: /usr
     buildable: False
   flex:
     externals:
-    - spec: "flex @2.6.4 %gcc@11 os=almalinux9"
+    - spec: "flex @2.6.4  os=almalinux9"
       prefix: /usr
   fontconfig:
     externals:
-    - spec: "fontconfig @2.14.0 %gcc@11 os=almalinux9"
+    - spec: "fontconfig @2.14.0  os=almalinux9"
       prefix: /usr
   freetype:
     externals:
-    - spec: "freetype @2.10.4 %gcc@11 os=almalinux9"
+    - spec: "freetype @2.10.4  os=almalinux9"
       prefix: /usr
   gawk:
     externals:
-    - spec: "gawk @5.1.0 %gcc@11 os=almalinux9"
+    - spec: "gawk @5.1.0  os=almalinux9"
       prefix: /usr
   gdb:
     externals:
-    - spec: "gdb @10.2 %gcc@11 os=almalinux9"
+    - spec: "gdb @10.2  os=almalinux9"
       prefix: /usr
   gdbm:
     externals:
-    - spec: "gdbm @1.19 %gcc@11 os=almalinux9"
+    - spec: "gdbm @1.19  os=almalinux9"
+      prefix: /usr
+    buildable: False
+  glib:
+    externals:
+    - spec: "glib @2.68.4  os=almalinux9"
       prefix: /usr
     buildable: False
   gettext:
     externals:
-    - spec: "gettext ~bzip2+curses~git+libunistring+libxml2~tar+xz @0.21 %gcc@11 os=almalinux9"
+    - spec: "gettext ~bzip2+curses~git+libunistring+libxml2~tar+xz @0.21  os=almalinux9"
       prefix: /usr
     buildable: False
   git:
     externals:
-    - spec: "git @2.39.3 %gcc@11 os=almalinux9"
+    - spec: "git @2.39.3  os=almalinux9"
       prefix: /usr
   gtkplus:
     externals:
-    - spec: "gtkplus @3.24.31 %gcc@11 os=almalinux9"
+    - spec: "gtkplus @3.24.31  os=almalinux9"
       prefix: /usr
   gmake:
     externals:
-    - spec: "gmake @4.3 %gcc@11 os=almalinux9"
+    - spec: "gmake @4.3  os=almalinux9"
       prefix: /usr
   gperf:
     externals:
-    - spec: "gperf @3.1 %gcc@11 os=almalinux9"
+    - spec: "gperf @3.1  os=almalinux9"
       prefix: /usr
   groff:
     externals:
-    - spec: "groff @1.22.4 %gcc@11 os=almalinux9"
+    - spec: "groff @1.22.4  os=almalinux9"
       prefix: /usr
   help2man:
     externals:
-    - spec: "help2man @1.48.2 %gcc@11 os=almalinux9"
+    - spec: "help2man @1.48.2  os=almalinux9"
       prefix: /usr
   htcondor:
     externals:
-    - spec: "htcondor @A %gcc@11 os=almalinux9"
+    - spec: "htcondor @A  os=almalinux9"
       prefix: /usr
   htgettoken:
     externals:
-    - spec: "htgettoken @1.20 %gcc@11 os=almalinux9"
+    - spec: "htgettoken @1.20  os=almalinux9"
       prefix: /usr
   hwloc:
     require:
       - one_of:
         - "target=x86_64_v2"
       - one_of:
-        - "%gcc@11"
+        - ""
         - "%clang@15.0.7"
   krb5:
     externals:
-    - spec: "krb5 @1.20.1 %gcc@11 os=almalinux9"
+    - spec: "krb5 @1.20.1  os=almalinux9"
       prefix: /usr
-  libc:
-    externals:
-    - spec: "libc +iconv+rpc @2.34 %gcc@11 os=almalinux9"
-      prefix: /usr
-    buildable: False
   libfontenc:
     externals:
-    - spec: "libfontenc @1.1.3 %gcc@11 os=almalinux9"
+    - spec: "libfontenc @1.1.3  os=almalinux9"
       prefix: /usr
     buildable: False
   libice:
     externals:
-    - spec: "libice @1.0.10 %gcc@11 os=almalinux9"
+    - spec: "libice @1.0.10  os=almalinux9"
       prefix: /usr
     buildable: False
   libpciaccess:
@@ -204,238 +199,233 @@ packages:
       - one_of:
         - "target=x86_64_v2"
       - one_of:
-        - "%gcc@11"
+        - ""
         - "%clang@15.0.7"
   libsm:
     externals:
-    - spec: "libsm @1.2.3 %gcc@11 os=almalinux9"
+    - spec: "libsm @1.2.3  os=almalinux9"
       prefix: /usr
   libtool:
     externals:
-    - spec: "libtool @2.4.6 %gcc@11 os=almalinux9"
+    - spec: "libtool @2.4.6  os=almalinux9"
       prefix: /usr
   libuuid:
     externals:
-    - spec: "libuuid @2.37.4 %gcc@11 os=almalinux9"
+    - spec: "libuuid @2.37.4  os=almalinux9"
       prefix: /usr
   libx11:
     externals:
-    - spec: "libx11 @1.7.0 %gcc@11 os=almalinux9"
+    - spec: "libx11 @1.7.0  os=almalinux9"
       prefix: /usr
     buildable: False
   libxau:
     externals:
-    - spec: "libxau @1.0.9 %gcc@11 os=almalinux9"
+    - spec: "libxau @1.0.9  os=almalinux9"
       prefix: /usr
     buildable: False
   libxcb:
     externals:
-    - spec: "libxcb @1.13.1 %gcc@11 os=almalinux9"
+    - spec: "libxcb @1.13.1  os=almalinux9"
       prefix: /usr
     buildable: False
   libxdmcp:
     externals:
-    - spec: "libxdmcp @1.1.3 %gcc@11 os=almalinux9"
+    - spec: "libxdmcp @1.1.3  os=almalinux9"
       prefix: /usr
     buildable: False
   libxext:
     externals:
-    - spec: "libxext @1.3.4 %gcc@11 os=almalinux9"
+    - spec: "libxext @1.3.4  os=almalinux9"
       prefix: /usr
     buildable: False
   libxft:
     externals:
-    - spec: "libxft @2.3.3 %gcc@11 os=almalinux9"
+    - spec: "libxft @2.3.3  os=almalinux9"
       prefix: /usr
   libxi:
     externals:
-    - spec: "libxi @1.7.10 %gcc@11 os=almalinux9"
+    - spec: "libxi @1.7.10  os=almalinux9"
       prefix: /usr
   libxkbcommon:
     externals:
-    - spec: "libxkbcommon @1.0.3 %gcc@11 os=almalinux9"
+    - spec: "libxkbcommon @1.0.3  os=almalinux9"
       prefix: /usr
     buildable: False
   libxml2:
     externals:
-    - spec: "libxml2 @2.9.13 %gcc@11 os=almalinux9"
+    - spec: "libxml2 @2.9.13  os=almalinux9"
       prefix: /usr
   libxmu:
     externals:
-    - spec: "libxmu @1.1.3 %gcc@11 os=almalinux9"
+    - spec: "libxmu @1.1.3  os=almalinux9"
       prefix: /usr
     buildable: False
   libxpm:
     externals:
-    - spec: "libxpm @3.5.13 %gcc@11 os=almalinux9"
+    - spec: "libxpm @3.5.13  os=almalinux9"
       prefix: /usr
     buildable: False
   libxrender:
     externals:
-    - spec: "libxrender @0.9.10 %gcc@11 os=almalinux9"
+    - spec: "libxrender @0.9.10  os=almalinux9"
       prefix: /usr
     buildable: False
   libxshmfence:
     externals:
-    - spec: "libxshmfence @1.3 %gcc@11 os=almalinux9"
+    - spec: "libxshmfence @1.3  os=almalinux9"
       prefix: /usr
     buildable: False
   libxt:
     externals:
-    - spec: "libxt @1.2.0 %gcc@11 os=almalinux9"
+    - spec: "libxt @1.2.0  os=almalinux9"
       prefix: /usr
     buildable: False
   libxv:
     externals:
-    - spec: "libxv @1.0.11 %gcc@11 os=almalinux9"
+    - spec: "libxv @1.0.11  os=almalinux9"
       prefix: /usr
     buildable: False
   libxxf86vm:
     externals:
-    - spec: "libxxf86vm @1.1.4 %gcc@11 os=almalinux9"
+    - spec: "libxxf86vm @1.1.4  os=almalinux9"
       prefix: /usr
     buildable: False
   lmod:
     externals:
-    - spec: "lmod @8.7.30 %gcc@11 os=almalinux9"
+    - spec: "lmod @8.7.30  os=almalinux9"
       prefix: /usr
   m4:
     externals:
-    - spec: "m4 @1.4.19 %gcc@11 os=almalinux9"
+    - spec: "m4 @1.4.19  os=almalinux9"
       prefix: /usr
   mesa-glu:
     externals:
-    - spec: "mesa-glu @9.0.1 %gcc@11 os=almalinux9"
+    - spec: "mesa-glu @9.0.1  os=almalinux9"
       prefix: /usr
     buildable: False
   mesa:
     externals:
-    - spec: "mesa +glx~osmesa swr=none @22.3.0 %gcc@11 os=almalinux9"
+    - spec: "mesa +glx~osmesa swr=none @22.3.0  os=almalinux9"
       prefix: /usr
   mkfontdir:
     externals:
-    - spec: "mkfontdir @1.2.1 %gcc@11 os=almalinux9"
+    - spec: "mkfontdir @1.2.1  os=almalinux9"
       prefix: /usr
     buildable: False
   mkfontscale:
     externals:
-    - spec: "mkfontscale @1.2.1 %gcc@11 os=almalinux9"
-      prefix: /usr
-    buildable: False
-  motif:
-    externals:
-    - spec: "motif @2.3.4 %gcc@11 os=almalinux9"
+    - spec: "mkfontscale @1.2.1  os=almalinux9"
       prefix: /usr
     buildable: False
   nasm:
     externals:
-    - spec: "nasm @2.15.03 %gcc@11 os=almalinux9"
+    - spec: "nasm @2.15.03  os=almalinux9"
       prefix: /usr
   ninja:
     externals:
-    - spec: "ninja @1.10.2 %gcc@11 os=almalinux9"
+    - spec: "ninja @1.10.2  os=almalinux9"
       prefix: /usr
   ncurses:
     externals:
-    - spec: "ncurses ~symlinks+termlib @6.2 %gcc@11 os=almalinux9"
+    - spec: "ncurses ~symlinks+termlib @6.2  os=almalinux9"
       prefix: /usr
   openssh:
     externals:
-    - spec: "openssh @8.7p1 %gcc@11 os=almalinux9"
+    - spec: "openssh @8.7p1  os=almalinux9"
       prefix: /usr
   openssl:
     externals:
-    - spec: "openssl @3.0.7 %gcc@11 os=almalinux9"
+    - spec: "openssl @3.0.7  os=almalinux9"
       prefix: /usr
   patchelf:
     externals:
-    - spec: "patchelf @0.15.0 %gcc@11 os=almalinux9"
+    - spec: "patchelf @0.15.0  os=almalinux9"
       prefix: /usr
   perl:
     externals:
-    - spec: "perl ~open~opcode @5.32.1 %gcc@11 os=almalinux9"
+    - spec: "perl ~open~opcode @5.32.1  os=almalinux9"
       prefix: /usr
   pkg-config:
     externals:
-    - spec: "pkg-config +internal_glib @1.7.3 %gcc@11 os=almalinux9"
+    - spec: "pkg-config +internal_glib @1.7.3  os=almalinux9"
       prefix: /usr
   pkgconf:
     externals:
-    - spec: "pkgconf @1.7.3 %gcc@11 os=almalinux9"
+    - spec: "pkgconf @1.7.3  os=almalinux9"
       prefix: /usr
   python:
     externals:
-    - spec: "python @3.9.16 %gcc@11 os=almalinux9"
+    - spec: "python @3.9.18 os=almalinux9"
       prefix: /usr
   readline:
     externals:
-    - spec: "readline @8.1 %gcc@11 os=almalinux9"
+    - spec: "readline @8.1  os=almalinux9"
       prefix: /usr
   tar:
     externals:
-    - spec: "tar @1.34 %gcc@11 os=almalinux9"
+    - spec: "tar @1.34  os=almalinux9"
       prefix: /usr
     buildable: False
   tcl:
     externals:
-    - spec: "tcl @8.6.10 %gcc@11 os=almalinux9"
+    - spec: "tcl @8.6.10  os=almalinux9"
       prefix: /usr
     buildable: False
   texinfo:
     externals:
-    - spec: "texinfo @6.7 %gcc@11 os=almalinux9"
+    - spec: "texinfo @6.7  os=almalinux9"
       prefix: /usr
   texlive:
     externals:
-    - spec: "texlive @20200406 %gcc@11 os=almalinux9"
+    - spec: "texlive @20200406  os=almalinux9"
       prefix: /usr
   tk:
     externals:
-    - spec: "tk @8.6.10 %gcc@11 os=almalinux9"
+    - spec: "tk @8.6.10  os=almalinux9"
       prefix: /usr
     buildable: False
   xcb-util-image:
     externals:
-    - spec: "xcb-util-image @0.4.0 %gcc@11 os=almalinux9"
+    - spec: "xcb-util-image @0.4.0  os=almalinux9"
       prefix: /usr
     buildable: False
   xcb-util-keysyms:
     externals:
-    - spec: "xcb-util-keysyms @0.4.0 %gcc@11 os=almalinux9"
+    - spec: "xcb-util-keysyms @0.4.0  os=almalinux9"
       prefix: /usr
     buildable: False
   xcb-util-renderutil:
     externals:
-    - spec: "xcb-util-renderutil @0.3.9 %gcc@11 os=almalinux9"
+    - spec: "xcb-util-renderutil @0.3.9  os=almalinux9"
       prefix: /usr
     buildable: False
   xcb-util-wm:
     externals:
-    - spec: "xcb-util-wm @0.4.1 %gcc@11 os=almalinux9"
+    - spec: "xcb-util-wm @0.4.1  os=almalinux9"
       prefix: /usr
     buildable: False
   xextproto:
     externals:
-    - spec: "xextproto @7.3.0 %gcc@11 os=almalinux9"
+    - spec: "xextproto @7.3.0  os=almalinux9"
       prefix: /usr
     buildable: False
   xproto:
     externals:
-    - spec: "xproto @7.0.33 %gcc@11 os=almalinux9"
+    - spec: "xproto @7.0.33  os=almalinux9"
       prefix: /usr
     buildable: False
   xrandr:
     externals:
-    - spec: "xrandr @1.5.0 %gcc@11 os=almalinux9"
+    - spec: "xrandr @1.5.0  os=almalinux9"
       prefix: /usr
     buildable: False
   xtrans:
     externals:
-    - spec: "xtrans @1.4.0 %gcc@11 os=almalinux9"
+    - spec: "xtrans @1.4.0  os=almalinux9"
       prefix: /usr
     buildable: False
   zlib:
     externals:
-    - spec: "zlib +optimize+pic+shared @1.2.11 %gcc@11 os=almalinux9"
+    - spec: "zlib +optimize+pic+shared @1.2.11  os=almalinux9"
       prefix: /usr
     buildable: False

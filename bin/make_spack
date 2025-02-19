@@ -86,6 +86,25 @@ clone_repos() {
 EOF
 }
 
+add_fermi_patches() {
+    # if we're not a something-fermi release of spack, try to apply our fermi patches
+    case $spack_release in
+    *fermi*) ;;
+    *fnal*) ;;
+    *) (
+        cd $SPACK_ROOT
+        tag=$(git describe --tag)
+        newbranch="${tag}-fermi"
+        git checkout -b $newbranch
+        for pf in $(echo $spackbindir/../patches/*.patch)
+        do
+            patch -p1 < $pf
+        done
+        git commit -am "bootstrap patches"
+      )
+      ;;
+    esac
+}
 
 add_fermi_setups() {
 
@@ -218,8 +237,25 @@ parse_args() {
 
 do_spack_bootstrap() {
     osstr=$(spack arch -o)
+    # for the 1.0.x.alpha bootstrap, we need to hide our mirrors
+    # with old packages from "spack bootstrap now"...
+    mfl="$(find $SPACK_ROOT/etc \( -name defaults -prune \)  -o \( -name mirrors.yaml -print \))"
+    for mf in $mfl; do  mv $mf $mf.hide; done
+
+    spack clean --all
     spack bootstrap root $dir/.bootstrap.$osstr
-    spack bootstrap now
+    spack -d bootstrap now
+
+    # ... and put them back when we're done
+    for mf in $mfl; do  mv $mf.hide $mf; done
+}
+
+do_keys() {
+    # get the keys from our buildcaches
+    # this doesn't seem to happen consistently, so trying doing
+    # it twice, which shouldn't hurt in any case
+    spack buildcache keys --install --force --trust
+    sleep 1
     spack buildcache keys --install --force --trust
 }
 
@@ -231,8 +267,10 @@ main() {
 
     clone_repos
     add_fermi_setups
+    add_fermi_patches
     do_padding
     do_spack_bootstrap
+    do_keys
     query_packages
 }
 
