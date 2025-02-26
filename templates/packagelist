@@ -99,6 +99,7 @@ tcl:tcl:$0-devel
 texinfo:texinfo:$0
 texlive:texlive:$0
 tk:tk:$0-devel
+vim-minimal:vim:$0
 xcb-util-image:xcb-util-image:$0-devel
 xcb-util-keysyms:xcb-util-keysyms:$0-devel
 xcb-util-renderutil:xcb-util-renderutil:$0-devel
