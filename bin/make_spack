@@ -46,7 +46,7 @@ clone_repos() {
       else
         unset default_branch
       fi
-      clone_branch=$branch
+      clone_branch=${default_branch:-$branch}
       if [ -e "$ddir/.git" ]; then
         if [ -n "$repo_type" ]; then
           eval "upgrade_repo=\$upgrade_$repo_type"
