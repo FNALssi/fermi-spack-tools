@@ -19,7 +19,7 @@ clone_repos() {
     else
       unset maybe_change_branch
     fi
-    while read ddir branch repo
+    while read ddir branch repo branch_prefix branch_suffix
     do
       if [ "$repo" = "$spack_repo" ] ; then
         repo_type=spack
@@ -40,6 +40,9 @@ clone_repos() {
       if [ -n "$maybe_change_branch" ]; then
         default_branch="$branch"
         branch="${spack_release%-fermi}"
+        if [[ "$branch" == v[0-9]* ]]; then
+          branch="$branch_prefix$branch$branch_suffix"
+        fi
         if [ "$branch" = "$default_branch" ]; then
           unset $default_branch
         fi
@@ -92,7 +95,7 @@ clone_repos() {
       fi
     done <<EOF
         $dir                                            $spack_release  $spack_repo
-        $dir/etc/spack/linux                            main            https://github.com/FNALssi/fermi-etc-spack-linux.git
+        $dir/etc/spack/linux                            main            https://github.com/FNALssi/fermi-etc-spack-linux.git      spack-
         $dir/var/spack/extensions/spack-freeze          main            https://github.com/FNALssi/spack-freeze.git
         $dir/var/spack/extensions/spack-installdir      main            https://github.com/FNALssi/spack-installdir.git
         $dir/var/spack/extensions/spack-intersection    main            https://github.com/FNALssi/spack-intersection.git
