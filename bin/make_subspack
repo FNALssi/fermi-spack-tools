@@ -83,47 +83,6 @@ parse_args() {
     esac
 }
 
-<<<<<<< HEAD
-parse_args()
-if [ ${spack_repo} = default ]
-then
-   spack_repo=$(get_from_bootstra spack_repo)
-fi 
-
-if [ ${spac_release} = default ]
-then
-    spack_release=$(get_from_bootstrap spack_release)
-fi
-
-if [ ${disable_caches} ]
-then
-    args="$args --without-caches"
-fi
-if [ ${padding} ]
-    args="$args --with-padding"
-fi
-if [ $spack_repo != upstream ]
-then
-    if [ $spack_repo = default ]
-    then
-        spack_repo=$(get_from_bootstrap default_spack_repo)
-    fi
-    args="$args --repo $spack_repo"
-fi
-if [ $spack_release != upstream ]
-then
-    if [ $spack_release = default ]
-    then
-        spack_release=$(get_from_bootstrap default_spack_version)
-    fi
-    args="$args --spack-release $spack_release"
-fi
-
-source $src/setup-env.sh
-echo Running spack subspack $args $dst
-spack subspack $args $dst
-
-=======
 
 process_args() {
     if [ ${spack_repo} = default ]
@@ -172,4 +131,3 @@ find_ourselves
 parse_args "$@"
 process_args
 run_spack_subspack
->>>>>>> alpha-1.0-mods
