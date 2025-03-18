@@ -583,7 +583,8 @@ _configure_spack() {
   _configure_recipe_repos
 
   _report $PROGRESS "configuring local caches"
-  # Add mirror as buildcache for locally-built packages.
+
+  # 5. Add mirror as buildcache for locally-built packages.
   for cache_spec in ${local_caches[*]:+"${local_caches[@]}"}; do
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
@@ -596,11 +597,25 @@ _configure_spack() {
     _report $PROGRESS "preparing cache configuration for safe concretization"
     _make_concretize_mirrors_yaml "$concretize_mirrors"
   fi
-
   ####################################
+
   # Make sure we know about compilers.
   _report $PROGRESS "configuring compilers"
-  spack compiler find --scope=site >/dev/null 2>&1
+
+  # Get architecture info from Spack.
+  IFS=- read spack_platform spack_os spack_target <<<$(spack arch)
+
+  # Find the best scope for compiler info based on configuration and/or
+  # Spack version.
+  for compilers_scope in \
+    include:$spack_os site/$spack_platform/$spack_os site/$spack_os site
+  do
+    spack config --scope=$compilers_scope get compilers >/dev/null 2>&1 &&
+      break
+  done
+
+  # Find and record details for compilers.
+  spack compiler find --mixed-toolchain --scope=$compilers_scope
   ####################################
 
   ####################################
@@ -908,13 +923,7 @@ _maybe_register_compiler() {
                     -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
                      location --install-dir binutils 2>/dev/null)"
-    local compilers_scope="$(_cmd $DEBUG_2 $PIPE spack \
-                    -e $env_name \
-                    ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-                    arch)"
-    compilers_scope="${compilers_scope%-*}"
-    compilers_scope="site${compilers_scope:+/${compilers_scope//-//}}"
-    _report $DEBUG_1 "registering compiler $compiler_spec at $compiler_path with Spack"
+    _report $DEBUG_1 "registering compiler $compiler_spec at $compiler_path with Spack in scope $compilers_scope"
     _cmd $DEBUG_1 spack \
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
       compiler find --mixed-toolchain --scope "$compilers_scope" "$compiler_path"
