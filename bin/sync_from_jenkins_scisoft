@@ -30,6 +30,10 @@ spack mirror rm $1-$2b || true
 spack mirror add $1-$2b --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-binary-cache
 spack mirror rm $1-$2c || true
 spack mirror add $1-$2c --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-compiler-cache
+spack mirror rm local-binary-plain
+spack mirror add local-binary-plain /SciSoft/spack-mirror/spack-binary-cache-plain
+spack mirror rm local-compiler-plain
+spack mirror add local-compiler-plain /SciSoft/spack-mirror/spack-compiler-cache-plain
 spack mirror list
 
 if [ -d $1-$2/spack_env/var/spack/environments ]; then
