@@ -12,7 +12,7 @@ find_ourselves() {
 }
 
 get_from_bootstrap() {
-    grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//'
+    grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//' -e 's/["'"']//g"
 }
 
 
@@ -121,10 +121,46 @@ process_args() {
     fi
 }
 
+get_subspack_if_needed() {
+    # if our spack instance doesn't have the extension, clone a copy
+    # and make a config.yaml that adds it, and set ssopts to the
+    # spack options to include that config.yaml.
+    repo="https://github.com/FNALssi/spack-subspack.git"
+    if spack subspack --help > /dev/null 2>&1
+    then
+        ssopts=""
+        ssd=""
+    else
+        ssd="${TMPDIR:-/tmp}/${USER}_ssd"
+        if [ \! -d ${ssd} ]
+        then
+            mkdir ${ssd}
+            git clone --depth 1 $repo $ssd/spack-subspack
+        fi
+        cat  > $ssd/config.yaml <<EOF
+config:
+  extensions:
+  - $ssd/spack-subspack
+EOF
+        ssopts="--config-scope $ssd"
+    fi
+}
+
+cleanup() {
+   # clean out our copy of spack-subspack...
+   if [ -n "$ssd" -a -d "$ssd" ]
+   then
+       echo rm -rf $ssd
+   fi
+}
+
 run_spack_subspack() {
     source $src/setup-env.sh
+    get_subspack_if_needed
     echo Running spack subspack $args $dst
-    spack subspack $args $dst
+    spack $ssopts subspack $args $dst
+
+    cleanup
 }
 
 find_ourselves 
