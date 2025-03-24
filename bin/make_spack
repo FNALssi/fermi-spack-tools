@@ -243,7 +243,8 @@ do_spack_bootstrap() {
     for mf in $mfl; do  mv $mf $mf.hide; done
 
     spack clean --all
-    spack bootstrap root $dir/.bootstrap.$osstr
+    spack bootstrap root '$spack/var/bootstraps/$os'
+
     spack -d bootstrap now
 
     # ... and put them back when we're done
