@@ -128,19 +128,35 @@ EOF
     source $dir/share/spack/setup-env.sh
 }
 
+preferred_scope() {
+   # pick the per-os scope for this instance of spack
+   # this has historicaly been a moving target, so try the newest to oldest.
+   # if we don't find one, just use "site"
+   osstr=$(spack arch -o)
+   platstr=$(spack arch -p)
+   for sstr in "include:$osstr" "site/$platstr/$osstr" "site/$osstr" "site"
+   do
+       if spack config --scope=$sstr get compilers > /dev/null 2>&1
+       then
+           echo $sstr
+           return
+       fi
+   done
+}
+
 do_padding() {
     if $padding; then
         echo "turning on padding."
-        spack config --scope=site add config:install_tree:padded_length:255
+        spack config --scope=$(preferred_scope) add config:install_tree:padded_length:255
     else
-        spack config --scope=site rm config:install_tree:padded_length
+        spack config --scope=$(preferred_scope) rm config:install_tree:padded_length
     fi
 }
 
 query_packages() {
    if $query_packages; then
        osstr=$(spack arch -o)
-       spack linuxexternals --scope=site/linux/$osstr
+       spack linuxexternals --scope=$(preferred_scope)
    fi
 }
 
