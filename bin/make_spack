@@ -69,7 +69,7 @@ clone_repos() {
       fi
     done <<EOF
         $dir                                            $spack_release  $spack_repo
-        $dir/etc/spack/linux                            1.0-alpha       https://github.com/FNALssi/fermi-etc-spack-linux.git
+        $dir/etc/spack/linux                            main            https://github.com/FNALssi/fermi-etc-spack-linux.git
         $dir/var/spack/extensions/spack-freeze          main            https://github.com/FNALssi/spack-freeze.git
         $dir/var/spack/extensions/spack-installdir      main            https://github.com/FNALssi/spack-installdir.git
         $dir/var/spack/extensions/spack-intersection    main            https://github.com/FNALssi/spack-intersection.git
