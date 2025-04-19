@@ -94,11 +94,11 @@ clone_repos() {
         fi
       fi
       # if we added a repository not in repos.yaml, add it
-      osstr=$(spack arch -o)
-      if [ -d $ddir/packages -a -r $ddir/repo.yaml ]
+      pstr=$(uname -s | tr A-Z a-z)
+      if [ $repo_type = "recipes" ] 
       then
-        repof=$dir/etc/spack/$osstr/repos.yaml 
-        if grep $ddir/packages $repof > /dev/null
+        repof=$dir/etc/spack/$pstr/repos.yaml 
+        if grep $ddir $repof > /dev/null
         then
           :
         else
