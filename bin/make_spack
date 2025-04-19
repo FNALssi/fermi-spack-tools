@@ -109,6 +109,7 @@ clone_repos() {
         $dir/var/spack/repos/nusofthep-spack-recipes    main            https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
         $dir/var/spack/repos/larsoft-spack-recipes      main            https://github.com/LArSoft/larsoft-spack-recipes.git
         $dir/var/spack/repos/artdaq-spack               develop         https://github.com/art-daq/artdaq-spack.git
+        $experiment_repos
 EOF
 }
 
@@ -191,32 +192,56 @@ query_packages() {
 usage() {
         echo "Usage: $0 [options] -[utp] /base/directory"
         echo " options:"
-        echo "  --upgrade (deprecated, ignored)"
-        echo "  --upgrade-etc"
-        echo "  --upgrade-extensions"
-        echo "  --upgrade-recipes"
-        echo "  --upgrade-spack"
-        echo "  --no-buildcache"
-        echo "  --query-packages"
-        echo "  --spack_release ver"
-        echo "  --spack_repo url"
-        echo "  --depth n"
-        echo "  --minimal"
-        echo "  --verbose"
-        echo "  -u fermi 'unified' layout (deprecated)"
-        echo "  -t fermi 'traditional' layout (deprecated)"
-        echo "  -p plain spack default layout (deprecated)"
-        echo "  -m minimal setup"
-        echo "  -v verbose flag"
+        echo "  --experiment exp_name    customize for experiment" 
+        echo "  --upgrade                upgrade spack instance (deprecated, ignored)"
+        echo "  --upgrade-etc            git pull latest etc areas"
+        echo "  --upgrade-extensions     git pull latest extensions"
+        echo "  --upgrade-recipes        git pull recipe repositories"
+        echo "  --upgrade-spack          git pull spack itself"
+        echo "  --no-buildcache          do not use buildcache for packages"
+        echo "  --query-packages         search for system packages instead of stock list"
+        echo "  --spack_release ver      set spack release to install"
+        echo "  --spack_repo url         set spack repository to install from"
+        echo "  --depth n                git clone depth (default 1 for speed)"
+        echo "  --minimal                minimal install"
+        echo "  --verbose                lots of debugging"
+        echo "  -u fermi                 use 'unified' layout (deprecated)"
+        echo "  -t fermi                 use 'traditional' layout (deprecated)"
+        echo "  -p plain                 use spack default layout (default, deprecated)"
+        echo "  -m                       short for --minimal"
+        echo "  -v                       short for --verbose"
         echo ""
         echo "  make a spack instance with given layout"
-        echo "  --query-packages turns on running make_packages_yaml (slow)"
-        echo "  --depth is passed to git clone calls (default 1)"
-        exit 1
 } 1>&2
 
 get_from_bootstrap() {
     grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//'
+}
+
+get_experiment_repos() {
+    experiment_repos=""
+    for exp in $experiment_list
+    do
+        case $exp in
+        mu2e)
+          experiment_repos="$experiment_repos
+            $dir/var/spack/repos/mu2e-spack              main https://github.com/Mu2e/mu2e-spack.git"
+           ;;
+        larsoft)
+          experiment_repos="$experiment_repos
+            $dir/var/spack/repos/nusofthep-spack-recipes main https://github.com/NuSoftHEP/nusofthep-spack-recipes.git 
+            $dir/var/spack/repos/larsoft-spack-recipes   main https://github.com/LArSoft/larsoft-spack-recipes.git"
+           ;;
+        dune)
+          experiment_repos="$experiment_repos
+            $dir/var/spack/repos/nusofthep-spack-recipes main https://github.com/NuSoftHEP/nusofthep-spack-recipes.git 
+            $dir/var/spack/repos/larsoft-spack-recipes   main https://github.com/LArSoft/larsoft-spack-recipes.git
+            $dir/var/spack/repos/dune_spack              main https://github.com/DUNE/dune_spack"
+           ;;
+        nova)
+           ;;
+        esac
+    done
 }
 
 parse_args() {
@@ -232,9 +257,10 @@ parse_args() {
     verbose=false
     depth=1
     no_recipes=false
+    experiment_list=""
 
     origargs="$*"
-    if x=$(getopt --longoptions help,depth,with_padding,upgrade,upgrade-etc,upgrade-extensions,upgrade-recipes,upgrade-spack,spack_release:,minimal,no-recipe-repos,no_buildcache,repover,spack_repo:,query-packages,verbose --options mptuv -- "$@")
+    if x=$(getopt --longoptions help,depth,with_padding,experiment:,upgrade,upgrade-etc,upgrade-extensions,upgrade-recipes,upgrade-spack,spack_release:,minimal,no-recipe-repos,no_buildcache,repover,spack_repo:,query-packages,verbose --options mptuv -- "$@")
     then
         eval set : $x
         shift
@@ -245,11 +271,13 @@ parse_args() {
     while echo x$1 | grep x- > /dev/null
     do
         case "x$1" in
+        x--help)                usage; exit 0;;
         x--depth)               depth=$2; shift;;
         x--with_padding)        padding=true; shift ;;
         x--upgrade)             echo "Deprecated option --upgrade ignored: use --upgrade-{etc,extensions,recipes,spack} ";  shift;;
         x--upgrade-*)           eval upgrade_${1##*-}=1; shift;;
         x--spack_release)       spack_release=$2; shift; shift ;;
+        x--experiment)          experiment_list="$experiment_list $2"; shift; shift ;;
         x--spack_repo)          spack_repo=$2; shift; shift;;
         x--minimal)             minimal=true; shift ;;
         x--query-packages)      query_packages=true; shift ;;
@@ -304,16 +332,30 @@ do_keys() {
     spack buildcache keys --install --force --trust
 }
 
+do_experiment_mirrors() {
+    for exp in $experiment_list
+    do
+        mf="$dir/etc/spack/linux/mirrors.yaml"
+        case $exp in
+        mu2e)
+            echo "  mu2e: https://spack-cache-1.fnal.gov/binaries/mu2e" >> $mf
+            ;;
+        esac
+    done
+}
+
 main() {
 
     : starting: $*
     find_ourselves
     parse_args "$@"
 
+    get_experiment_repos
     clone_repos
     add_fermi_setups
     add_fermi_patches
     do_padding
+    do_experiment_mirrors
     do_spack_bootstrap
     do_keys
     query_packages
