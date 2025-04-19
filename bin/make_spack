@@ -98,12 +98,13 @@ clone_repos() {
       if [ $repo_type = "recipes" ] 
       then
         repof=$dir/etc/spack/$pstr/repos.yaml 
-        if grep $ddir $repof > /dev/null
+        config_ddir=$(echo $ddir | sed -e "s;$dir;\$spack;")
+        if grep "\\$config_ddir" $repof > /dev/null
         then
           :
         else
           echo "adding $ddir to repos.yaml"
-          echo "- $ddir" >> $repof
+          echo "- $config_ddir" >> $repof
         fi
       fi
     done <<EOF
