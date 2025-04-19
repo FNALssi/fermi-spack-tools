@@ -517,8 +517,10 @@ _configure_recipe_repos() {
 _configure_spack() {
   # Clear mirrors list back to defaults.
   if (( clear_mirrors )); then
-    _report $PROGRESS "clearing default mirrors list"
-    _cmd $PROGRESS cp "$default_mirrors" "$mirrors_cfg"
+    _report $PROGRESS "clearing mirrors list"
+    _cmd $PROGRESS rm -f "$mirrors_cfg" \
+         "$SPACK_ROOT/etc/spack/linux/mirrors.yaml" \
+         "$SPACK_ROOT/etc/spack/linux/"*/mirrors.yaml
   fi
 
   ####################################

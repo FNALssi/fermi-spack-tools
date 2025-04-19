@@ -22,14 +22,14 @@ extract_from_env() {
   fi
 }
 
-curl --fail -OL https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/label1=$1/$2/artifact/copyBack/jenkins-build-spack-env-label1=$1-$2.tar.bz2
+curl --fail -OL https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/label1=$1/$2/artifact/copyBack/jenkins-build-spack-env-label1=$1-$2.tar.bz2
 rm -rf $1-$2 && mkdir $1-$2 && tar -x -C $1-$2 -f jenkins-build-spack-env-label1=$1-$2.tar.bz2
 spack mirror rm $1-$2e || true
-spack mirror add $1-$2e --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-emergency-cache
+spack mirror add $1-$2e --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-emergency-cache
 spack mirror rm $1-$2b || true
-spack mirror add $1-$2b --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-binary-cache
+spack mirror add $1-$2b --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-binary-cache
 spack mirror rm $1-$2c || true
-spack mirror add $1-$2c --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-compiler-cache
+spack mirror add $1-$2c --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-compiler-cache
 spack mirror rm local-binary-plain
 spack mirror add local-binary-plain /SciSoft/spack-mirror/spack-binary-cache-plain
 spack mirror rm local-compiler-plain
