@@ -1291,6 +1291,8 @@ while (( $# )); do
     --fermi-spack-tools-root=*) si_root="${1#*=}";;
     --fermi-spack-tools-version) si_ver="$2"; shift;;
     --fermi-spack-tools-version=*) si_ver="${1#*=}";;
+    --populate-only) no_configure=1;;
+    --setup-only) no_bulid=1;;
     --spack-python) spack_python="$2"; shift;;
     --spack-python=*) spack_python="${1#*=}";;
     --spack-repo) recipe_repos+=("$2"); shift;;
@@ -1480,6 +1482,11 @@ EOF
 fi
 ####################################
 
+if (( no_configure )); then
+  _report $INFO "exiting without configuration"
+  exit 0
+fi
+
 ####################################
 # Source the setup script.
 _report $PROGRESS "configuring Spack $spack_ver for use"
@@ -1531,8 +1538,8 @@ environment_specs=("$@")
 num_environments=${#environment_specs[@]}
 env_idx=0
 
-if (( ! num_environments )); then # NOP
-  _report $INFO "no environment configurations specified: exiting after setup"
+if (( no_build )) || (( ! num_environments )); then # Nothing to build.
+  _report $INFO "exiting after configuration"
 else
   ####################################
   # Build each specified environment.
