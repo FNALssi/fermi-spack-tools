@@ -7,6 +7,7 @@ usage() {
 usage: bootstrap [options] [dest_dir] 
   options:
         --help                              Print this message
+        --experiment expname                customize for experiment expname
         --query-packages                    Run make_packages_yaml rather than putting in templated packages.yaml
         --with_padding                      Set padding in spack config
         --fermi_spack_tools_release ver  fetch the labeled version of fermi_spack_tools
@@ -26,7 +27,8 @@ default_fermi_spack_tools_repo=https://github.com/FNALssi/fermi-spack-tools.git
 
 parse_args() {
     with_padding=""
-    if x=$(getopt --options "" --longoptions with_padding,help,query-packages,fermi_spack_tools_release:,spack_release:,spack_repo:,fermi_spack_tools_repo: -- "$@")
+    experiment_list=""
+    if x=$(getopt --options "" --longoptions with_padding,help,query-packages,experiment:,fermi_spack_tools_release:,spack_release:,spack_repo:,fermi_spack_tools_repo: -- "$@")
     then
         eval set : $x
         shift
@@ -47,6 +49,7 @@ parse_args() {
         x--with_padding)                 with_padding="--with_padding"; shift;;
         x--spack_release)                spack_version=$2; shift; shift ;;
         x--query-packages)               query_packages="--query-packages"; shift ;;
+        x--experiment)                   experiment_list="$experiment_list $2"; shift; shift ;;
         x--spack_repo)                   spack_repo=$2; shift; shift ;;
         x--fermi_spack_tools_release) ver=$2; shift; shift ;;
         x--fermi_spack_tools_repo)    fermi_spack_tools_repo=$2; shift; shift ;;
@@ -136,7 +139,7 @@ main() {
     PATH=$fst/bin:$PATH
 
     message "Setting up with make_spack"
-    sh -x $fst/bin/make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
+    sh -x $fst/bin/make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u --experiment "$experiment_list" $dest
 
     message "Setting up new instance"
 
