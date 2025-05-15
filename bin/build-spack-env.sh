@@ -1313,8 +1313,10 @@ while (( $# )); do
     --ups=*) ups_opt="$(_ups_string_to_opt "${1#*=}")" || exit;;
     +v) (( --VERBOSITY ));;
     -v) (( ++VERBOSITY ));;
-    --verbosity) eval "(( VERBOSITY = $2 ))"; shift;;
-    --verbosity=*) eval "(( VERBOSITY = ${1#*=} ))";;
+    --verbosity) eval "(( VERBOSITY = $2 ))" ||
+                   _die $EXIT_CONFIG_FAILURE "unrecognized verbosity $2"; shift;;
+    --verbosity=*) eval "(( VERBOSITY = ${1#*=} ))" ||
+                   _die $EXIT_CONFIG_FAILURE "unrecognized verbosity ${1#*=}"; shift;;
     --with-cache)
       optarg="$2"; shift; OIFS="$IFS"; IFS=","
       cache_specs+=($optarg); IFS="$OIFS"
