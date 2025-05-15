@@ -507,7 +507,6 @@ _configure_recipe_repos() {
     fi
     local new_namespace="$(_cmd $DEBUG_3 $PIPE sed -Ene 's&^[[:space:]]*namespace[[:space:]]*:[[:space:]]*'"'([^']+)'"'$&\1&p' "$path/repo.yaml")"
     # Deactivate namespace if it is configured.
-    _deactivate_repo $new_namespace
     _report $INFO "configuring Spack recipe repo $new_namespace${scope:+ in scope $scope} at $path"
     _cmd $DEBUG_1 spack repo add${scope:+ --scope $scope} "$path" ||
       _die "unable to add repo $new_namespace${scope:+ in scope $scope} at $path"
@@ -535,6 +534,11 @@ _configure_spack() {
   [ -z "$buildcache_create_help" ] ||
     [[ "$buildcache_create_help" == *"(deprecated)"* ]] ||
     buildcache_rel_arg="-r"
+  ####################################
+
+  ####################################
+  # Get architecture info from Spack.
+  IFS=- read spack_platform spack_os spack_target <<<$(spack arch)
   ####################################
 
   ####################################
@@ -603,9 +607,6 @@ _configure_spack() {
 
   # Make sure we know about compilers.
   _report $PROGRESS "configuring compilers"
-
-  # Get architecture info from Spack.
-  IFS=- read spack_platform spack_os spack_target <<<$(spack arch)
 
   # Find the best scope for compiler info based on configuration and/or
   # Spack version.
@@ -699,6 +700,7 @@ _deactivate_repo() {
     [[ scope == defaults/* ]] || scope="site${scope:+/$scope}"
     _report $PROGRESS "deactivating existing repo $rrepo in scope $scope at $path"
     _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo ||
+      _cmd $DEBUG_1 spack repo rm --scope include:$spack_os $rrepo ||
       _die "unable to deactivate existing repo $rrepo in scope $scope at $path"
   done
 }
