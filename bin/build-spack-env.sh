@@ -1316,7 +1316,7 @@ while (( $# )); do
     --verbosity) eval "(( VERBOSITY = $2 ))" ||
                    _die $EXIT_CONFIG_FAILURE "unrecognized verbosity $2"; shift;;
     --verbosity=*) eval "(( VERBOSITY = ${1#*=} ))" ||
-                   _die $EXIT_CONFIG_FAILURE "unrecognized verbosity ${1#*=}"; shift;;
+                   _die $EXIT_CONFIG_FAILURE "unrecognized verbosity ${1#*=}";;
     --with-cache)
       optarg="$2"; shift; OIFS="$IFS"; IFS=","
       cache_specs+=($optarg); IFS="$OIFS"
