@@ -605,6 +605,7 @@ _configure_spack() {
   fi
   ####################################
 
+  ####################################
   # Make sure we know about compilers.
   _report $PROGRESS "configuring compilers"
 
@@ -618,7 +619,7 @@ _configure_spack() {
   done
 
   # Find and record details for compilers.
-  spack compiler find --mixed-toolchain --scope=$compilers_scope
+  _cmd $DEBUG_1 spack compiler find --scope=$compilers_scope
   ####################################
 
   ####################################
@@ -918,10 +919,15 @@ _maybe_register_compiler() {
     compiler_build_spec=${compiler_spec/clang/llvm}
     compiler_build_spec=${compiler_build_spec/oneapi/intel-oneapi-compilers}
     compiler_build_spec=${compiler_build_spec/dpcpp/intel-oneapi-compilers}
+    local compiler_build_hash="$(_cmd $DEBUG_3 $PIPE spack \
+                 -e $env_name \
+                 ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+                 find -fvLNc gcc | \
+              sed -Ene 's/^\[\+\][[:space:]]+([^[:space:]]+)[[:space:]]+gcc@.*$/\/\1/p')"
     local compiler_path="$(_cmd $DEBUG_2 $PIPE spack \
                     -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-                     location --install-dir "${compiler_build_spec}" )" \
+                     location --install-dir "${compiler_build_hash}" )" \
       || _die $EXIT_PATH_FAILURE "failed to extract path info for new compiler $compiler_spec"
     local binutils_path="$(_cmd $DEBUG_2 $PIPE spack \
                     -e $env_name \
@@ -930,7 +936,7 @@ _maybe_register_compiler() {
     _report $DEBUG_1 "registering compiler $compiler_spec at $compiler_path with Spack in scope $compilers_scope"
     _cmd $DEBUG_1 spack \
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-      compiler find --mixed-toolchain --scope "$compilers_scope" "$compiler_path"
+      compiler find --scope "$compilers_scope" "$compiler_path"
     if [ -n "$binutils_path" ]; then
       # Modify the compiler configuration to prepend binutils to PATH.
       local compilers_yaml="$(_cmd $DEBUG_2 $PIPE spack \
@@ -1532,10 +1538,10 @@ exec $STDOUT>&- $STDERR>&-\
 " EXIT
 ####################################
 
-known_compilers=($(ls -1 "$SPACK_ROOT/lib/spack/spack/compilers/"[A-Za-z]*.py | sed -Ene 's&^.*/(.*)\.py$&\1&p'))
+known_compiler_environments=(gcc clang oneapi)
 OIFS="$IFS"
 IFS='|'
-known_compilers_re="(${known_compilers[*]})"
+known_compilers_re="(${known_compiler_environments[*]})"
 IFS="$OIFS"
 
 environment_specs=("$@")
