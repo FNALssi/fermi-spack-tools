@@ -160,7 +160,7 @@ preferred_scope() {
    # if we don't find one, just use "site"
    osstr=$(spack arch -o)
    platstr=$(spack arch -p)
-   for sstr in "include:$osstr" "site/$platstr/$osstr" "site/$osstr" "site"
+   for sstr in "site:$osstr" "site:$platstr" "include:$osstr" "site/$platstr/$osstr" "site/$osstr" "site"
    do
        if spack config --scope=$sstr get compilers > /dev/null 2>&1
        then
@@ -304,6 +304,24 @@ do_keys() {
     spack buildcache keys --install --force --trust
 }
 
+init_scopes() {
+  if [ ! -d "$dir/etc/spack/base" ]; then
+    echo "relocating \"site\" scope files to \"site:base\""
+    mkdir "$dir/etc/spack/base"
+    for i in "$dir/etc/spack/"*.yaml; do
+      mv -v "$i" "$dif/etc/spack/base/"
+    done
+    cat > "$dir/etc/include.yaml" <<EOF
+include:
+- path: ${platform}/${os}
+  optional: true
+- path: ${platform}
+  optional: true
+- path: base
+EOF
+  fi
+}
+
 main() {
 
     : starting: $*
@@ -311,6 +329,7 @@ main() {
     parse_args "$@"
 
     clone_repos
+    init_scopes
     add_fermi_setups
     add_fermi_patches
     do_padding

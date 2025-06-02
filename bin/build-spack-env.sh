@@ -612,7 +612,7 @@ _configure_spack() {
   # Find the best scope for compiler info based on configuration and/or
   # Spack version.
   for compilers_scope in \
-    include:$spack_os site/$spack_platform/$spack_os site/$spack_os site
+    site:$spack_os site:$spack_platform include:$spack_os site/$spack_platform/$spack_os site/$spack_os site
   do
     spack config --scope=$compilers_scope get compilers >/dev/null 2>&1 &&
       break
@@ -701,7 +701,7 @@ _deactivate_repo() {
     [[ scope == defaults/* ]] || scope="site${scope:+/$scope}"
     _report $PROGRESS "deactivating existing repo $rrepo in scope $scope at $path"
     _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo ||
-      _cmd $DEBUG_1 spack repo rm --scope include:$spack_os $rrepo ||
+      { scope=site:$spack_os; _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo; } ||
       _die "unable to deactivate existing repo $rrepo in scope $scope at $path"
   done
 }
