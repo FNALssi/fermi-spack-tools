@@ -691,10 +691,10 @@ _copy_back_logs() {
 
 _deactivate_repo() {
   local namespace="$1" rrepo=
+  local path="$(_cmd $DEBUG_2 $PIPE spack repo list | _cmd $DEBUG_3 $PIPE grep -Ee "^$namespace")"
+  local path_basename="${path##*/}"
   for rrepo in ${configured_repos[*]:+"${configured_repos[@]}"}; do
     [ "$namespace" = "$rrepo" ] || continue
-    local path="$(_cmd $DEBUG_2 $PIPE spack repo list | _cmd $DEBUG_3 $PIPE grep -Ee "^$namespace")"
-    local path_basename="${path##*/}"
     scope="$(_cmd $DEBUG_2 $PIPE spack config blame repos | _cmd $DEBUG_3 $PIPE sed -Ene '\&/'"$path_basename"'$& s&/repos\.yaml:[[:digit:]]+[[:space:]]+.*$&/&p')"
     scope="${scope##*/etc/spack/}"
     scope="${scope%/*}"
@@ -703,6 +703,7 @@ _deactivate_repo() {
     _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo ||
       { scope=site:$spack_os; _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo; } ||
       _die "unable to deactivate existing repo $rrepo in scope $scope at $path"
+    break
   done
 }
 
