@@ -311,7 +311,7 @@ init_scopes() {
     for i in "$dir/etc/spack/"*.yaml; do
       mv -v "$i" "$dif/etc/spack/base/"
     done
-    cat > "$dir/etc/include.yaml" <<EOF
+    cat > "$dir/etc/spack/include.yaml" <<\EOF
 include:
 - path: ${platform}/${os}
   optional: true
