@@ -286,7 +286,12 @@ do_spack_bootstrap() {
     mfl="$(find $SPACK_ROOT/etc \( -name defaults -prune \)  -o \( -name mirrors.yaml -print \))"
     for mf in $mfl; do  mv $mf $mf.hide; done
 
+
     spack clean --all
+
+    # set where spack will put the builtins repo
+    spack repo set --scope=site --destination '$spack/var/spack'`
+
     spack bootstrap root '$spack/var/bootstraps/$os'
 
     spack -d bootstrap now
