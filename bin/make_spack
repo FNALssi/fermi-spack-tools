@@ -290,8 +290,8 @@ do_spack_bootstrap() {
     spack clean --all
 
     # set where spack will put the builtins repo
-    spack repo set --scope=site --destination '$spack/var/spack' builtin
-    spack info root
+    spack repo set --scope=site --destination '$spack/var/spack-packages' builtin
+    spack info zstd
     spack bootstrap root '$spack/var/bootstraps/$os'
 
     spack -d bootstrap now
