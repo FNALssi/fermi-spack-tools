@@ -136,7 +136,7 @@ main() {
     PATH=$fst/bin:$PATH
 
     message "Setting up with make_spack"
-    sh -x $fst/bin/make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
+    sh -x $fst/bin/make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal  --no-recipe-repos $dest
 
     message "Setting up new instance"
 
