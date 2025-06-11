@@ -146,9 +146,8 @@ main() {
 
     spack compiler find --scope=site
 
-    message "installing fermi-spack-tools..."
-    pyspec=$(spack config get packages | grep python | grep spec: | sed -e 's/ - spec://') 
-    spack install fermi-spack-tools ^$pyspec
+    message "concretizing zlib..."
+    spack solve zlib
 
     check_bootstrap
  
