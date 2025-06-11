@@ -111,9 +111,9 @@ message() {
 }
 
 check_bootstrap() {
-    if [ `spack find | egrep 'fermi-spack-tools' | wc -l` = 1 ]
+    if [ `spack bootstrap status|grep -c PASS` = 2 ]
     then
-        :
+        message "Bootstrap completed properly, see logfile for details"
     else
         message "Bootstrap did NOT complete properly, please attach logfile to a Servicedesk ticket"
         exit 1
