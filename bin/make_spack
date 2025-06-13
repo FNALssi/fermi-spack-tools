@@ -97,18 +97,18 @@ clone_repos() {
         $dir                                            $spack_release  $spack_repo
         $dir/etc/spack/linux                            Spack1.0        https://github.com/FNALssi/fermi-etc-spack-linux.git      spack-
         $dir/var/spack/extensions/spack-freeze          main            https://github.com/FNALssi/spack-freeze.git
-        $dir/var/spack/extensions/spack-installdir      main            https://github.com/FNALssi/spack-installdir.git
+        $dir/var/spack/extensions/spack-installdir      Spack1.0        https://github.com/gartung/spack-installdir.git
         $dir/var/spack/extensions/spack-intersection    main            https://github.com/FNALssi/spack-intersection.git
         $dir/var/spack/extensions/spack-linuxexternals  main            https://github.com/FNALssi/spack-linuxexternals.git
         $dir/var/spack/extensions/spack-localbuildcache main            https://github.com/FNALssi/spack-localbuildcache.git
         $dir/var/spack/extensions/spack-subspack        main            https://github.com/FNALssi/spack-subspack.git
-        $dir/var/spack/extensions/spack-mpd             main            https://github.com/FNALssi/spack-mpd.git
+        $dir/var/spack/extensions/spack-mpd             Spack1.0        https://github.com/gartung/spack-mpd.git
         $dir/var/spack/extensions/spack-subspack        main            https://github.com/FNALssi/spack-subspack.git
         $dir/var/spack/repos/fnal_art                   develop         https://github.com/FNALssi/fnal_art.git
         $dir/var/spack/repos/scd_recipes                master          https://github.com/fnal-fife/scd_recipes.git
-        $dir/var/spack/repos/nusofthep-spack-recipes    main            https://github.com/gartung/nusofthep-spack-recipes.git
+        $dir/var/spack/repos/nusofthep-spack-recipes    v2-migration    https://github.com/gartung/nusofthep-spack-recipes.git
         $dir/var/spack/repos/larsoft-spack-recipes      main            https://github.com/LArSoft/larsoft-spack-recipes.git
-        $dir/var/spack/repos/artdaq-spack               Spack1.0        https://github.com/art-daq/artdaq-spack.git
+        $dir/var/spack/repos/artdaq-spack               Spack1.0        https://github.com/gartung/artdaq-spack.git
 EOF
 }
 
