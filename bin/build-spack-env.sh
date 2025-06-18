@@ -723,6 +723,7 @@ _die() {
 }
 
 _do_build_and_test() {
+  extra_install_opts+=(--deprecated)
   local spack_install_cmd=(
     spack
     -e $env_name
