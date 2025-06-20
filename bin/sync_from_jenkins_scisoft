@@ -31,34 +31,21 @@ spack mirror add $1-$2b --type binary https://buildmaster.fnal.gov/buildmaster/j
 spack mirror rm $1-$2c || true
 spack mirror add $1-$2c --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-compiler-cache
 spack mirror rm local-binary-plain
-spack mirror add local-binary-plain /SciSoft/spack-mirror/spack-binary-cache-plain
+spack mirror add --type binary local-binary-plain /SciSoft/spack-mirror/local-binary-plain
 spack mirror rm local-compiler-plain
-spack mirror add local-compiler-plain /SciSoft/spack-mirror/spack-compiler-cache-plain
+spack mirror add --type binary local-compiler-plain /SciSoft/spack-mirror/local-compiler-plain
 spack mirror list
 
 if [ -d $1-$2/spack_env/var/spack/environments ]; then
 	for env in $(ls -d $1-$2/spack_env/var/spack/environments/* 2>/dev/null);do
-    extract_from_env "$env"
-		spack -e $env buildcache sync $1-$2b local-binary-plain || true
-		spack -e $env buildcache sync $1-$2e local-binary-plain || true
+    		extract_from_env "$env"
+		spack clean -m && spack -e $env buildcache sync $1-$2b local-binary-plain || true
+		spack clean -m && spack -e $env buildcache sync $1-$2e local-binary-plain || true
 	done
-  spack buildcache update-index local-binary-plain || true
+  spack clean -m && spack buildcache update-index local-binary-plain || true
 	for env in $(ls -d $1-$2/spack_env/var/spack/environments/{gcc,clang}* 2>/dev/null);do
-    extract_from_env "$env"
-		spack -e $env buildcache sync $1-$2c local-compiler-plain || true
+    		extract_from_env "$env"
+		spack clean -a -m && spack -e $env buildcache sync $1-$2c local-compiler-plain || true
 	done
-  spack buildcache update-index local-compiler-plain || true
-fi
-if [ -d $1-$2/spack_env/spack/*/NULL/var/spack/environments ]; then
-	for env in $(ls -d $1-$2/spack_env/spack/*/NULL/var/spack/environments/* 2>/dev/null);do
-    extract_from_env "$env"
-		spack -e $env buildcache sync $1-$2b local-binary-unified || true
-		spack -e $env buildcache sync $1-$2e local-binary-unified || true
-	done
-  spack buildcache update-index local-binary-unified || true
-	for env in $(ls -d $1-$2/spack_env/spack/*/NULL/var/spack/environments/{gcc,clang}* 2>/dev/null);do
-    extract_from_env "$env"
-		spack -e $env buildcache sync $1-$2b local-compiler-unified || true
-	done
-  spack buildcache update-index local-compiler-unified || true
+  spack clean -m && spack buildcache update-index local-compiler-plain || true
 fi

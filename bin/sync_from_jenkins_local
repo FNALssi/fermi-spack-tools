@@ -2,13 +2,13 @@
 curl -OL https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/label1=$1/$2/artifact/copyBack/jenkins-build-spack-env-label1=$1-$2.tar.bz2
 mkdir $1-$2; tar -x  -C $1-$2 -f jenkins-build-spack-env-label1=$1-$2.tar.bz2
 #if (curl https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$2/artifact/copyBack/spack-emergency-cache/ 2>/dev/null | grep -q 404 ); then
-	spack mirror add $1-$2e --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-emergency-cache/
+	spack mirror add $1-$2e --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-emergency-cache/
 #fi
 #if (curl https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$2/artifact/copyBack/spack-binary-cache/ 2>/dev/null | grep -q 404 ); then
-	spack mirror add $1-$2b --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-binary-cache/
+	spack mirror add $1-$2b --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-binary-cache/
 #fi
 #if (curl https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$2/artifact/copyBack/spack-compiler-cache/ 2>/dev/null | grep -q 404 );then 
-	spack mirror add $1-$2c --type binary https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-compiler-cache
+	spack mirror add $1-$2c --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-compiler-cache
 #fi
 spack mirror list
 if [ -d $1-$2/spack_env/var/spack/environments ]; then
@@ -26,15 +26,3 @@ if [ -d $1-$2/spack_env/var/spack/environments ]; then
 	done
 	spack buildcache update-index local-compiler-plain
 fi
-if [ -d $1-$2/spack_env/spack/v0.21.0-fermi/NULL/var/spack/environments ]; then
-	for env in $(ls -d $1-$2/spack_env/spack/v0.21.0-fermi/NULL/var/spack/environments/*);do
-		spack -e $env buildcache sync $1-$2b local-binary-unified
-		spack -e $env buildcache sync $1-$2e local-binary-unified
-	done
-	spack buildcache update-index local-binary-unified
-	for env in $(ls -d $1-$2/spack_env/spack/v0.21.0-fermi/NULL/var/spack/environments/{gcc,clang}*);do
-		spack -e $env buildcache sync $1-$2b local-compiler-unified
-	done
-	spack buildcache update-index local-compiler-unified
-fi
-
