@@ -884,11 +884,10 @@ EOF
            buildcache create --only package \
            ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
-           ${buildcache_rel_arg} --rebuild-index "$cache" \
-           "${hashes_to_cache[@]/#//}" ||
+           "${hashes_to_cache[@]/#//}" "$cache"||
         _die "failure caching packages to $cache"
       if [ -d "$cache/blobs" ] &&
-         [ -f "$cache/v3/layout.json*" ]; then
+         [ -f "$cache/v3/layout.json" ]; then
         _report $PROGRESS "updating build cache index at $cache"
         _cmd $DEBUG_1 $PROGRESS \
              spack \
@@ -1529,7 +1528,6 @@ if (( failed )) && (( want_emergency_buildcache )); then \
       buildcache create \
       \${buildcache_package_opts[*]:+\"\${buildcache_package_opts[@]}\"} \
       \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
-      \$buildcache_rel_arg --rebuild-index \
       \"$working_dir/copyBack/spack-emergency-cache\" \
      \$spec; \
      fi \
