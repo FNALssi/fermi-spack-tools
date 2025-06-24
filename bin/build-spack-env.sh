@@ -884,7 +884,7 @@ EOF
            buildcache create --only package \
            ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
-           ${buildcache_rel_arg} "$cache" \
+           ${buildcache_rel_arg} --rebuild-index "$cache" \
            "${hashes_to_cache[@]/#//}" ||
         _die "failure caching packages to $cache"
       if [ -d "$cache/blobs" ] &&
