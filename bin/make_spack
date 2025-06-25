@@ -291,7 +291,7 @@ do_spack_bootstrap() {
     spack clean --all
 
     # set where spack will put the builtins repo
-    spack repo set --scope=site --destination '$spack/var/spack/repos/builtin' builtin
+    spack repo set --scope=site:linux --destination '$spack/var/spack/repos/builtin' builtin
     # causes spack to cache checkout of spack/spack-packages for builtin
     spack info zlib
     spack bootstrap root '$spack/var/bootstraps/$os'
