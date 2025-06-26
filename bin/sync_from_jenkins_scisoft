@@ -30,22 +30,22 @@ spack mirror rm $1-$2b || true
 spack mirror add $1-$2b --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-binary-cache
 spack mirror rm $1-$2c || true
 spack mirror add $1-$2c --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-compiler-cache
-spack mirror rm local-binary-plain
-spack mirror add --type binary local-binary-plain /SciSoft/spack-mirror/local-binary-plain
-spack mirror rm local-compiler-plain
-spack mirror add --type binary local-compiler-plain /SciSoft/spack-mirror/local-compiler-plain
+spack mirror rm spacl-binary-cache-v3
+spack mirror add --type binary spack-binary-cache-v3 /SciSoft/spack-mirror/spack-binary-cache-v3
+spack mirror rm spack-compiler-cache-v3
+spack mirror add --type binary spack-compiler-cache-v3 /SciSoft/spack-mirror/spack-compiler-cache-v3
 spack mirror list
 
 if [ -d $1-$2/spack_env/var/spack/environments ]; then
 	for env in $(ls -d $1-$2/spack_env/var/spack/environments/* 2>/dev/null);do
     		extract_from_env "$env"
-		spack clean -m && spack -e $env buildcache sync $1-$2b local-binary-plain || true
-		spack clean -m && spack -e $env buildcache sync $1-$2e local-binary-plain || true
+		spack clean -m && spack -e $env buildcache sync $1-$2b spack-binary-cache-v3 || true
+		spack clean -m && spack -e $env buildcache sync $1-$2e spack-binary-cache-v3 || true
 	done
-  spack clean -m && spack buildcache update-index local-binary-plain || true
+  spack clean -m && spack buildcache update-index spack-binary-cache-v3 || true
 	for env in $(ls -d $1-$2/spack_env/var/spack/environments/{gcc,clang}* 2>/dev/null);do
     		extract_from_env "$env"
-		spack clean -a -m && spack -e $env buildcache sync $1-$2c local-compiler-plain || true
+		spack clean -a -m && spack -e $env buildcache sync $1-$2c spack-compiler-cache-v3 || true
 	done
-  spack clean -m && spack buildcache update-index local-compiler-plain || true
+  spack clean -m && spack buildcache update-index spack-compiler-cache-v3 || true
 fi
