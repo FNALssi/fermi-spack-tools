@@ -607,7 +607,7 @@ _configure_spack() {
 
   ####################################
   # Make sure we know about compilers.
-  _report $PROGRESS "configuring compilers"
+  _report $PROGRESS "configuring system compilers"
 
   # Find the best scope for compiler info based on configuration and/or
   # Spack version.
@@ -1092,7 +1092,7 @@ _process_environment() {
   ####################################
   # If we just built a compiler environment, add the
   # compiler to the list of available compilers.
-  _maybe_register_compiler
+  #_maybe_register_compiler
   ####################################
 }
 
