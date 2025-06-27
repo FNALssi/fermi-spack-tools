@@ -39,13 +39,13 @@ spack mirror list
 if [ -d $1-$2/spack_env/var/spack/environments ]; then
 	for env in $(ls -d $1-$2/spack_env/var/spack/environments/* 2>/dev/null);do
     		extract_from_env "$env"
-		spack clean -m && spack -e $env buildcache sync $1-$2b spack-binary-cache-v3 || true
-		spack clean -m && spack -e $env buildcache sync $1-$2e spack-binary-cache-v3 || true
+		spack clean -m && spack env activate $env && spack buildcache sync $1-$2b spack-binary-cache-v3 && spack env deactivate || true
+		spack clean -m && spack env activate $env && spack buildcache sync $1-$2e spack-binary-cache-v3 && spack env deactivate || true
 	done
   spack clean -m && spack buildcache update-index spack-binary-cache-v3 || true
 	for env in $(ls -d $1-$2/spack_env/var/spack/environments/{gcc,clang}* 2>/dev/null);do
     		extract_from_env "$env"
-		spack clean -a -m && spack -e $env buildcache sync $1-$2c spack-compiler-cache-v3 || true
+		spack clean -a -m && spack env activate $env && spack buildcache sync $1-$2c spack-compiler-cache-v3 && spack env deactivate || true
 	done
   spack clean -m && spack buildcache update-index spack-compiler-cache-v3 || true
 fi
