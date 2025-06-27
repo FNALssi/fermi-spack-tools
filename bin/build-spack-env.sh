@@ -747,6 +747,7 @@ _do_build_and_test() {
       "${spack_install_cmd[@]}"
       ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"}
     )
+    spack clean -m
     _cmd $PROGRESS $INFO "${spack_build_env_cmd[@]}"
   fi
 }
@@ -1001,11 +1002,13 @@ EOF
   if (( ${#hashes_to_install[@]} )); then
     _report $DEBUG_2 "building ${#hashes_to_install[@]} non-root dependencies in environment $env_name"
     _report $DEBUG_4 "            ${hashes_to_install[@]/%/$'\n'           }"
+    spack clean -m
     _cmd $DEBUG_1 $INFO \
          "${spack_install_cmd[@]}" \
          ${hashes_to_install[*]:+"${hashes_to_install[@]/*\///}"} || return
   fi
   _report $PROGRESS "building${hashes_to_install[*]:+ remaining package(s) in} environment $env_name"
+    spack clean -m
   _cmd $DEBUG_1 $INFO "${spack_install_cmd[@]}" ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"}
 }
 
