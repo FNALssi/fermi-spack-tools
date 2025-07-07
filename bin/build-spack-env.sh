@@ -724,7 +724,7 @@ _die() {
 
 _do_build_and_test() {
   extra_install_opts+=(--deprecated)
-  extra_install_opts+=(-p2)
+  extra_install_opts+=(-p1)
   local spack_install_cmd=(
     spack
     -e $env_name
