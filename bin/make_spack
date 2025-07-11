@@ -102,7 +102,7 @@ clone_repos() {
         $dir/var/spack/extensions/spack-linuxexternals  main            https://github.com/FNALssi/spack-linuxexternals.git
         $dir/var/spack/extensions/spack-localbuildcache main            https://github.com/FNALssi/spack-localbuildcache.git
         $dir/var/spack/extensions/spack-subspack        main            https://github.com/FNALssi/spack-subspack.git
-        $dir/var/spack/extensions/spack-mpd             main            https://github.com/FNALssi/spack-mpd.git
+        $dir/var/spack/extensions/spack-mpd             develop-pre1    https://github.com/FNALssi/spack-mpd.git
         $dir/var/spack/extensions/spack-subspack        main            https://github.com/FNALssi/spack-subspack.git
         $dir/var/spack/repos/fnal_art                   develop-pre1    https://github.com/FNALssi/fnal_art.git
         $dir/var/spack/repos/scd_recipes                pre_1_0         https://github.com/fnal-fife/scd_recipes.git
