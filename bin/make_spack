@@ -105,7 +105,7 @@ clone_repos() {
         $dir/var/spack/extensions/spack-subspack        main            https://github.com/FNALssi/spack-subspack.git
         $dir/var/spack/extensions/spack-mpd             main            https://github.com/FNALssi/spack-mpd.git
         $dir/var/spack/extensions/spack-subspack        main            https://github.com/FNALssi/spack-subspack.git
-        $dir/var/spack/repos/fnal_art                   develop         https://github.com/FNALssi/fnal_art.git
+        $dir/var/spack/repos/fnal_art                   canvas-root-io-6-36 https://github.com/FNALssi/fnal_art.git
         $dir/var/spack/repos/scd_recipes                master          https://github.com/fnal-fife/scd_recipes.git
         $dir/var/spack/repos/nusofthep-spack-recipes    spack-v1.0      https://github.com/gartung/nusofthep-spack-recipes.git
         $dir/var/spack/repos/larsoft-spack-recipes      main            https://github.com/LArSoft/larsoft-spack-recipes.git
