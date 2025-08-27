@@ -30,16 +30,13 @@ spack mirror rm $1-$2b || true
 spack mirror add $1-$2b --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-binary-cache
 spack mirror rm $1-$2c || true
 spack mirror add $1-$2c --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-compiler-cache
-spack mirror rm spacl-binary-cache-v3
+spack mirror rm spack-binary-cache-v3
 spack mirror add --type binary spack-binary-cache-v3 /SciSoft/spack-mirror/spack-binary-cache-v3
 spack mirror rm spack-compiler-cache-v3
 spack mirror add --type binary spack-compiler-cache-v3 /SciSoft/spack-mirror/spack-compiler-cache-v3
 spack mirror list
 
-#PG until I can figure out how to make buildcache sync just download whatever is in the Jenkins job archive
-# at the moment it only looks for roots and fails if they aren't in the Jenkins job archive
-rsync -auv jenkins@jenkins03:/jenkins/buildservice/jobs/build-spack-env/configurations/axis-label1/gcc-11/builds/$2/archive/copyBack/spack-compiler-cache/ /SciSoft/spack-mirror/spack-compiler-cache-v3/
-rsync -auv jenkins@jenkins03:/jenkins/buildservice/jobs/build-spack-env/configurations/axis-label1/gcc-11/builds/$2/archive/copyBack/spack-binary-cache/ /SciSoft/spack-mirror/spack-binary-cache-v3/
+#PG only sync emergency cache which is created when the job fails.
 rsync -auv jenkins@jenkins03:/jenkins/buildservice/jobs/build-spack-env/configurations/axis-label1/gcc-11/builds/$2/archive/copyBack/spack-emergency-cache/ /SciSoft/spack-mirror/spack-binary-cache-v3/
 
 if [ -d $1-$2/spack_env/var/spack/environments ]; then
