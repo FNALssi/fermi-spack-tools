@@ -595,7 +595,7 @@ _configure_spack() {
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
          mirror add --scope=site ${cache_type:+--type "${cache_type}"} \
-         --autopush "$cache_name" "$cache_url"
+         "$cache_name" "$cache_url"
   done
 
   # Make a cut-down mirror configuration for safe concretization.
