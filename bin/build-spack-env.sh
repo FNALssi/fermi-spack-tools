@@ -911,7 +911,7 @@ _maybe_cache_sources() {
   _cmd $DEBUG_1 $PROGRESS spack \
        -e $env_name \
        ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-       mirror create -aD --skip-unstable-versions -d "$cache"
+       mirror create -aD -d "$cache"
   done
 }
 
