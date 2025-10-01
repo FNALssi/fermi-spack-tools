@@ -177,7 +177,7 @@ preferred_scope() {
 do_padding() {
     if $padding; then
         echo "turning on padding."
-        spack config --scope=$(preferred_scope) add config:install_tree:padded_length:255
+        spack config --scope=$(preferred_scope) add config:install_tree:padded_length:128
     else
         spack config --scope=$(preferred_scope) rm config:install_tree:padded_length
     fi
@@ -238,7 +238,7 @@ parse_args() {
     no_recipes=false
 
     origargs="$*"
-    if x=$(getopt --longoptions help,depth,with_padding,upgrade,upgrade-etc,upgrade-extensions,upgrade-recipes,upgrade-spack,spack_release:,minimal,no-recipe-repos,no_buildcache,repover,spack_repo:,query-packages,verbose --options mptuv -- "$@")
+    if x=$(getopt --longoptions help,depth,with_padding,with-padding,upgrade,upgrade-etc,upgrade-extensions,upgrade-recipes,upgrade-spack,spack_release:,spack-release:,minimal,no-recipe-repos,no_buildcache,no-buildcache,repover,spack_repo:,spack-repo:,query-packages,verbose --options mptuv -- "$@")
     then
         eval set : $x
         shift
@@ -250,15 +250,15 @@ parse_args() {
     do
         case "x$1" in
         x--depth)               depth=$2; shift;;
-        x--with_padding)        padding=true; shift ;;
+        x--with?padding)        padding=true; shift ;;
         x--upgrade)             echo "Deprecated option --upgrade ignored: use --upgrade-{etc,extensions,recipes,spack} ";  shift;;
         x--upgrade-*)           eval upgrade_${1##*-}=1; shift;;
-        x--spack_release)       spack_release=$2; shift; shift ;;
-        x--spack_repo)          spack_repo=$2; shift; shift;;
+        x--spack?release)       spack_release=$2; shift; shift ;;
+        x--spack?repo)          spack_repo=$2; shift; shift;;
         x--minimal)             minimal=true; shift ;;
         x--query-packages)      query_packages=true; shift ;;
         x--help)                usage; exit;;
-        x--no_buildcache)       use_buildcache=false; shift;;
+        x--no?buildcache)       use_buildcache=false; shift;;
         x--no-recipe-repos)     no_recipes=true; shift;;
         x--repover)             repovers="$repovers $2"; shift; shift;;
         x-v|x--verbose)         verbose=true; shift;;
