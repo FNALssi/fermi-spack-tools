@@ -220,7 +220,7 @@ usage() {
 } 1>&2
 
 get_from_bootstrap() {
-    grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//'
+    grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//' -e "s/^'//" -e "s/'\$//"
 }
 
 parse_args() {
