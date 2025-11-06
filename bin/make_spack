@@ -177,7 +177,7 @@ preferred_scope() {
 do_padding() {
     if $padding; then
         echo "turning on padding."
-        spack config --scope=$(preferred_scope) add config:install_tree:padded_length:255
+        spack config --scope=$(preferred_scope) add config:install_tree:padded_length:128
     else
         spack config --scope=$(preferred_scope) rm config:install_tree:padded_length
     fi
