@@ -1511,7 +1511,7 @@ source "$spack_env_top_dir/setup-env.sh" \
 ####################################
 
 mirrors_cfg="$SPACK_ROOT/etc/spack/mirrors.yaml"
-default_mirrors="$SPACK_ROOT/etc/spack/defaults/mirrors.yaml"
+default_mirrors="$SPACK_ROOT/etc/spack/defaults/base/mirrors.yaml"
 concretize_mirrors="$SPACK_ROOT/concretize_mirrors.yaml"
 
 _configure_spack
