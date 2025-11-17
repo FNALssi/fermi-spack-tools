@@ -161,10 +161,10 @@ EOF
 preferred_scope() {
    # pick the per-os scope for this instance of spack
    # this has historicaly been a moving target, so try the newest to oldest.
-   # if we don't find one, just use "site"
+   # if we don't find one, just use "spack"
    osstr=$(spack arch -o)
    platstr=$(spack arch -p)
-   for sstr in "site:$osstr" "site:$platstr" "include:$osstr" "site/$platstr/$osstr" "site/$osstr" "site"
+   for sstr in "spack:$osstr" "spack:$platstr" "include:$osstr" "spack/$platstr/$osstr" "spack/$osstr" "spack"
    do
        if spack config --scope=$sstr get compilers > /dev/null 2>&1
        then
@@ -294,7 +294,7 @@ do_spack_bootstrap() {
     spack clean --all
 
     # set where spack will put the builtins repo
-    spack repo set --scope=site:linux --destination '$spack/var/spack/repos/builtin' builtin
+    spack repo set --scope=spack:linux --destination '$spack/var/spack/repos/builtin' builtin
     # causes spack to cache checkout of spack/spack-packages for builtin
     spack info zlib
     spack bootstrap root '$spack/var/bootstraps/$os'
@@ -316,7 +316,7 @@ do_keys() {
 
 init_scopes() {
   if [ ! -d "$dir/etc/spack/base" ]; then
-    echo "relocating \"site\" scope files to \"site:base\""
+    echo "relocating \"spack\" scope files to \"spack:base\""
     mkdir "$dir/etc/spack/base"
     mv -v "$dir/etc/spack/"*.yaml "$dif/etc/spack/base/"
     cat > "$dir/etc/spack/include.yaml" <<\EOF
