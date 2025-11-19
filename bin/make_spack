@@ -95,7 +95,7 @@ clone_repos() {
       fi
     done <<EOF
         $dir                                            $spack_release  $spack_repo
-        $dir/var/spack/repos/builtin                    fnal-develop-2025-07-29 https://github.com/FNALssi/spack-packages.git
+        $dir/var/spack/repos/builtin                    fnal-v2025.11 https://github.com/FNALssi/spack-packages.git
         $dir/etc/spack/linux                            fnal-v2025.11 https://github.com/FNALssi/fermi-etc-spack-linux.git      spack-
         $dir/var/spack/extensions/spack-freeze          main            https://github.com/FNALssi/spack-freeze.git
         $dir/var/spack/extensions/spack-installdir      main            https://github.com/FNALssi/spack-installdir.git
