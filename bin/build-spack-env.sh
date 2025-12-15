@@ -861,13 +861,17 @@ EOF
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
            python "$TMP/location_cmds.py" |
         while read hash prefix; do
-          _report $DEBUG_4 "looking for binary_distribution marker for $hash in $prefix/.spack/"
-          if [  -f "$prefix/.spack/binary_distribution" ]; then
+          if [ "$prefix" != "/usr" ]; then
+              _report $DEBUG_4 "looking for binary_distribution marker for $hash in $prefix/.spack/"
+              if [  -f "$prefix/.spack/binary_distribution" ]; then
 	          _report_stderr=1 _report $DEBUG_1 "skip package installed from buildcache: $hash"
-	        else
+	      else
 	          _report_stderr=1 _report $DEBUG_2 "save package in buildcache: $hash"
-            echo "${hash//*\///}"
-          fi
+                  echo "${hash//*\///}"
+              fi
+	  else 
+	    _report_stderr=1 _report $DEBUG_1 "skip external package: $hash"
+	  fi
         done
     )
   )
