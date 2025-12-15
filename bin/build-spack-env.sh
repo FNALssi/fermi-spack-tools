@@ -884,6 +884,7 @@ EOF
       _report $PROGRESS "caching ${#hashes_to_cache[@]}$msg_extra binary packages for environment $env_name to $cache"
       _cmd $DEBUG_1 $PROGRESS \
            spack \
+           -e $env_name \
            ${__debug_spack_buildcache:+-d} \
            ${__verbose_spack_buildcache:+-v} \
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
@@ -1533,6 +1534,7 @@ if (( failed )) && (( want_emergency_buildcache )); then \
       tag_text=ALERT _report $ERROR skipping package installed from buildcache \$spec;\
       else \
       _cmd $ERROR $PIPE spack \
+      -e \$env_name \
       \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
       buildcache create \
       \${buildcache_package_opts[*]:+\"\${buildcache_package_opts[@]}\"} \
