@@ -311,6 +311,10 @@ init_scopes() {
     mv -v "$dir/etc/spack/"*.yaml "$dif/etc/spack/base/"
     cat > "$dir/etc/spack/include.yaml" <<\EOF
 include:
+  # default platform-specific configuration
+- name: site
+  path: $spack/etc/spack/site
+  optional: true
 - path: ${platform}/${os}
   optional: true
 - path: ${platform}
