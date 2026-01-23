@@ -107,8 +107,8 @@ clone_repos() {
         $dir/var/spack/extensions/spack-subspack        main            https://github.com/FNALssi/spack-subspack.git
         $dir/var/spack/repos/fnal_art                   develop         https://github.com/FNALssi/fnal_art.git
         $dir/var/spack/repos/scd_recipes                master          https://github.com/fnal-fife/scd_recipes.git
-        $dir/var/spack/repos/larsoft-spack-recipes      main            https://github.com/LArSoft/larsoft-spack-recipes.git
         $dir/var/spack/repos/nusofthep-spack-recipes    spack-v1.0      https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
+        $dir/var/spack/repos/larsoft-spack-recipes      main            https://github.com/LArSoft/larsoft-spack-recipes.git
         $dir/var/spack/repos/dune_spack                 spack-v1.0      https://github.com/DUNE/dune_spack.git
         $dir/var/spack/repos/sbn-spack                  spack-v1.0      https://github.com/gartung/sbn-spack.git
         $dir/var/spack/repos/artdaq-spack               Spack1.0        https://github.com/art-daq/artdaq-spack.git
@@ -220,7 +220,7 @@ usage() {
 } 1>&2
 
 get_from_bootstrap() {
-    grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//'
+    grep "^$1=" $spackbindir/bootstrap | sed -e 's/.*=//' -e "s/^'//" -e "s/'\$//"
 }
 
 parse_args() {
@@ -238,7 +238,7 @@ parse_args() {
     no_recipes=false
 
     origargs="$*"
-    if x=$(getopt --longoptions help,depth,with_padding,upgrade,upgrade-etc,upgrade-extensions,upgrade-recipes,upgrade-spack,spack_release:,minimal,no-recipe-repos,no_buildcache,repover,spack_repo:,query-packages,verbose --options mptuv -- "$@")
+    if x=$(getopt --longoptions help,depth,with_padding,with-padding,upgrade,upgrade-etc,upgrade-extensions,upgrade-recipes,upgrade-spack,spack_release:,spack-release:,minimal,no-recipe-repos,no_buildcache,no-buildcache,repover,spack_repo:,spack-repo:,query-packages,verbose --options mptuv -- "$@")
     then
         eval set : $x
         shift
@@ -250,15 +250,15 @@ parse_args() {
     do
         case "x$1" in
         x--depth)               depth=$2; shift;;
-        x--with_padding)        padding=true; shift ;;
+        x--with?padding)        padding=true; shift ;;
         x--upgrade)             echo "Deprecated option --upgrade ignored: use --upgrade-{etc,extensions,recipes,spack} ";  shift;;
         x--upgrade-*)           eval upgrade_${1##*-}=1; shift;;
-        x--spack_release)       spack_release=$2; shift; shift ;;
-        x--spack_repo)          spack_repo=$2; shift; shift;;
+        x--spack?release)       spack_release=$2; shift; shift ;;
+        x--spack?repo)          spack_repo=$2; shift; shift;;
         x--minimal)             minimal=true; shift ;;
         x--query-packages)      query_packages=true; shift ;;
         x--help)                usage; exit;;
-        x--no_buildcache)       use_buildcache=false; shift;;
+        x--no?buildcache)       use_buildcache=false; shift;;
         x--no-recipe-repos)     no_recipes=true; shift;;
         x--repover)             repovers="$repovers $2"; shift; shift;;
         x-v|x--verbose)         verbose=true; shift;;

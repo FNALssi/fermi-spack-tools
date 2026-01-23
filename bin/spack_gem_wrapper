@@ -26,7 +26,7 @@ make_repo() {
     else
         rd="$SPACK_ROOT/var/spack/repos/auto_gems"
         spack repo create $rd auto_gems
-        spack repo add --scope=site $rd
+        spack repo add --scope=spack $rd
     fi
 }
 
