@@ -281,7 +281,7 @@ SPACK CONFIGURATION OPTIONS
 
   --with-padding
 
-    Equivalent to --spack-config-cmd='--scope=site add config:install_tree:padded_length:255'
+    Equivalent to --spack-config-cmd='--scope=spack add config:install_tree:padded_length:255'
 
 
 NON-OPTION ARGUMENTS
@@ -556,7 +556,7 @@ _configure_spack() {
   local config_file
   for config_file in ${spack_config_files[*]:+"${spack_config_files[@]}"}; do
     local cf_scope="${config_file%'|'*}"
-    [ "$cf_scope" = "$config_file" ] && cf_scope=site
+    [ "$cf_scope" = "$config_file" ] && cf_scope=spack
     config_file="${config_file##*'|'}"
     if [[ "$config_file" =~ ^[a-z][a-z0-9_-]*://(.*/)?(.*) ]]; then
       curl -o "${BASH_REMATCH[2]}" -fkLNSs "$config_file" \
@@ -587,9 +587,9 @@ _configure_spack() {
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site ${cache_type:+--type "${cache_type}"} \
+         mirror add --scope=spack ${cache_type:+--type "${cache_type}"} \
          "$cache_name" "$cache_url"  ||
-      _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site ${cache_type:+--type \"${cache_type}\"} \"$cache_name\" \"$cache_url\""
+      _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=spack ${cache_type:+--type \"${cache_type}\"} \"$cache_name\" \"$cache_url\""
   done
   # 4. Spack recipe repos.
   _report $PROGRESS "configuring user-specified recipe repositories"
@@ -601,7 +601,7 @@ _configure_spack() {
   for cache_spec in ${local_caches[*]:+"${local_caches[@]}"}; do
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
-         mirror add --scope=site ${cache_type:+--type "${cache_type}"} \
+         mirror add --scope=spack ${cache_type:+--type "${cache_type}"} \
          "$cache_name" "$cache_url"
   done
 
@@ -708,7 +708,7 @@ _deactivate_repo() {
     [[ scope == defaults/* ]] || scope="site${scope:+/$scope}"
     _report $PROGRESS "deactivating existing repo $rrepo in scope $scope at $path"
     _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo ||
-      { scope=site:$spack_os; _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo; } ||
+      { scope=spack:$spack_os; _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo; } ||
       _die "unable to deactivate existing repo $rrepo in scope $scope at $path"
     break
   done
@@ -809,7 +809,7 @@ _make_concretize_mirrors_yaml() {
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site ${cache_type:+--type "${cache_type}"} "$cache_name" "$cache_url" ||
+         mirror add --scope=spack ${cache_type:+--type "${cache_type}"} "$cache_name" "$cache_url" ||
       _die $EXIT_SPACK_CONFIG_FAILURE \
            "unable to add $cache_url to concretization-specific mirrors"
   done

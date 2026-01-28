@@ -46,7 +46,7 @@ def make_repo_if_needed( name ):
     f.close()
     rd="%s/var/spack/repos/%s" % (os.environ["SPACK_ROOT"], name)
     run_command("spack repo create %s %s" % (rd, name))
-    run_command("spack repo add --scope=site %s" % rd)
+    run_command("spack repo add --scope=spack %s" % rd)
     return rd
 
 

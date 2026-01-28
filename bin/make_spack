@@ -95,20 +95,24 @@ clone_repos() {
       fi
     done <<EOF
         $dir                                            $spack_release  $spack_repo
-        $dir/etc/spack/linux                            main            https://github.com/FNALssi/fermi-etc-spack-linux.git      spack-
+        $dir/var/spack/repos/builtin                    fnal-develop    https://github.com/FNALssi/spack-packages.git
+        $dir/etc/spack/linux                            Spack1.1        https://github.com/FNALssi/fermi-etc-spack-linux.git      spack-
         $dir/var/spack/extensions/spack-freeze          main            https://github.com/FNALssi/spack-freeze.git
         $dir/var/spack/extensions/spack-installdir      main            https://github.com/FNALssi/spack-installdir.git
         $dir/var/spack/extensions/spack-intersection    main            https://github.com/FNALssi/spack-intersection.git
         $dir/var/spack/extensions/spack-linuxexternals  main            https://github.com/FNALssi/spack-linuxexternals.git
         $dir/var/spack/extensions/spack-localbuildcache main            https://github.com/FNALssi/spack-localbuildcache.git
         $dir/var/spack/extensions/spack-subspack        main            https://github.com/FNALssi/spack-subspack.git
-        $dir/var/spack/extensions/spack-mpd             develop-pre1    https://github.com/FNALssi/spack-mpd.git
+        $dir/var/spack/extensions/spack-mpd             main            https://github.com/FNALssi/spack-mpd.git
         $dir/var/spack/extensions/spack-subspack        main            https://github.com/FNALssi/spack-subspack.git
-        $dir/var/spack/repos/fnal_art                   develop-pre1    https://github.com/FNALssi/fnal_art.git
-        $dir/var/spack/repos/scd_recipes                pre_1_0         https://github.com/fnal-fife/scd_recipes.git
-        $dir/var/spack/repos/nusofthep-spack-recipes    main            https://github.com/NuSoftHEP/nusofthep-spack-recipes.git  spack-
-        $dir/var/spack/repos/larsoft-spack-recipes      main-pre1       https://github.com/LArSoft/larsoft-spack-recipes.git
-        $dir/var/spack/repos/artdaq-spack               develop         https://github.com/art-daq/artdaq-spack.git
+        $dir/var/spack/repos/fnal_art                   develop         https://github.com/FNALssi/fnal_art.git
+        $dir/var/spack/repos/scd_recipes                master          https://github.com/fnal-fife/scd_recipes.git
+        $dir/var/spack/repos/nusofthep-spack-recipes    spack-v1.0      https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
+        $dir/var/spack/repos/larsoft-spack-recipes      main            https://github.com/LArSoft/larsoft-spack-recipes.git
+        $dir/var/spack/repos/dune_spack                 spack-v1.0      https://github.com/DUNE/dune_spack.git
+        $dir/var/spack/repos/sbn-spack                  spack-v1.0      https://github.com/gartung/sbn-spack.git
+        $dir/var/spack/repos/artdaq-spack               Spack1.0        https://github.com/art-daq/artdaq-spack.git
+        $dir/var/spack/repos/wire-cell-spack            master          https://github.com/WireCell/wire-cell-spack.git
 EOF
 }
 
@@ -286,7 +290,13 @@ do_spack_bootstrap() {
     mfl="$(find $SPACK_ROOT/etc \( -name defaults -prune \)  -o \( -name mirrors.yaml -print \))"
     for mf in $mfl; do  mv $mf $mf.hide; done
 
+
     spack clean --all
+
+    # set where spack will put the builtins repo
+    spack repo set --scope=site:linux --destination '$spack/var/spack/repos/builtin' builtin
+    # causes spack to cache checkout of spack/spack-packages for builtin
+    spack info zlib
     spack bootstrap root '$spack/var/bootstraps/$os'
 
     spack -d bootstrap now
