@@ -91,6 +91,7 @@ BRIEF OPTIONS
   --spack-repo[= ]<path>|<repo>(\|<version|branch>)?
   --spack-root[= ]<repo>
   --spack-version[= ]<version>
+  --spack-install-opts[= ]<opts>+
   --test[= ](all|none|root)
   -q
   --quiet
@@ -160,6 +161,12 @@ LOCATION AND VERSION OPTIONS
   --spack-version[= ]<version|branch>
 
     Obtain the specified branch/version of Spack.
+
+  --spack-install-opts[= ]<opts>+
+
+    Pass additional options to the `spack install` command. This option
+    is repeatable and cumulative, allowing you to specify multiple options.
+    For example: --spack-install-opts="--only-concrete" --spack-install-opts="--verbose"
 
   --working-dir[= ]<working_dir>
 
@@ -274,7 +281,7 @@ SPACK CONFIGURATION OPTIONS
 
   --with-padding
 
-    Equivalent to --spack-config-cmd='--scope=site add config:install_tree:padded_length:255'
+    Equivalent to --spack-config-cmd='--scope=spack add config:install_tree:padded_length:255'
 
 
 NON-OPTION ARGUMENTS
@@ -507,7 +514,6 @@ _configure_recipe_repos() {
     fi
     local new_namespace="$(_cmd $DEBUG_3 $PIPE sed -Ene 's&^[[:space:]]*namespace[[:space:]]*:[[:space:]]*'"'([^']+)'"'$&\1&p' "$path/repo.yaml")"
     # Deactivate namespace if it is configured.
-    _deactivate_repo $new_namespace
     _report $INFO "configuring Spack recipe repo $new_namespace${scope:+ in scope $scope} at $path"
     _cmd $DEBUG_1 spack repo add${scope:+ --scope $scope} "$path" ||
       _die "unable to add repo $new_namespace${scope:+ in scope $scope} at $path"
@@ -517,8 +523,10 @@ _configure_recipe_repos() {
 _configure_spack() {
   # Clear mirrors list back to defaults.
   if (( clear_mirrors )); then
-    _report $PROGRESS "clearing default mirrors list"
-    _cmd $PROGRESS cp "$default_mirrors" "$mirrors_cfg"
+    _report $PROGRESS "clearing mirrors list"
+    _cmd $PROGRESS rm -f "$mirrors_cfg" \
+         "$SPACK_ROOT/etc/spack/linux/mirrors.yaml" \
+         "$SPACK_ROOT/etc/spack/linux/"*/mirrors.yaml
   fi
 
   ####################################
@@ -536,6 +544,11 @@ _configure_spack() {
   ####################################
 
   ####################################
+  # Get architecture info from Spack.
+  IFS=- read spack_platform spack_os spack_target <<<$(spack arch)
+  ####################################
+
+  ####################################
   # Configure Spack according to user specifications.
   #
   # 1. Extra / different config files.
@@ -543,7 +556,7 @@ _configure_spack() {
   local config_file
   for config_file in ${spack_config_files[*]:+"${spack_config_files[@]}"}; do
     local cf_scope="${config_file%'|'*}"
-    [ "$cf_scope" = "$config_file" ] && cf_scope=site
+    [ "$cf_scope" = "$config_file" ] && cf_scope=spack
     config_file="${config_file##*'|'}"
     if [[ "$config_file" =~ ^[a-z][a-z0-9_-]*://(.*/)?(.*) ]]; then
       curl -o "${BASH_REMATCH[2]}" -fkLNSs "$config_file" \
@@ -574,20 +587,21 @@ _configure_spack() {
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site ${cache_type:+--type "${cache_type}"} \
+         mirror add --scope=spack ${cache_type:+--type "${cache_type}"} \
          "$cache_name" "$cache_url"  ||
-      _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=site ${cache_type:+--type \"${cache_type}\"} \"$cache_name\" \"$cache_url\""
+      _die $EXIT_SPACK_CONFIG_FAILURE "executing spack mirror add --scope=spack ${cache_type:+--type \"${cache_type}\"} \"$cache_name\" \"$cache_url\""
   done
   # 4. Spack recipe repos.
   _report $PROGRESS "configuring user-specified recipe repositories"
   _configure_recipe_repos
 
   _report $PROGRESS "configuring local caches"
-  # Add mirror as buildcache for locally-built packages.
+
+  # 5. Add mirror as buildcache for locally-built packages.
   for cache_spec in ${local_caches[*]:+"${local_caches[@]}"}; do
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
-         mirror add --scope=site ${cache_type:+--type "${cache_type}"} \
+         mirror add --scope=spack ${cache_type:+--type "${cache_type}"} \
          "$cache_name" "$cache_url"
   done
 
@@ -596,11 +610,23 @@ _configure_spack() {
     _report $PROGRESS "preparing cache configuration for safe concretization"
     _make_concretize_mirrors_yaml "$concretize_mirrors"
   fi
+  ####################################
 
   ####################################
   # Make sure we know about compilers.
   _report $PROGRESS "configuring compilers"
-  spack compiler find --scope=site >/dev/null 2>&1
+
+  # Find the best scope for compiler info based on configuration and/or
+  # Spack version.
+  for compilers_scope in \
+    site:$spack_os site:$spack_platform include:$spack_os site/$spack_platform/$spack_os site/$spack_os site
+  do
+    spack config --scope=$compilers_scope get compilers >/dev/null 2>&1 &&
+      break
+  done
+
+  # Find and record details for compilers.
+  _cmd $DEBUG_1 spack compiler find --scope=$compilers_scope
   ####################################
 
   ####################################
@@ -672,17 +698,19 @@ _copy_back_logs() {
 
 _deactivate_repo() {
   local namespace="$1" rrepo=
+  local path="$(_cmd $DEBUG_2 $PIPE spack repo list | _cmd $DEBUG_3 $PIPE grep -Ee "^$namespace")"
+  local path_basename="${path##*/}"
   for rrepo in ${configured_repos[*]:+"${configured_repos[@]}"}; do
     [ "$namespace" = "$rrepo" ] || continue
-    local path="$(_cmd $DEBUG_2 $PIPE spack repo list | _cmd $DEBUG_3 $PIPE grep -Ee "^$namespace")"
-    local path_basename="${path##*/}"
     scope="$(_cmd $DEBUG_2 $PIPE spack config blame repos | _cmd $DEBUG_3 $PIPE sed -Ene '\&/'"$path_basename"'$& s&/repos\.yaml:[[:digit:]]+[[:space:]]+.*$&/&p')"
     scope="${scope##*/etc/spack/}"
     scope="${scope%/*}"
     [[ scope == defaults/* ]] || scope="site${scope:+/$scope}"
     _report $PROGRESS "deactivating existing repo $rrepo in scope $scope at $path"
     _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo ||
+      { scope=spack:$spack_os; _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo; } ||
       _die "unable to deactivate existing repo $rrepo in scope $scope at $path"
+    break
   done
 }
 
@@ -781,7 +809,7 @@ _make_concretize_mirrors_yaml() {
     _cache_info "$cache_spec"
     _cmd $DEBUG_1 spack \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         mirror add --scope=site ${cache_type:+--type "${cache_type}"} "$cache_name" "$cache_url" ||
+         mirror add --scope=spack ${cache_type:+--type "${cache_type}"} "$cache_name" "$cache_url" ||
       _die $EXIT_SPACK_CONFIG_FAILURE \
            "unable to add $cache_url to concretization-specific mirrors"
   done
@@ -899,25 +927,24 @@ _maybe_register_compiler() {
     compiler_build_spec=${compiler_spec/clang/llvm}
     compiler_build_spec=${compiler_build_spec/oneapi/intel-oneapi-compilers}
     compiler_build_spec=${compiler_build_spec/dpcpp/intel-oneapi-compilers}
+    local compiler_build_hash="$(_cmd $DEBUG_3 $PIPE spack \
+                 -e $env_name \
+                 ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+                 find -fvLNc gcc | \
+              sed -Ene 's/^\[\+\][[:space:]]+([^[:space:]]+)[[:space:]]+gcc@.*$/\/\1/p')"
     local compiler_path="$(_cmd $DEBUG_2 $PIPE spack \
                     -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-                     location --install-dir "${compiler_build_spec}" )" \
+                     location --install-dir "${compiler_build_hash}" )" \
       || _die $EXIT_PATH_FAILURE "failed to extract path info for new compiler $compiler_spec"
     local binutils_path="$(_cmd $DEBUG_2 $PIPE spack \
                     -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
                      location --install-dir binutils 2>/dev/null)"
-    local compilers_scope="$(_cmd $DEBUG_2 $PIPE spack \
-                    -e $env_name \
-                    ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-                    arch)"
-    compilers_scope="${compilers_scope%-*}"
-    compilers_scope="site${compilers_scope:+/${compilers_scope//-//}}"
-    _report $DEBUG_1 "registering compiler $compiler_spec at $compiler_path with Spack"
+    _report $DEBUG_1 "registering compiler $compiler_spec at $compiler_path with Spack in scope $compilers_scope"
     _cmd $DEBUG_1 spack \
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-      compiler find --mixed-toolchain --scope "$compilers_scope" "$compiler_path"
+      compiler find --scope "$compilers_scope" "$compiler_path"
     if [ -n "$binutils_path" ]; then
       # Modify the compiler configuration to prepend binutils to PATH.
       local compilers_yaml="$(_cmd $DEBUG_2 $PIPE spack \
@@ -1280,6 +1307,8 @@ while (( $# )); do
     --fermi-spack-tools-root=*) si_root="${1#*=}";;
     --fermi-spack-tools-version) si_ver="$2"; shift;;
     --fermi-spack-tools-version=*) si_ver="${1#*=}";;
+    --populate-only) no_configure=1;;
+    --setup-only) no_bulid=1;;
     --spack-python) spack_python="$2"; shift;;
     --spack-python=*) spack_python="${1#*=}";;
     --spack-repo) recipe_repos+=("$2"); shift;;
@@ -1288,6 +1317,8 @@ while (( $# )); do
     --spack-root=*) spack_root="${1#*=}";;
     --spack-version) spack_ver="$2"; shift;;
     --spack-version=*) spack_ver="${1#*=}";;
+    --spack-install-opts) extra_install_opts+=("$2"); shift;;
+    --spack-install-opts=*) extra_install_opts+=("${1#*=}");;
     --test) tests_type="$2"; shift;;
     --test=*) tests_type="${1#*=}";;
     --upgrade-etc) upgrade_etc=1;;
@@ -1298,8 +1329,10 @@ while (( $# )); do
     --ups=*) ups_opt="$(_ups_string_to_opt "${1#*=}")" || exit;;
     +v) (( --VERBOSITY ));;
     -v) (( ++VERBOSITY ));;
-    --verbosity) eval "(( VERBOSITY = $2 ))"; shift;;
-    --verbosity=*) eval "(( VERBOSITY = ${1#*=} ))";;
+    --verbosity) eval "(( VERBOSITY = $2 ))" ||
+                   _die $EXIT_CONFIG_FAILURE "unrecognized verbosity $2"; shift;;
+    --verbosity=*) eval "(( VERBOSITY = ${1#*=} ))" ||
+                   _die $EXIT_CONFIG_FAILURE "unrecognized verbosity ${1#*=}";;
     --with-cache)
       optarg="$2"; shift; OIFS="$IFS"; IFS=","
       cache_specs+=($optarg); IFS="$OIFS"
@@ -1469,6 +1502,11 @@ EOF
 fi
 ####################################
 
+if (( no_configure )); then
+  _report $INFO "exiting without configuration"
+  exit 0
+fi
+
 ####################################
 # Source the setup script.
 _report $PROGRESS "configuring Spack $spack_ver for use"
@@ -1510,18 +1548,18 @@ exec $STDOUT>&- $STDERR>&-\
 " EXIT
 ####################################
 
-known_compilers=($(ls -1 "$SPACK_ROOT/lib/spack/spack/compilers/"[A-Za-z]*.py | sed -Ene 's&^.*/(.*)\.py$&\1&p'))
+known_compiler_environments=(gcc clang oneapi)
 OIFS="$IFS"
 IFS='|'
-known_compilers_re="(${known_compilers[*]})"
+known_compilers_re="(${known_compiler_environments[*]})"
 IFS="$OIFS"
 
 environment_specs=("$@")
 num_environments=${#environment_specs[@]}
 env_idx=0
 
-if (( ! num_environments )); then # NOP
-  _report $INFO "no environment configurations specified: exiting after setup"
+if (( no_build )) || (( ! num_environments )); then # Nothing to build.
+  _report $INFO "exiting after configuration"
 else
   ####################################
   # Build each specified environment.

@@ -12,10 +12,18 @@ find_ourselves() {
 }
 
 clone_repos() {
-    while read ddir branch repo
+    if [ "$spack_release" != "fnal-develop" ]; then
+      # Trigger attempt to use a branch corresponding to the
+      # $spack_release branch requested for Spack.
+      maybe_change_branch=1
+    else
+      unset maybe_change_branch
+    fi
+    while read ddir branch repo branch_prefix branch_suffix
     do
       if [ "$repo" = "$spack_repo" ] ; then
         repo_type=spack
+        unset maybe_change_branch
       elif [[ "${ddir#$dir/}" == etc/* ]]; then
         repo_type=etc
       elif [[ "${ddir#$dir/var/spack/}" == extensions/* ]]; then
@@ -29,6 +37,19 @@ clone_repos() {
       else
         unset repo_type
       fi
+      if [ -n "$maybe_change_branch" ]; then
+        default_branch="$branch"
+        branch="${spack_release%-fermi}"
+        if [[ "$branch" == v[0-9]* ]]; then
+          branch="$branch_prefix$branch$branch_suffix"
+        fi
+        if [ "$branch" = "$default_branch" ]; then
+          unset $default_branch
+        fi
+      else
+        unset default_branch
+      fi
+      clone_branch=${default_branch:-$branch}
       if [ -e "$ddir/.git" ]; then
         if [ -n "$repo_type" ]; then
           eval "upgrade_repo=\$upgrade_$repo_type"
@@ -58,18 +79,24 @@ clone_repos() {
         fi
       else
         if $verbose; then
-          echo "$(date --iso-8601=seconds) Cloning Git repository on branch $branch at"
+          echo "$(date --iso-8601=seconds) Cloning Git repository on branch $clone_branch at"
           echo "$(date --iso-8601=seconds)   $ddir"
         fi
-        if ! git clone -b $branch --depth $depth $repo $ddir; then
-          echo "$(date --iso-8601=seconds) Unable to clone Git repository on branch $branch at" 1>&2
+        if ! git clone -b $clone_branch --depth $depth $repo $ddir; then
+          echo "$(date --iso-8601=seconds) Unable to clone Git repository on branch $clone_branch at" 1>&2
           echo "$(date --iso-8601=seconds)   $ddir" 1>&2
           echo "$(date --iso-8601=seconds) Fix manually" 1>&2
+          [ -z "$default_branch" ] || {
+            git -C $ddir switch $branch >/dev/null 2>&1 &&
+              $verbose &&
+              echo "$(date --iso-8601=seconds) switched from $clone_branch to $branch based on selection of Spack branch $spack_release"
+          }
         fi
       fi
     done <<EOF
         $dir                                            $spack_release  $spack_repo
-        $dir/etc/spack/linux                            main            https://github.com/FNALssi/fermi-etc-spack-linux.git
+        $dir/var/spack/repos/builtin                    fnal-develop    https://github.com/FNALssi/spack-packages.git
+        $dir/etc/spack/linux                            Spack1.1        https://github.com/FNALssi/fermi-etc-spack-linux.git      spack-
         $dir/var/spack/extensions/spack-freeze          main            https://github.com/FNALssi/spack-freeze.git
         $dir/var/spack/extensions/spack-installdir      main            https://github.com/FNALssi/spack-installdir.git
         $dir/var/spack/extensions/spack-intersection    main            https://github.com/FNALssi/spack-intersection.git
@@ -80,9 +107,12 @@ clone_repos() {
         $dir/var/spack/extensions/spack-subspack        main            https://github.com/FNALssi/spack-subspack.git
         $dir/var/spack/repos/fnal_art                   develop         https://github.com/FNALssi/fnal_art.git
         $dir/var/spack/repos/scd_recipes                master          https://github.com/fnal-fife/scd_recipes.git
-        $dir/var/spack/repos/nusofthep-spack-recipes    main            https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
+        $dir/var/spack/repos/nusofthep-spack-recipes    spack-v1.0      https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
         $dir/var/spack/repos/larsoft-spack-recipes      main            https://github.com/LArSoft/larsoft-spack-recipes.git
-        $dir/var/spack/repos/artdaq-spack               develop         https://github.com/art-daq/artdaq-spack.git
+        $dir/var/spack/repos/dune_spack                 spack-v1.0      https://github.com/DUNE/dune_spack.git
+        $dir/var/spack/repos/sbn-spack                  spack-v1.0      https://github.com/gartung/sbn-spack.git
+        $dir/var/spack/repos/artdaq-spack               Spack1.0        https://github.com/art-daq/artdaq-spack.git
+        $dir/var/spack/repos/wire-cell-spack            master          https://github.com/WireCell/wire-cell-spack.git
 EOF
 }
 
@@ -128,19 +158,37 @@ EOF
     source $dir/share/spack/setup-env.sh
 }
 
+preferred_scope() {
+   # pick the per-os scope for this instance of spack
+   # this has historicaly been a moving target, so try the newest to oldest.
+   # if we don't find one, just use "site"
+   osstr=$(spack arch -o)
+   platstr=$(spack arch -p)
+   for sstr in "site:$osstr" "site:$platstr" "include:$osstr" "site/$platstr/$osstr" "site/$osstr" "site"
+   do
+       if spack config --scope=$sstr get compilers > /dev/null 2>&1
+       then
+           echo $sstr
+           return
+       fi
+   done
+}
+
 do_padding() {
     if $padding; then
         echo "turning on padding."
-        spack config --scope=site add config:install_tree:padded_length:128
+        spack config --scope=$(preferred_scope) add config:install_tree:padded_length:128
     else
-        spack config --scope=site rm config:install_tree:padded_length
+        spack config --scope=$(preferred_scope) rm config:install_tree:padded_length
     fi
 }
 
 query_packages() {
    if $query_packages; then
        osstr=$(spack arch -o)
-       spack linuxexternals --scope=site/linux/$osstr
+       spack linuxexternals --scope=$(preferred_scope)
+   else
+       true
    fi
 }
 
@@ -242,8 +290,15 @@ do_spack_bootstrap() {
     mfl="$(find $SPACK_ROOT/etc \( -name defaults -prune \)  -o \( -name mirrors.yaml -print \))"
     for mf in $mfl; do  mv $mf $mf.hide; done
 
+
     spack clean --all
-    spack bootstrap root $dir/.bootstrap.$osstr
+
+    # set where spack will put the builtins repo
+    spack repo set --scope=site:linux --destination '$spack/var/spack/repos/builtin' builtin
+    # causes spack to cache checkout of spack/spack-packages for builtin
+    spack info zlib
+    spack bootstrap root '$spack/var/bootstraps/$os'
+
     spack -d bootstrap now
 
     # ... and put them back when we're done
@@ -259,6 +314,26 @@ do_keys() {
     spack buildcache keys --install --force --trust
 }
 
+init_scopes() {
+  if [ ! -d "$dir/etc/spack/base" ]; then
+    echo "relocating \"site\" scope files to \"site:base\""
+    mkdir "$dir/etc/spack/base"
+    mv -v "$dir/etc/spack/"*.yaml "$dif/etc/spack/base/"
+    cat > "$dir/etc/spack/include.yaml" <<\EOF
+include:
+  # default platform-specific configuration
+- name: site
+  path: $spack/etc/spack/site
+  optional: true
+- path: ${platform}/${os}
+  optional: true
+- path: ${platform}
+  optional: true
+- path: base
+EOF
+  fi
+}
+
 main() {
 
     : starting: $*
@@ -266,6 +341,7 @@ main() {
     parse_args "$@"
 
     clone_repos
+    init_scopes
     add_fermi_setups
     add_fermi_patches
     do_padding

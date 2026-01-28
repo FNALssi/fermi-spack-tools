@@ -144,7 +144,7 @@ main() {
 
     message "Finding compilers"
 
-    spack compiler find --scope=site
+    spack compiler find --scope=spack
 
     message "installing fermi-spack-tools..."
     pyspec=$(spack config get packages | grep python | grep spec: | sed -e 's/ - spec://') 

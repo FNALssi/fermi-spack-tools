@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+
+import json
+
+def trim_roots( rootlist, trimlist ):
+    res = []
+    # print(f"trim_roots: trimlist: {trimlist}")
+    for r in rootlist:
+        specname = r["spec"]
+        if specname.find(" ") > 0:
+            specname = specname[0:specname.find(" ")]
+        # print(f"checking root '{specname}'")
+        if specname not in trimlist:
+            print(f"keeping root '{specname}'")
+            res.append(r)
+    return res
+
+def dependency_specs( rootlist, specdict ):
+    res = {}
+    for r in rootlist:
+        res.update( recurse_deps( r["hash"], specdict ))
+    return res
+
+visited = set()
+def recurse_deps( hash, specdict ):
+    global visited
+    res = {}
+    if hash in visited:
+        return res
+    visited.add(hash)
+    #print(f"specdict[hash].keys() {specdict[hash].keys()}")
+    res[hash] = specdict[hash]
+    if "dependencies" in specdict[hash]:
+        for d in specdict[hash]["dependencies"]:
+            res.update( recurse_deps( d["hash"], specdict ))
+    return res
+
+def locktrimmer( name_in, name_out, trimlist ):
+    global visited
+    visited = set()
+    with open(name_in, "r") as f_in:
+        data_in = json.load(f_in)
+    data_out = {}
+    #print(f"keys: {repr(data_in.keys())}")
+    #print(f"len(data_in[roots]) {len(data_in['roots'])}")
+    data_out["_meta"] = data_in["_meta"]
+    data_out["spack"] = data_in["spack"]
+    data_out["roots"] = trim_roots( data_in["roots"], trimlist)
+    data_out["concrete_specs"] = dependency_specs(data_out["roots"], data_in["concrete_specs"])
+    with open(name_out, "w") as f_out:
+        json.dump(data_out, f_out)
+
+if __name__ == "__main__":
+    import sys
+
+    def usage():
+        print("usage: ")
+        print("  locktrimmer package1 package2 package3")
+        print("      creates locktrimmer.lock without package names listed")
+        print("  locktrimmer --help")
+        print("      prints this usage message")
+
+    if len(sys.argv) == 1:
+        usage()
+        exit(1)
+    if len(sys.argv) == 2 and sys.argv[1] == "--help":
+        usage()
+        exit(0)
+
+    locktrimmer( "spack.lock", "locktrimmer.lock", sys.argv[1:])
