@@ -91,6 +91,7 @@ BRIEF OPTIONS
   --spack-repo[= ]<path>|<repo>(\|<version|branch>)?
   --spack-root[= ]<repo>
   --spack-version[= ]<version>
+  --spack-install-opts[= ]<opts>+
   --test[= ](all|none|root)
   -q
   --quiet
@@ -160,6 +161,12 @@ LOCATION AND VERSION OPTIONS
   --spack-version[= ]<version|branch>
 
     Obtain the specified branch/version of Spack.
+
+  --spack-install-opts[= ]<opts>+
+
+    Pass additional options to the `spack install` command. This option
+    is repeatable and cumulative, allowing you to specify multiple options.
+    For example: --spack-install-opts="--only-concrete" --spack-install-opts="--verbose"
 
   --working-dir[= ]<working_dir>
 
@@ -1320,6 +1327,8 @@ while (( $# )); do
     --spack-root=*) spack_root="${1#*=}";;
     --spack-version) spack_ver="$2"; shift;;
     --spack-version=*) spack_ver="${1#*=}";;
+    --spack-install-opts) extra_install_opts+=("$2"); shift;;
+    --spack-install-opts=*) extra_install_opts+=("${1#*=}");;
     --test) tests_type="$2"; shift;;
     --test=*) tests_type="${1#*=}";;
     --upgrade-etc) upgrade_etc=1;;
