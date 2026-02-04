@@ -111,7 +111,7 @@ message() {
 }
 
 check_bootstrap() {
-    if spack bootstrap status
+    if SPACK_USER_CACHE_PATH=/tmp/$USER spack bootstrap status
     then
         :
     else
