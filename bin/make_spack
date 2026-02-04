@@ -322,8 +322,7 @@ init_scopes() {
     cat > "$dir/etc/spack/include.yaml" <<\EOF
 include:
   # default platform-specific configuration
-- name: site
-  path: $spack/etc/spack/site
+- path: $spack/etc/spack/site
   optional: true
 - path: ${platform}/${os}
   optional: true
