@@ -281,7 +281,7 @@ SPACK CONFIGURATION OPTIONS
 
   --with-padding
 
-    Equivalent to --spack-config-cmd='--scope=spack add config:install_tree:padded_length:255'
+    Equivalent to --spack-config-cmd='--scope=spack add config:install_tree:padded_length:128'
 
 
 NON-OPTION ARGUMENTS
@@ -614,12 +614,12 @@ _configure_spack() {
 
   ####################################
   # Make sure we know about compilers.
-  _report $PROGRESS "configuring compilers"
+  _report $PROGRESS "configuring system compilers"
 
   # Find the best scope for compiler info based on configuration and/or
   # Spack version.
   for compilers_scope in \
-    site:$spack_os site:$spack_platform include:$spack_os site/$spack_platform/$spack_os site/$spack_os site
+    spack:$spack_os spack:$spack_platform include:$spack_os spack/$spack_platform/$spack_os spack/$spack_os spack
   do
     spack config --scope=$compilers_scope get compilers >/dev/null 2>&1 &&
       break
@@ -705,7 +705,7 @@ _deactivate_repo() {
     scope="$(_cmd $DEBUG_2 $PIPE spack config blame repos | _cmd $DEBUG_3 $PIPE sed -Ene '\&/'"$path_basename"'$& s&/repos\.yaml:[[:digit:]]+[[:space:]]+.*$&/&p')"
     scope="${scope##*/etc/spack/}"
     scope="${scope%/*}"
-    [[ scope == defaults/* ]] || scope="site${scope:+/$scope}"
+    [[ scope == defaults/* ]] || scope="spack${scope:+/$scope}"
     _report $PROGRESS "deactivating existing repo $rrepo in scope $scope at $path"
     _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo ||
       { scope=spack:$spack_os; _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo; } ||
@@ -753,6 +753,7 @@ _do_build_and_test() {
       "${spack_install_cmd[@]}"
       ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"}
     )
+    spack clean -m
     _cmd $PROGRESS $INFO "${spack_build_env_cmd[@]}"
   fi
 }
@@ -865,13 +866,17 @@ EOF
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
            python "$TMP/location_cmds.py" |
         while read hash prefix; do
-          _report $DEBUG_4 "looking for binary_distribution marker for $hash in $prefix/.spack/"
-          if [  -f "$prefix/.spack/binary_distribution" ]; then
+          if [ "$prefix" != "/usr" ]; then
+              _report $DEBUG_4 "looking for binary_distribution marker for $hash in $prefix/.spack/"
+              if [  -f "$prefix/.spack/binary_distribution" ]; then
 	          _report_stderr=1 _report $DEBUG_1 "skip package installed from buildcache: $hash"
-	        else
+	      else
 	          _report_stderr=1 _report $DEBUG_2 "save package in buildcache: $hash"
-            echo "${hash//*\///}"
-          fi
+                  echo "${hash//*\///}"
+              fi
+	  else 
+	    _report_stderr=1 _report $DEBUG_1 "skip external package: $hash"
+	  fi
         done
     )
   )
@@ -884,17 +889,18 @@ EOF
       _report $PROGRESS "caching ${#hashes_to_cache[@]}$msg_extra binary packages for environment $env_name to $cache"
       _cmd $DEBUG_1 $PROGRESS \
            spack \
+           -e $env_name \
            ${__debug_spack_buildcache:+-d} \
            ${__verbose_spack_buildcache:+-v} \
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
            buildcache create --only package \
            ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
-           ${buildcache_rel_arg} "$cache" \
+           ${buildcache_rel_arg} --rebuild-index "$cache" \
            "${hashes_to_cache[@]/#//}" ||
         _die "failure caching packages to $cache"
-      if [ -d "$cache/build_cache" ] &&
-           (( $({ ls -1 "$cache/build_cache/*.json*" | wc -l; } 2>/dev/null) )); then
+      if [ -d "$cache/blobs" ] &&
+         [ -f "$cache/v3/layout.json*" ]; then
         _report $PROGRESS "updating build cache index at $cache"
         _cmd $DEBUG_1 $PROGRESS \
              spack \
@@ -1007,11 +1013,13 @@ EOF
   if (( ${#hashes_to_install[@]} )); then
     _report $DEBUG_2 "building ${#hashes_to_install[@]} non-root dependencies in environment $env_name"
     _report $DEBUG_4 "            ${hashes_to_install[@]/%/$'\n'           }"
+    spack clean -m
     _cmd $DEBUG_1 $INFO \
          "${spack_install_cmd[@]}" \
          ${hashes_to_install[*]:+"${hashes_to_install[@]/*\///}"} || return
   fi
   _report $PROGRESS "building${hashes_to_install[*]:+ remaining package(s) in} environment $env_name"
+    spack clean -m
   _cmd $DEBUG_1 $INFO "${spack_install_cmd[@]}" ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"}
 }
 
@@ -1076,7 +1084,7 @@ _process_environment() {
          ${__debug_spack_concretize:+-d} \
          ${__verbose_spack_concretize:+-v} \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         concretize ${env_tests_arg:+"$env_tests_arg"}  &&
+         concretize --deprecated ${env_tests_arg:+"$env_tests_arg"}  &&
     _maybe_restore_mirror_config &&
     _classify_concretized_specs &&
     _maybe_cache_sources &&
@@ -1098,7 +1106,7 @@ _process_environment() {
   ####################################
   # If we just built a compiler environment, add the
   # compiler to the list of available compilers.
-  _maybe_register_compiler
+  #_maybe_register_compiler
   ####################################
 }
 
@@ -1515,7 +1523,7 @@ source "$spack_env_top_dir/setup-env.sh" \
 ####################################
 
 mirrors_cfg="$SPACK_ROOT/etc/spack/mirrors.yaml"
-default_mirrors="$SPACK_ROOT/etc/spack/defaults/mirrors.yaml"
+default_mirrors="$SPACK_ROOT/etc/spack/defaults/base/mirrors.yaml"
 concretize_mirrors="$SPACK_ROOT/concretize_mirrors.yaml"
 
 _configure_spack
@@ -1533,6 +1541,7 @@ if (( failed )) && (( want_emergency_buildcache )); then \
       tag_text=ALERT _report $ERROR skipping package installed from buildcache \$spec;\
       else \
       _cmd $ERROR $PIPE spack \
+      -e \$env_name \
       \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
       buildcache create \
       \${buildcache_package_opts[*]:+\"\${buildcache_package_opts[@]}\"} \
