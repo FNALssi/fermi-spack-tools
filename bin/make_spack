@@ -96,7 +96,7 @@ clone_repos() {
     done <<EOF
         $dir                                            $spack_release  $spack_repo
         $dir/var/spack/repos/builtin                    fnal-v2025.11 https://github.com/FNALssi/spack-packages.git
-        $dir/etc/spack/linux                            fnal-v2025.11 https://github.com/FNALssi/fermi-etc-spack-linux.git      spack-
+        $dir/etc/spack/linux                            fnal-v1.1       https://github.com/FNALssi/fermi-etc-spack-linux.git      spack-
         $dir/var/spack/extensions/spack-freeze          main            https://github.com/FNALssi/spack-freeze.git
         $dir/var/spack/extensions/spack-installdir      main            https://github.com/FNALssi/spack-installdir.git
         $dir/var/spack/extensions/spack-intersection    main            https://github.com/FNALssi/spack-intersection.git
@@ -110,7 +110,7 @@ clone_repos() {
         $dir/var/spack/repos/nusofthep-spack-recipes    spack-v1.0      https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
         $dir/var/spack/repos/larsoft-spack-recipes      main            https://github.com/LArSoft/larsoft-spack-recipes.git
         $dir/var/spack/repos/dune_spack                 spack-v1.0      https://github.com/DUNE/dune_spack.git
-        $dir/var/spack/repos/sbn-spack                  spack-v1.0      https://github.com/SBNSoftware/sbn-spack.git
+        $dir/var/spack/repos/sbn-spack                  spack-v1.0-old  https://github.com/gartung/sbn-spack.git
         $dir/var/spack/repos/artdaq-spack               artdaq/Spack1.1        https://github.com/art-daq/artdaq-spack.git
         $dir/var/spack/repos/wire-cell-spack            master          https://github.com/WireCell/wire-cell-spack.git
 EOF
