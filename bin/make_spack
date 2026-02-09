@@ -110,7 +110,7 @@ clone_repos() {
         $dir/var/spack/repos/nusofthep-spack-recipes    spack-v1.0      https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
         $dir/var/spack/repos/larsoft-spack-recipes      main            https://github.com/LArSoft/larsoft-spack-recipes.git
         $dir/var/spack/repos/dune_spack                 spack-v1.0      https://github.com/DUNE/dune_spack.git
-        $dir/var/spack/repos/sbn-spack                  spack-v1.0-old  https://github.com/gartung/sbn-spack.git
+        $dir/var/spack/repos/sbn-spack                  spack-v1.0      https://github.com/gartung/sbn-spack.git
         $dir/var/spack/repos/artdaq-spack               artdaq/Spack1.1        https://github.com/art-daq/artdaq-spack.git
         $dir/var/spack/repos/wire-cell-spack            master          https://github.com/WireCell/wire-cell-spack.git
 EOF
