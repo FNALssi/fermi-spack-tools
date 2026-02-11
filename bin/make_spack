@@ -153,7 +153,7 @@ add_fermi_setups() {
    done <<'EOF'
       SPACK_SKIP_MODULES                true
       SPACK_DISABLE_LOCAL_CONFIG        true
-      SPACK_USER_CACHE_PATH /${TMPDIR:-/tmp}/$USER
+      SPACK_USER_CACHE_PATH             ${TMPDIR:-/tmp}/$USER
 EOF
     # source the setup...
     source $dir/share/spack/setup-env.sh
