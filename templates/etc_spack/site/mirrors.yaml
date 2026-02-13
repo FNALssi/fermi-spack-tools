@@ -1,0 +1,4 @@
+mirrors:
+  scisoft_mirror_compilers: https://scisoft.fnal.gov/scisoft/spack-mirror/spack-compiler-cache-v3
+  scisoft_mirror_binaries: https://scisoft.fnal.gov/scisoft/spack-mirror/spack-binary-cache-v3
+  # fnal: https://spack-cache-1.fnal.gov/binaries/

@@ -1,0 +1,427 @@
+packages:
+  all:
+    target:
+      - x86_64_v2
+    providers:
+      blas::
+        - openblas
+      fftw-api::
+        - fftw
+      go-external-or-gccgo-bootstrap::
+        - go-bootstrap
+      gl::
+        - glx
+      glu::
+        - mesa-glu
+      golang::
+        - go
+      iconv::
+        - libc
+      java::
+        - openjdk
+      jpeg::
+        - libjpeg-turbo
+      lapack::
+        - openblas
+      libglx::
+        - mesa+glx
+      libllvm::
+        - llvm
+      libosmesa::
+        - mesa+osmesa
+      mariadb-client::
+        - mariadb-c-client
+      mysql-client::
+        - mariadb-c-client
+      pbs::
+        - torque
+      pkgconfig::
+        - pkg-config
+        - pkgconf
+      rpc::
+        - libc
+      tbb::
+        - intel-tbb-oneapi
+      unwind::
+        - libunwind
+      uuid::
+        - libuuid
+      yacc::
+        - bison
+  asciidoc:
+    externals:
+    - spec: "asciidoc @8.6.8 os=scientific7"
+      prefix: /usr
+  autoconf:
+    externals:
+    - spec: "autoconf @2.69 os=scientific7"
+      prefix: /usr
+  autogen:
+    externals:
+    - spec: "autogen @5.18 os=scientific7"
+      prefix: /usr
+  automake:
+    externals:
+    - spec: "automake @1.13.4 os=scientific7"
+      prefix: /usr
+  bdftopcf:
+    externals:
+    - spec: "bdftopcf @1.1 os=scientific7"
+      prefix: /usr
+    buildable: False
+  berkeley-db:
+    externals:
+    - spec: "berkeley-db @5.3.21 os=scientific7"
+      prefix: /usr
+  binutils:
+    externals:
+    - spec: "binutils +gas+gold+ld @2.27 os=scientific7"
+      prefix: /usr
+  bison:
+    externals:
+    - spec: "bison @3.0.4 os=scientific7"
+      prefix: /usr
+  cmake:
+    externals:
+    - spec: "cmake ~ownlibs @2.8.12.2 os=scientific7"
+      prefix: /usr
+  coreutils:
+    externals:
+    - spec: "coreutils @8.22 os=scientific7"
+      prefix: /usr
+  curl:
+    externals:
+    - spec: "curl @7.29.0 os=scientific7"
+      prefix: /usr
+  damageproto:
+    externals:
+    - spec: "damageproto @1.1 os=scientific7"
+      prefix: /usr
+    buildable: False
+  diffutils:
+    externals:
+    - spec: "diffutils @3.3 os=scientific7"
+      prefix: /usr
+    buildable: False
+  expat:
+    externals:
+    - spec: "expat @2.1.0 os=scientific7"
+      prefix: /usr
+    buildable: False
+  findutils:
+    externals:
+    - spec: "findutils @4.5.11 os=scientific7"
+      prefix: /usr
+    buildable: False
+  flex:
+    externals:
+    - spec: "flex @2.5.37 os=scientific7"
+      prefix: /usr
+  font-util:
+    externals:
+    - spec: "font-util fonts=encodings @7.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  fontconfig:
+    externals:
+    - spec: "fontconfig @2.13.0 os=scientific7"
+      prefix: /usr
+  freetype:
+    externals:
+    - spec: "freetype @2.8 os=scientific7"
+      prefix: /usr
+  gawk:
+    externals:
+    - spec: "gawk @4.0.2 os=scientific7"
+      prefix: /usr
+  gdb:
+    externals:
+    - spec: "gdb @7.6.1 os=scientific7"
+      prefix: /usr
+  gdbm:
+    externals:
+    - spec: "gdbm @1.10 os=scientific7"
+      prefix: /usr
+    buildable: False
+  gettext:
+    externals:
+    - spec: "gettext ~bzip2+curses~git+libunistring+libxml2~tar+xz @0.19.8.1 os=scientific7"
+      prefix: /usr
+    # buildable: False
+  git:
+    externals:
+    - spec: "git @1.8.3.1 os=scientific7"
+      prefix: /usr
+  glib:
+    externals:
+    - spec: "glib @2.56.1 os=scientific7"
+      prefix: /usr
+    buildable: False
+  gmake:
+    externals:
+    - spec: "gmake @3.82 os=scientific7"
+      prefix: /usr
+  gperf:
+    externals:
+    - spec: "gperf @3.0.4 os=scientific7"
+      prefix: /usr
+  groff:
+    externals:
+    - spec: "groff @1.22.2 os=scientific7"
+      prefix: /usr
+  help2man:
+    externals:
+    - spec: "help2man @1.41.1 os=scientific7"
+      prefix: /usr
+  hwloc:
+    require:
+      - one_of:
+        - "target=x86_64_v2"
+      - one_of:
+        - "%gcc@4.8.5"
+  krb5:
+    externals:
+    - spec: "krb5 @1.15.1 os=scientific7"
+      prefix: /usr
+  libc:
+    externals:
+    - spec: "libc +iconv+rpc @2.17 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libfontenc:
+    externals:
+    - spec: "libfontenc @1.1.3 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libice:
+    externals:
+    - spec: "libice @1.0.9 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libpciaccess:
+    require:
+      - one_of:
+        - "target=x86_64_v2"
+      - one_of:
+        - "%gcc@4.8.5"
+  libsm:
+    externals:
+    - spec: "libsm @1.2.2 os=scientific7"
+      prefix: /usr
+  libtool:
+    externals:
+    - spec: "libtool @2.4.2 os=scientific7"
+      prefix: /usr
+  libuuid:
+    externals:
+    - spec: "libuuid @2.23.2 os=scientific7"
+      prefix: /usr
+  libx11:
+    externals:
+    - spec: "libx11 @1.6.7 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxau:
+    externals:
+    - spec: "libxau @1.0.8 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxcb:
+    externals:
+    - spec: "libxcb @1.13 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxdmcp:
+    externals:
+    - spec: "libxdmcp @1.1.2 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxext:
+    externals:
+    - spec: "libxext @1.3.3 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxft:
+    externals:
+    - spec: "libxft @2.3.2 os=scientific7"
+      prefix: /usr
+  libxi:
+    externals:
+    - spec: "libxi @1.7.9 os=scientific7"
+      prefix: /usr
+  libxmu:
+    externals:
+    - spec: "libxmu @1.1.2 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxpm:
+    externals:
+    - spec: "libxpm @3.5.12 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxrender:
+    externals:
+    - spec: "libxrender @0.9.10 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxshmfence:
+    externals:
+    - spec: "libxshmfence @1.2 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxt:
+    externals:
+    - spec: "libxt @1.1.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxv:
+    externals:
+    - spec: "libxv @1.0.11 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxvmc:
+    externals:
+    - spec: "libxvmc @1.0.10 os=scientific7"
+      prefix: /usr
+    buildable: False
+  libxxf86vm:
+    externals:
+    - spec: "libxxf86vm @1.1.4 os=scientific7"
+      prefix: /usr
+    buildable: False
+  lmod:
+    externals:
+    - spec: "lmod @8.7.7 os=scientific7"
+      prefix: /usr
+  m4:
+    externals:
+    - spec: "m4 @1.4.16 os=scientific7"
+      prefix: /usr
+  mesa-glu:
+    externals:
+    - spec: "mesa-glu gl=glx @9.0.0 os=scientific7"
+      prefix: /usr
+    buildable: False
+  mesa:
+    externals:
+    - spec: "mesa +glx~osmesa swr=none @18.3.4 os=scientific7"
+      prefix: /usr
+  mkfontdir:
+    externals:
+    - spec: "mkfontdir @7.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  mkfontscale:
+    externals:
+    - spec: "mkfontscale @7.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  mpich:
+    externals:
+    - spec: "mpich @3.2 os=scientific7"
+      prefix: /usr/lib64/mpich-3.2/
+  nasm:
+    externals:
+    - spec: "nasm @2.10.07 os=scientific7"
+      prefix: /usr
+  ninja:
+    externals:
+    - spec: "ninja @1.10.2 os=scientific7"
+      prefix: /usr
+  ncurses:
+    externals:
+    - spec: "ncurses ~symlinks+termlib @5.9 os=scientific7"
+      prefix: /usr
+  openssh:
+    externals:
+    - spec: "openssh @7.4p1 os=scientific7"
+      prefix: /usr
+  openssl:
+    externals:
+    - spec: "openssl @1.0.2k os=scientific7"
+      prefix: /usr
+  patchelf:
+    externals:
+    - spec: "patchelf @0.12 os=scientific7"
+      prefix: /usr
+  perl:
+    externals:
+    - spec: "perl @5.16.3 os=scientific7"
+      prefix: /usr
+  pkg-config:
+    externals:
+    - spec: "pkg-config +internal_glib @0.27.1 os=scientific7"
+      prefix: /usr
+  python:
+    externals:
+    - spec: "python @3.6.8 os=scientific7"
+      prefix: /usr
+  readline:
+    externals:
+    - spec: "readline @6.2 os=scientific7"
+      prefix: /usr
+  tar:
+    externals:
+    - spec: "tar @1.26 os=scientific7"
+      prefix: /usr
+    buildable: False
+  tcl:
+    externals:
+    - spec: "tcl @8.5.13 os=scientific7"
+      prefix: /usr
+    buildable: False
+  texinfo:
+    externals:
+    - spec: "texinfo @5.1 os=scientific7"
+      prefix: /usr
+  texlive:
+    externals:
+    - spec: "texlive @2012-45 os=scientific7"
+      prefix: /usr
+    - spec: "texlive @20220321 os=scientific7"
+      prefix: /usr
+  tk:
+    externals:
+    - spec: "tk @8.5.13 os=scientific7"
+      prefix: /usr
+    buildable: False
+  xcb-util-keysyms:
+    externals:
+    - spec: "xcb-util-keysyms @0.4.0 os=scientific7"
+      prefix: /usr
+    buildable: False
+  xcb-util-renderutil:
+    externals:
+    - spec: "xcb-util-renderutil @0.3.9 os=scientific7"
+      prefix: /usr
+    buildable: False
+  xextproto:
+    externals:
+    - spec: "xextproto @7.3.0 os=scientific7"
+      prefix: /usr
+    buildable: False
+  xorg-server:
+    externals:
+    - spec: "xorg-server @1.20.4 os=scientific7"
+      prefix: /usr
+    buildable: False
+  xproto:
+    externals:
+    - spec: "xproto @7.0.32 os=scientific7"
+      prefix: /usr
+    buildable: False
+  xrandr:
+    externals:
+    - spec: "xrandr @1.5.0 os=scientific7"
+      prefix: /usr
+    buildable: False
+  xtrans:
+    externals:
+    - spec: "xtrans @1.3.5 os=scientific7"
+      prefix: /usr
+    buildable: False
+  zlib:
+    externals:
+    - spec: "zlib +optimize+pic+shared @1.2.7 os=scientific7"
+      prefix: /usr
+    buildable: False
