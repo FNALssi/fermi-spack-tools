@@ -312,6 +312,10 @@ install_configs() {
         (cd $dir/etc/spack && tar xf - )
 }
 
+update_repos() {
+   spack repo update
+}
+
 main() {
 
     : starting: $*
@@ -322,6 +326,7 @@ main() {
     install_configs
     add_fermi_setups
     add_fermi_patches
+    update_repos
     do_padding
     do_spack_bootstrap
     do_keys
