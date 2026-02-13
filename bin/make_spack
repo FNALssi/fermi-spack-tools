@@ -11,7 +11,7 @@ find_ourselves() {
     esac
 }
 
-clone_repos() {
+clone_extensions() {
     if [ "$spack_release" != "fnal-develop" ]; then
       # Trigger attempt to use a branch corresponding to the
       # $spack_release branch requested for Spack.
@@ -82,7 +82,7 @@ clone_repos() {
           echo "$(date --iso-8601=seconds) Cloning Git repository on branch $clone_branch at"
           echo "$(date --iso-8601=seconds)   $ddir"
         fi
-        if ! git clone -b $clone_branch --depth $depth $repo $ddir; then
+        if ! git clone -b $clone_branch --no-single-branch --depth $depth $repo $ddir; then
           echo "$(date --iso-8601=seconds) Unable to clone Git repository on branch $clone_branch at" 1>&2
           echo "$(date --iso-8601=seconds)   $ddir" 1>&2
           echo "$(date --iso-8601=seconds) Fix manually" 1>&2
@@ -95,8 +95,6 @@ clone_repos() {
       fi
     done <<EOF
         $dir                                            $spack_release  $spack_repo
-        $dir/var/spack/repos/builtin                    fnal-develop    https://github.com/FNALssi/spack-packages.git
-        $dir/etc/spack/linux                            Spack1.1        https://github.com/FNALssi/fermi-etc-spack-linux.git      spack-
         $dir/var/spack/extensions/spack-freeze          main            https://github.com/FNALssi/spack-freeze.git
         $dir/var/spack/extensions/spack-installdir      main            https://github.com/FNALssi/spack-installdir.git
         $dir/var/spack/extensions/spack-intersection    main            https://github.com/FNALssi/spack-intersection.git
@@ -105,14 +103,6 @@ clone_repos() {
         $dir/var/spack/extensions/spack-subspack        main            https://github.com/FNALssi/spack-subspack.git
         $dir/var/spack/extensions/spack-mpd             main            https://github.com/FNALssi/spack-mpd.git
         $dir/var/spack/extensions/spack-subspack        main            https://github.com/FNALssi/spack-subspack.git
-        $dir/var/spack/repos/fnal_art                   develop         https://github.com/FNALssi/fnal_art.git
-        $dir/var/spack/repos/scd_recipes                master          https://github.com/fnal-fife/scd_recipes.git
-        $dir/var/spack/repos/nusofthep-spack-recipes    spack-v1.0      https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
-        $dir/var/spack/repos/larsoft-spack-recipes      main            https://github.com/LArSoft/larsoft-spack-recipes.git
-        $dir/var/spack/repos/dune_spack                 spack-v1.0      https://github.com/DUNE/dune_spack.git
-        $dir/var/spack/repos/sbn-spack                  spack-v1.0      https://github.com/SBNSoftware/sbn-spack.git
-        $dir/var/spack/repos/artdaq-spack               artdaq/Spack1.1        https://github.com/art-daq/artdaq-spack.git
-        $dir/var/spack/repos/wire-cell-spack            master          https://github.com/WireCell/wire-cell-spack.git
 EOF
 }
 
@@ -315,24 +305,11 @@ do_keys() {
     spack buildcache keys --install --force --trust
 }
 
-init_scopes() {
-  if [ ! -d "$dir/etc/spack/base" ]; then
-    echo "relocating \"site\" scope files to \"site:base\""
+install_configs() {
     mkdir "$dir/etc/spack/base"
     mv -v "$dir/etc/spack/"*.yaml "$dif/etc/spack/base/"
-    cat > "$dir/etc/spack/include.yaml" <<\EOF
-include:
-  # default platform-specific configuration
-- name: site
-  path: $spack/etc/spack/site
-  optional: true
-- path: ${platform}/${os}
-  optional: true
-- path: ${platform}
-  optional: true
-- path: base
-EOF
-  fi
+    (cd $spackbindir/../templates/etc_spack && tar cf -) | 
+        (cd $dir/etc/spack && tar xf - )
 }
 
 main() {
@@ -341,8 +318,8 @@ main() {
     find_ourselves
     parse_args "$@"
 
-    clone_repos
-    init_scopes
+    clone_extensions
+    install_configs
     add_fermi_setups
     add_fermi_patches
     do_padding
