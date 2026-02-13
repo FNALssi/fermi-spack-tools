@@ -307,7 +307,7 @@ do_keys() {
 
 install_configs() {
     mkdir "$dir/etc/spack/base"
-    mv -v "$dir/etc/spack/"*.yaml "$dif/etc/spack/base/"
+    mv -v "$dir/etc/spack/"*.yaml "$dir/etc/spack/base/"
     (cd $spackbindir/../templates/etc_spack && tar cf -) | 
         (cd $dir/etc/spack && tar xf - )
 }
