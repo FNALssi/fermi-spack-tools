@@ -18,8 +18,8 @@ EOF
 }
 # note, other scripts pull these values for defaults
 #default_fermi_spack_tools_version=main
-default_fermi_spack_tools_version='fnal-v1.1.1'
-default_spack_version='fnal-v1.1.1'
+default_fermi_spack_tools_version='main'
+default_spack_version='fnal-develop'
 #default_spack_repo=https://github.com/FNALssi/spack.git
 default_spack_repo=https://github.com/FNALssi/spack.git
 default_fermi_spack_tools_repo=https://github.com/FNALssi/fermi-spack-tools.git
