@@ -1,4 +1,4 @@
-#!/usr/bin/evn python
+#!/usr/bin/env python
 
 import sys
 import os
@@ -6,6 +6,7 @@ import re
 import importlib
 
 visited = set()
+visiting = set()
 paths = []
 
 
@@ -18,7 +19,7 @@ def find_repo_paths():
             paths.append(ll[-1])
     print("repo paths: %s" % repr(paths))
 
-def get_deps(fname):
+def get_deps(fname, pkg):
     if not fname:
         return []
     res = set()
@@ -28,36 +29,42 @@ def get_deps(fname):
         mbt = re.search("""type=["'](build|test)["']""", line)
         mw = re.search("when=", line)
         m = re.search("""depends_on\\(\\s*['"]([^'"@+]*)['"+@].*""", line)
-        if m and not mbt and not mw:
+        if m and not mbt and not mw and m.group(1) != pkg:
             res.add(m.group(1))
     return list(res)
 
 def get_pkg_filename(pkg):
      global paths
      for p in paths:
-         mf = '%s/packages/%s/package.py' % (p, pkg)
-         if os.access(mf, os.R_OK):
-             print("filename for %s is %s" % (pkg, mf))
-             return mf
-     print("filename for %s not found" % pkg)
+         for lpkg in (pkg, pkg.replace("-","_")):
+             mf = '%s/packages/%s/package.py' % (p, lpkg)
+             if os.access(mf, os.R_OK):
+                 # print("filename for %s is %s" % (pkg, mf))
+                 return mf
+     # print("filename for %s not found" % pkg)
      return None
             
 def check(pkg, path=[]):
     global visited
+    global visiting
 
+    if pkg in visiting:
+        print(" ==> cycle on pkg %s: %s" % (pkg, ",".join(path)))
     if pkg in visited:
-        raise AssertionError("cycle on pkg %s: %s" % (pkg, ",".join(path)))
+        return
 
+    print(".",end="")
     visited.add(pkg)
+    visiting.add(pkg)
 
-    pkg_deps = get_deps(get_pkg_filename(pkg))
+    pkg_deps = get_deps(get_pkg_filename(pkg), pkg)
 
-    print("deps of pkg %s are %s" % ( pkg, ",".join(pkg_deps)))
+    #print("deps of pkg %s are %s" % ( pkg, ",".join(pkg_deps)))
     sys.stdout.flush()
     for dpkg in pkg_deps:
         check(dpkg, path + [pkg])
      
-    visited.remove(pkg)
+    visiting.remove(pkg)
 
 find_repo_paths()
 try:

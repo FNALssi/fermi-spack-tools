@@ -1,9 +1,15 @@
 #!/bin/bash
-curl -OL https://buildmaster.fnal.gov/buildmaster/view/spack/job/build-spack-env/label1=$1/$2/artifact/copyBack/jenkins-build-spack-env-label1=$1-$2.tar.bz2
+curl -OL https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/label1=$1/$2/artifact/copyBack/jenkins-build-spack-env-label1=$1-$2.tar.bz2
 mkdir $1-$2; tar -x  -C $1-$2 -f jenkins-build-spack-env-label1=$1-$2.tar.bz2
-spack mirror add $1-$2e --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-emergency-cache/
-spack mirror add $1-$2b --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-binary-cache/
-spack mirror add $1-$2c --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-compiler-cache
+#if (curl https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$2/artifact/copyBack/spack-emergency-cache/ 2>/dev/null | grep -q 404 ); then
+	spack mirror add $1-$2e --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-emergency-cache/
+#fi
+#if (curl https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$2/artifact/copyBack/spack-binary-cache/ 2>/dev/null | grep -q 404 ); then
+	spack mirror add $1-$2b --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-binary-cache/
+#fi
+#if (curl https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$2/artifact/copyBack/spack-compiler-cache/ 2>/dev/null | grep -q 404 );then 
+	spack mirror add $1-$2c --type binary https://buildmaster.fnal.gov/buildmaster/job/build-spack-env/$2/label1=$1/artifact/copyBack/spack-compiler-cache
+#fi
 spack mirror list
 if [ -d $1-$2/spack_env/var/spack/environments ]; then
 	mkdir local-binary-plain

@@ -18,8 +18,8 @@ EOF
 }
 # note, other scripts pull these values for defaults
 #default_fermi_spack_tools_version=main
-default_fermi_spack_tools_version='fnal-v1.1.0'
-default_spack_version='fnal-v1.1.0'
+default_fermi_spack_tools_version='fnal-v1.1.1'
+default_spack_version='fnal-v1.1.1'
 #default_spack_repo=https://github.com/FNALssi/spack.git
 default_spack_repo=https://github.com/FNALssi/spack.git
 default_fermi_spack_tools_repo=https://github.com/FNALssi/fermi-spack-tools.git
@@ -111,7 +111,7 @@ message() {
 }
 
 check_bootstrap() {
-    if [ `spack bootstrap status|grep -c PASS` = 2 ]
+    if SPACK_USER_CACHE_PATH=/tmp/$USER spack bootstrap status
     then
         message "Bootstrap completed properly, see logfile for details"
     else
@@ -145,9 +145,6 @@ main() {
     message "Finding compilers"
 
     spack compiler find --scope=spack
-
-    message "concretizing zlib..."
-    spack solve zlib
 
     check_bootstrap
  

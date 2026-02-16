@@ -150,9 +150,10 @@ add_fermi_setups() {
    do
       echo setenv $var $val >> $dir/share/spack/setup-env.csh
       echo export $var=$val >> $dir/share/spack/setup-env.sh
-   done <<EOF
+   done <<'EOF'
       SPACK_SKIP_MODULES                true
       SPACK_DISABLE_LOCAL_CONFIG        true
+      SPACK_USER_CACHE_PATH             ${TMPDIR:-/tmp}/$USER
 EOF
     # source the setup...
     source $dir/share/spack/setup-env.sh
