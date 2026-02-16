@@ -525,8 +525,8 @@ _configure_spack() {
   if (( clear_mirrors )); then
     _report $PROGRESS "clearing mirrors list"
     _cmd $PROGRESS rm -f "$mirrors_cfg" \
-         "$SPACK_ROOT/etc/spack/mirrors.yaml" \
-         "$SPACK_ROOT/etc/spack/"*/mirrors.yaml
+         "$SPACK_ROOT/etc/spack/linux/mirrors.yaml" \
+         "$SPACK_ROOT/etc/spack/linux/"*/mirrors.yaml
   fi
 
   ####################################
@@ -619,7 +619,7 @@ _configure_spack() {
   # Find the best scope for compiler info based on configuration and/or
   # Spack version.
   for compilers_scope in \
-    spack:$spack_os spack:$spack_platform include:$spack_os spack/$spack_platform/$spack_os spack/$spack_os spack
+    site:$spack_os site:$spack_platform include:$spack_os spack/$spack_platform/$spack_os spack/$spack_os spack
   do
     spack config --scope=$compilers_scope get compilers >/dev/null 2>&1 &&
       break
@@ -705,10 +705,10 @@ _deactivate_repo() {
     scope="$(_cmd $DEBUG_2 $PIPE spack config blame repos | _cmd $DEBUG_3 $PIPE sed -Ene '\&/'"$path_basename"'$& s&/repos\.yaml:[[:digit:]]+[[:space:]]+.*$&/&p')"
     scope="${scope##*/etc/spack/}"
     scope="${scope%/*}"
-    [[ scope == defaults/* ]] || scope="spack${scope:+/$scope}"
+    [[ scope == defaults/* ]] || scope="site${scope:+/$scope}"
     _report $PROGRESS "deactivating existing repo $rrepo in scope $scope at $path"
     _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo ||
-      { scope=spack:$spack_os; _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo; } ||
+      { scope=site:$spack_os; _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo; } ||
       _die "unable to deactivate existing repo $rrepo in scope $scope at $path"
     break
   done
@@ -753,7 +753,6 @@ _do_build_and_test() {
       "${spack_install_cmd[@]}"
       ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"}
     )
-    spack clean -m
     _cmd $PROGRESS $INFO "${spack_build_env_cmd[@]}"
   fi
 }
@@ -896,7 +895,7 @@ EOF
            buildcache create --only package \
            ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
-           ${buildcache_rel_arg} --rebuild-index "$cache" \
+           ${buildcache_rel_arg}  "$cache" \
            "${hashes_to_cache[@]/#//}" ||
         _die "failure caching packages to $cache"
       if [ -d "$cache/blobs" ] &&
@@ -1013,13 +1012,11 @@ EOF
   if (( ${#hashes_to_install[@]} )); then
     _report $DEBUG_2 "building ${#hashes_to_install[@]} non-root dependencies in environment $env_name"
     _report $DEBUG_4 "            ${hashes_to_install[@]/%/$'\n'           }"
-    spack clean -m
     _cmd $DEBUG_1 $INFO \
          "${spack_install_cmd[@]}" \
          ${hashes_to_install[*]:+"${hashes_to_install[@]/*\///}"} || return
   fi
   _report $PROGRESS "building${hashes_to_install[*]:+ remaining package(s) in} environment $env_name"
-    spack clean -m
   _cmd $DEBUG_1 $INFO "${spack_install_cmd[@]}" ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"}
 }
 
@@ -1522,7 +1519,7 @@ source "$spack_env_top_dir/setup-env.sh" \
   || _die "unable to set up Spack $spack_ver"
 ####################################
 
-mirrors_cfg="$SPACK_ROOT/etc/spack/base/mirrors.yaml"
+mirrors_cfg="$SPACK_ROOT/etc/spack/mirrors.yaml"
 default_mirrors="$SPACK_ROOT/etc/spack/defaults/base/mirrors.yaml"
 concretize_mirrors="$SPACK_ROOT/concretize_mirrors.yaml"
 
@@ -1546,7 +1543,7 @@ if (( failed )) && (( want_emergency_buildcache )); then \
       buildcache create \
       \${buildcache_package_opts[*]:+\"\${buildcache_package_opts[@]}\"} \
       \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
-      \$buildcache_rel_arg --rebuild-index \
+      \$buildcache_rel_arg \
       \"$working_dir/copyBack/spack-emergency-cache\" \
      \$spec; \
      fi \
