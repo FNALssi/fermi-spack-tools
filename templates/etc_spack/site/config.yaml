@@ -1,0 +1,9 @@
+config:
+  extensions:
+  - $spack/var/spack/extensions/spack-freeze
+  - $spack/var/spack/extensions/spack-installdir
+  - $spack/var/spack/extensions/spack-intersection
+  - $spack/var/spack/extensions/spack-linuxexternals
+  - $spack/var/spack/extensions/spack-localbuildcache
+  - $spack/var/spack/extensions/spack-mpd
+  - $spack/var/spack/extensions/spack-subspack

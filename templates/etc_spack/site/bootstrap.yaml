@@ -1,0 +1,3 @@
+bootstrap:
+  enable: true
+  root: $spack/var/bootstraps/$os
