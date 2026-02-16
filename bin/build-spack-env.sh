@@ -525,8 +525,8 @@ _configure_spack() {
   if (( clear_mirrors )); then
     _report $PROGRESS "clearing mirrors list"
     _cmd $PROGRESS rm -f "$mirrors_cfg" \
-         "$SPACK_ROOT/etc/spack/linux/mirrors.yaml" \
-         "$SPACK_ROOT/etc/spack/linux/"*/mirrors.yaml
+         "$SPACK_ROOT/etc/spack/mirrors.yaml" \
+         "$SPACK_ROOT/etc/spack/"*/mirrors.yaml
   fi
 
   ####################################
@@ -1522,7 +1522,7 @@ source "$spack_env_top_dir/setup-env.sh" \
   || _die "unable to set up Spack $spack_ver"
 ####################################
 
-mirrors_cfg="$SPACK_ROOT/etc/spack/mirrors.yaml"
+mirrors_cfg="$SPACK_ROOT/etc/spack/base/mirrors.yaml"
 default_mirrors="$SPACK_ROOT/etc/spack/defaults/base/mirrors.yaml"
 concretize_mirrors="$SPACK_ROOT/concretize_mirrors.yaml"
 
