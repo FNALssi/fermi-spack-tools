@@ -1,0 +1,37 @@
+repos:
+  sbn-spack:
+    git: https://github.com/gartung/sbn-spack.git
+    destination: $spack/var/spack/repos/sbn-spack
+    branch: spack-v1.0
+  wirecell:
+    git: https://github.com/gartung/wire-cell-spack
+    destination: $spack/var/spack/repos/wire-cell-spack
+    branch: master
+  dune_spack:
+    git: https://github.com/DUNE/dune_spack.git
+    destination: $spack/var/spack/repos/dune_spack
+    branch: spack-v1.0
+  nusoft:
+    git: https://github.com/gartung/nusofthep-spack-recipes.git
+    destination: $spack/var/spack/repos/nusofthep-spack-recipes
+    branch: spack-v1.0
+  larsoft:
+    git: https://github.com/LArSoft/larsoft-spack-recipes.git
+    destination: $spack/var/spack/repos/larsoft-spack-recipes
+    branch: main
+  fnal_art:
+    git: https://github.com/FNALssi/fnal_art.git
+    destination: $spack/var/spack/repos/fnal_art
+    branch: develop
+  artdaq_spack:
+    git: https://github.com/art-daq/artdaq-spack.git
+    destination: $spack/var/spack/repos/artdaq-spack
+    branch: artdaq/Spack1.1
+  scd_recipes:
+    git: https://github.com/fnal-fife/scd_recipes.git
+    destination: $spack/var/spack/repos/scd_recipes
+    branch: master
+  builtin:
+    git: https://github.com/FNALssi/spack-packages.git
+    destination: $spack/var/spack/repos/builtin
+    branch: fnal-v2025.11
