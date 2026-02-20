@@ -10,7 +10,7 @@ repos:
   dune_spack:
     git: https://github.com/DUNE/dune_spack.git
     destination: $spack/var/spack/repos/dune_spack
-    branch: spack-v1.0
+    branch: spack-v1.0-tensorflow-lib64
   nusoft:
     git: https://github.com/NuSoftHEP/nusofthep-spack-recipes.git
     destination: $spack/var/spack/repos/nusofthep-spack-recipes
