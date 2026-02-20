@@ -1,6 +1,6 @@
 repos:
   sbn-spack:
-    git: https://github.com/gartung/sbn-spack.git
+    git: https://github.com/SBNSoftware/sbn-spack.git
     destination: $spack/var/spack/repos/sbn-spack
     branch: spack-v1.0
   wirecell:
