@@ -214,7 +214,7 @@ packages:
       prefix: /usr
   util-linux-uuid:
     externals:
-    - spec: "util-linux-uuid os=scientific7"
+    - spec: "util-linux-uuid @2.23.2 os=scientific7"
       prefix: /usr
   libuuid:
     externals:

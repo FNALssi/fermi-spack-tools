@@ -201,7 +201,7 @@ packages:
       prefix: /usr
   util-linux-uuid:
     externals:
-    - spec: util-linux-uuid os=almalinux9 
+    - spec: util-linux-uuid @=2.37.4 os=almalinux9 
       prefix: /usr
   libuuid:
     externals:
