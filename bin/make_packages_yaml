@@ -300,7 +300,7 @@ cat <<EOF >&3
   unwind:
     require: libunwind
   uuid:
-    require: libuuid
+    require: util-linux-uuid
   yacc:
     require: bison
 EOF
