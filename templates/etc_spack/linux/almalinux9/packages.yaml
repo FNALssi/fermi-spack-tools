@@ -41,7 +41,7 @@ packages:
   unwind:
     require: libunwind
   uuid:
-    require: libuuid
+    require: util-linux-uuid
   yacc:
     require: bison
   asciidoc:
@@ -198,6 +198,10 @@ packages:
   libtool:
     externals:
     - spec: libtool @=2.4.6 os=almalinux9 
+      prefix: /usr
+  util-linux-uuid:
+    externals:
+    - spec: util-linux-uuid os=almalinux9 
       prefix: /usr
   libuuid:
     externals:
