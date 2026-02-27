@@ -1098,7 +1098,7 @@ _process_environment() {
   ####################################
   # If we just built a compiler environment, add the
   # compiler to the list of available compilers.
-  _maybe_register_compiler
+  # _maybe_register_compiler
   ####################################
 }
 
