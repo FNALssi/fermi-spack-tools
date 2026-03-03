@@ -1537,11 +1537,13 @@ if (( failed )) && (( want_emergency_buildcache )); then \
       buildcache create \
       \${buildcache_package_opts[*]:+\"\${buildcache_package_opts[@]}\"} \
       \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
-      \$buildcache_rel_arg --rebuild-index \
+      \$buildcache_rel_arg \
       \"$working_dir/copyBack/spack-emergency-cache\" \
      \$spec; \
      fi \
   done;\
+  _cmd $ERROR $PIPE spack \
+  buildcache update-index \"$working_dir/copyBack/spack-emergency-cache\"; \
   tag_text=ALERT _report $ERROR \"emergency buildcache dump COMPLETE\"; \
 fi; \
 exec $STDOUT>&- $STDERR>&-\
