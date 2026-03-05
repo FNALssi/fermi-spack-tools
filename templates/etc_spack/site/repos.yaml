@@ -1,4 +1,8 @@
 repos:
+  nova-spack:
+    git: https://github.com/novaexperiment/nova-spack.git
+    destination: $spack/var/spack/repos/nova-spack
+    branch: main
   sbn-spack:
     git: https://github.com/SBNSoftware/sbn-spack.git
     destination: $spack/var/spack/repos/sbn-spack
