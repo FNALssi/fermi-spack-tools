@@ -91,6 +91,7 @@ clone_extensions() {
               $verbose &&
               echo "$(date --iso-8601=seconds) switched from $clone_branch to $branch based on selection of Spack branch $spack_release"
           }
+          set_exitcode 4
         fi
       fi
     done <<EOF
@@ -235,7 +236,7 @@ parse_args() {
         shift
     else
         usage
-        exit 1
+        exit 3
     fi
     while echo x$1 | grep x- > /dev/null
     do
@@ -265,7 +266,7 @@ parse_args() {
     if [ -z "$dir" ]
     then
         usage
-        exit 1
+        exit 2
     fi
     if $verbose
     then
@@ -316,11 +317,20 @@ update_repos() {
    spack repo update
 }
 
+set_exitcode() {
+    my_ec=${1:-0}
+}
+exit_exitcode() {
+    exit $my_ec
+}
+
 main() {
 
     : starting: $*
     find_ourselves
     parse_args "$@"
+
+    set_exitcode 0
 
     clone_extensions
     install_configs
@@ -331,6 +341,7 @@ main() {
     do_spack_bootstrap
     do_keys
     query_packages
+    exit_exitcode
 }
 
 main "$@"
