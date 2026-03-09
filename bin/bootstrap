@@ -57,11 +57,11 @@ parse_args() {
     dest=${1:-$PWD/spack}
     case x$dest in
     x/*) ;;
-    x*)  echo "Error: Destination diretory $dest must be an absolute path"; exit 1;;
+    x*)  echo "Fatal Error: Destination diretory $dest must be an absolute path"; exit 1;;
     esac
     if [ -d $dest ]
     then
-        echo "FAIL: Destination directory $dest already exists. " >&2
+        echo "Fatal Error: Destination directory $dest already exists. " >&2
         exit 1
     fi
 }
@@ -120,6 +120,54 @@ check_bootstrap() {
     fi
 }
 
+repo_sad() {
+    # See if we can contact our fermi spack tools repo url...
+    if curl -s -o /dev/null $1
+    then
+	return 1
+    else
+        return 0
+    fi
+}
+
+fail_git() {
+    ec=$?
+    if df  $fst | grep '100%' > /dev/null
+    then
+	message "Fatal Error: Unable to do git checkout to $fst: no space"
+	message "...cleaning up $dest"
+	rm -rf $fst
+	exit 3
+    fi
+    if repo_sad $fermi_spack_tools_repo
+    then
+        message "Fatal Error: Unable to reach Git repository $fermi_spack_tools_repo"
+	message "Check spelling, try later; otherwise please attach logfile to a Servicedesk ticket"
+	exit 4
+    fi
+    message "Fatal Error: Unable to clone fermi-spack-tools"
+    exit 5
+}
+
+fail_make_spack() {
+    ec=$?
+    if df $dest | grep '100%' > /dev/null
+    then
+	message "Fatal Error: not enough space in $dest"
+	message "...cleaning up $dest"
+	rm -rf $dest
+	exit 6
+    fi
+    if repo_sad $spack_repo
+    then
+        message "Fatal Error: cannot reach Spack repo $spack_repo"
+	message "check spelling, try later; otherwise please attach logfile to a Servicedesk ticket"
+	exit 7
+    fi
+    message "Fatal Error: make_spack exited unsuccessfully exit code $ec"
+    exit 8
+}
+
 main() {
     parse_args "$@"
 
@@ -127,16 +175,15 @@ main() {
     mkdir -p $dest
     cd $dest
 
-    
 
     message "Cloning FNALssi fermi-spack-tools  repository"
-    fst=/tmp/fst$$
-    git clone -b $ver $fermi_spack_tools_repo $fst
+    fst=${TMPDIR:-/tmp}/fst$$
+    git clone -b $ver $fermi_spack_tools_repo $fst || fail_git
 
     PATH=$fst/bin:$PATH
 
     message "Setting up with make_spack"
-    sh -x $fst/bin/make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
+    sh -x $fst/bin/make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest || fail_make_spack
 
     message "Setting up new instance"
 
