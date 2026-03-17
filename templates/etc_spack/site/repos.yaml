@@ -27,6 +27,10 @@ repos:
     git: https://github.com/FNALssi/fnal_art.git
     destination: $spack/var/spack/repos/fnal_art
     branch: develop
+  phlex:
+    git: https://github.com/Framework-R-D/phlex-spack-recipes.git
+    destination: $spack/var/spack/phlex-spack-recipes
+    branch: main
   artdaq_spack:
     git: https://github.com/art-daq/artdaq-spack.git
     destination: $spack/var/spack/repos/artdaq-spack
