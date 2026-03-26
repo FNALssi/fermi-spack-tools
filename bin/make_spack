@@ -310,6 +310,19 @@ install_configs() {
     mv -v "$dir/etc/spack/"*.yaml "$dir/etc/spack/base/"
     (cd $spackbindir/../templates/etc_spack && tar cf - .) | 
         (cd $dir/etc/spack && tar xf - )
+    
+
+    # if we don't have a template for this os, make an area and
+    # turn on query_packages
+    osdir="$dir/etc/spack/$($dir/bin/spack arch -p)/$($dir/bin/spack arch -o)"
+    if [ ! -d "$osdir" ] 
+    then
+      mkdir -p "$osdir"
+      query_packages=true
+    fi
+}
+ 
+ main() {
 }
 
 update_repos() {
