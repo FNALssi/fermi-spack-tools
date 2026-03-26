@@ -324,9 +324,9 @@ main() {
     parse_args "$@"
 
     clone_extensions
-    install_configs
     add_fermi_setups
     add_fermi_patches
+    install_configs
     update_repos
     do_padding
     do_spack_bootstrap
