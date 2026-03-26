@@ -337,7 +337,6 @@ EOF
   if [ ! -d "$osdir" ] 
   then
     mkdir -p "$osdir"
-    query_packages=true
   fi
 }
 
