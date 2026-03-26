@@ -318,7 +318,6 @@ install_configs() {
     if [ ! -d "$osdir" ] 
     then
       mkdir -p "$osdir"
-      query_packages=true
     fi
     mv $dir/etc/spack/include.yaml.hide $dir/etc/spack/include.yaml
 }
