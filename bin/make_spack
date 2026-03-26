@@ -328,6 +328,13 @@ include:
 - path: base
 EOF
   fi
+
+  osdir="$dir/etc/spack/$($dir/bin/spack arch -p)/$($dir/bin/spack arch -o)"
+  if [ ! -d "$osdir" ] 
+  then
+    mkdir -p "$osdir"
+    query_packages=true
+  fi
 }
 
 main() {
