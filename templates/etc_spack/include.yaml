@@ -11,3 +11,5 @@ include:
   # base scope
   - path: base
 
+  # site scope
+  - path: site
