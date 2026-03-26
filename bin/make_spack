@@ -313,12 +313,14 @@ install_configs() {
 
     # if we don't have a template for this os, make an area and
     # turn on query_packages
+    mv $dir/etc/spack/includes.yaml $dir/etc/spack/includes.yaml.hide
     osdir="$dir/etc/spack/$($dir/bin/spack arch -p)/$($dir/bin/spack arch -o)"
     if [ ! -d "$osdir" ] 
     then
       mkdir -p "$osdir"
       query_packages=true
     fi
+    mv $dir/etc/spack/includes.yaml.hide $dir/etc/spack/includes.yaml
 }
  
 update_repos() {
