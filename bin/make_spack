@@ -322,9 +322,6 @@ install_configs() {
     fi
 }
  
- main() {
-}
-
 update_repos() {
    spack repo update
 }
