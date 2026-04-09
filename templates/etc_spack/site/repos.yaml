@@ -29,7 +29,7 @@ repos:
     branch: develop
   phlex:
     git: https://github.com/Framework-R-D/phlex-spack-recipes.git
-    destination: $spack/var/spack/phlex-spack-recipes
+    destination: $spack/var/spack/repos/phlex-spack-recipes
     branch: main
   artdaq_spack:
     git: https://github.com/art-daq/artdaq-spack.git
