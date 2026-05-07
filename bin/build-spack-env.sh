@@ -1537,9 +1537,9 @@ _copy_back_logs; \
 if (( failed )) && (( want_emergency_buildcache )); then \
   tag_text=ALERT _report $ERROR \"emergency buildcache dump\"; \
   for spec in \$(spack find -L | sed -Ene 's&^([[:alnum:]]+).*\$&/\\1&p');do \
-    if [ "$prefix" != "/usr" ]; then
-      if [  -f \"\$(spack location -i \$spec)/.spack/binary_distribution\" ]; then
-        tag_text=ALERT _report $ERROR skipping package installed from buildcache \$spec;\
+    if [ "$prefix" != "/usr" ]; then \
+      if [  -f \"\$(spack location -i \$spec)/.spack/binary_distribution\" ]; then \
+        tag_text=ALERT _report $ERROR skipping package installed from buildcache \$spec; \
       else \
         _cmd $ERROR $PIPE spack \
         -e \$env_name \
