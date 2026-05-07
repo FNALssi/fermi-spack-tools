@@ -897,9 +897,8 @@ EOF
            ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
            ${buildcache_rel_arg} "$cache" \
-           "${hashes_to_cache[@]/#//}" ||
-        _die "failure caching packages to $cache"
-      fi
+           "${hashes_to_cache[@]/#//}" || 
+        _die "failure caching packages to $cache" 
     done
     if [ -d "$cache/blobs" ] &&
          [ -f "$cache/v3/layout.json*" ]; then
