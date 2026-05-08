@@ -869,14 +869,14 @@ EOF
           if [ "$prefix" != "/usr" ]; then
               _report $DEBUG_4 "looking for binary_distribution marker for $hash in $prefix/.spack/"
               if [  -f "$prefix/.spack/binary_distribution" ]; then
-	          _report_stderr=1 _report $DEBUG_1 "skip package installed from buildcache: $hash"
-	      else
-	          _report_stderr=1 _report $DEBUG_2 "save package in buildcache: $hash"
-                  echo "${hash//*\///}"
+	              _report_stderr=1 _report $DEBUG_1 "skip package installed from buildcache: $hash"
+	            else
+	              _report_stderr=1 _report $DEBUG_2 "save package in buildcache: $hash"
+                echo "${hash//*\///}"
               fi
-	  else 
-	    _report_stderr=1 _report $DEBUG_1 "skip external package: $hash"
-	  fi
+	        else 
+	          _report_stderr=1 _report $DEBUG_1 "skip external package: $hash"
+	        fi
         done
     )
   )
@@ -896,19 +896,19 @@ EOF
            buildcache create --only package \
            ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
-           ${buildcache_rel_arg} --rebuild-index "$cache" \
-           "${hashes_to_cache[@]/#//}" ||
-        _die "failure caching packages to $cache"
-      if [ -d "$cache/blobs" ] &&
+           ${buildcache_rel_arg} "$cache" \
+           "${hashes_to_cache[@]/#//}" || \
+        _die "failure caching packages to $cache" 
+    done
+    if [ -d "$cache/blobs" ] &&
          [ -f "$cache/v3/layout.json*" ]; then
         _report $PROGRESS "updating build cache index at $cache"
         _cmd $DEBUG_1 $PROGRESS \
-             spack \
-             ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-             buildcache update-index -k "$cache" ||
-          _report $ERROR "failure to update build cache index: manual intervention required for $cache"
-      fi
-    done
+        spack \
+        ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+        buildcache update-index -k "$cache" ||
+        _report $ERROR "failure to update build cache index: manual intervention required for $cache"
+    fi
   fi
 }
 
@@ -1537,20 +1537,27 @@ _copy_back_logs; \
 if (( failed )) && (( want_emergency_buildcache )); then \
   tag_text=ALERT _report $ERROR \"emergency buildcache dump\"; \
   for spec in \$(spack find -L | sed -Ene 's&^([[:alnum:]]+).*\$&/\\1&p');do \
-    if [  -f \"\$(spack location -i \$spec)/.spack/binary_distribution\" ]; then
-      tag_text=ALERT _report $ERROR skipping package installed from buildcache \$spec;\
+    prefix=\$(spack location -i \$spec); \
+    if [ "\$prefix" != "/usr" ]; then \
+      if [  -f "\${prefix}/.spack/binary_distribution" ]; then \
+        tag_text=ALERT _report $ERROR skipping package installed from buildcache \$spec; \
       else \
-      _cmd $ERROR $PIPE spack \
-      -e \$env_name \
-      \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
-      buildcache create \
-      \${buildcache_package_opts[*]:+\"\${buildcache_package_opts[@]}\"} \
-      \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
-      \$buildcache_rel_arg --rebuild-index \
-      \"$working_dir/copyBack/spack-emergency-cache\" \
-     \$spec; \
-     fi \
+        _cmd $ERROR $PIPE spack \
+        -e \$env_name \
+        \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
+        buildcache create \
+        \${buildcache_package_opts[*]:+\"\${buildcache_package_opts[@]}\"} \
+        \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
+        \$buildcache_rel_arg \
+        \"$working_dir/copyBack/spack-emergency-cache\" \
+        \$spec; \
+      fi \
+    else \
+          tag_text=ALERT _report $ERROR skipping external package \$spec;\
+    fi \
   done;\
+  _cmd $ERROR $PIPE spack \
+  buildcache update-index \"$working_dir/copyBack/spack-emergency-cache\"; \
   tag_text=ALERT _report $ERROR \"emergency buildcache dump COMPLETE\"; \
 fi; \
 exec $STDOUT>&- $STDERR>&-\
