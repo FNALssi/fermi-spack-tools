@@ -8,7 +8,7 @@ repos:
     destination: $spack/var/spack/repos/nova-spack
     branch: main
   sbn-spack:
-    git: https://github.com/SBNSoftware/sbn-spack.git
+    git: https://github.com/gartung/sbn-spack.git
     destination: $spack/var/spack/repos/sbn-spack
     branch: spack-v1.0
   wirecell:
@@ -46,4 +46,4 @@ repos:
   builtin:
     git: https://github.com/FNALssi/spack-packages.git
     destination: $spack/var/spack/repos/builtin
-    branch: fnal-v2025.11
+    branch: fnal-develop-2026-02-17
