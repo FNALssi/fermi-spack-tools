@@ -25,32 +25,27 @@ default_fermi_spack_tools_repo=https://github.com/FNALssi/fermi-spack-tools.git
 
 parse_args() {
     with_padding=""
-    if x=$(getopt --options "" --longoptions with_padding,help,query-packages,fermi_spack_tools_release:,spack_release:,spack_repo:,fermi_spack_tools_repo: -- "$@")
-    then
-        eval set : $x
-        shift
-    else
-        usage
-        exit 1
-    fi
-
     spack_repo=$default_spack_repo
     fermi_spack_tools_repo=$default_fermi_spack_tools_repo
     ver=$default_fermi_spack_tools_version
     spack_version=$default_spack_version
     query_packages=""
 
-    while [ "${1:0:2}" = "--" ]
+    # Use a manual loop instead of getopt(1). GNU getopt supports --longoptions
+    # but BSD getopt on macOS does not; there is no portable long-option getopt.
+    while [ $# -gt 0 ]
     do
-        case "x$1" in
-        x--with_padding)                 with_padding="--with_padding"; shift;;
-        x--spack_release)                spack_version=$2; shift; shift ;;
-        x--query-packages)               query_packages="--query-packages"; shift ;;
-        x--spack_repo)                   spack_repo=$2; shift; shift ;;
-        x--fermi_spack_tools_release) ver=$2; shift; shift ;;
-        x--fermi_spack_tools_repo)    fermi_spack_tools_repo=$2; shift; shift ;;
-        x--help) usage; exit;;
-        x--) shift; break;;
+        case "$1" in
+        --with_padding)                 with_padding="--with_padding"; shift;;
+        --spack_release)                spack_version=$2; shift; shift ;;
+        --query-packages)               query_packages="--query-packages"; shift ;;
+        --spack_repo)                   spack_repo=$2; shift; shift ;;
+        --fermi_spack_tools_release)    ver=$2; shift; shift ;;
+        --fermi_spack_tools_repo)       fermi_spack_tools_repo=$2; shift; shift ;;
+        --help)                         usage; exit;;
+        --)                             shift; break;;
+        --*)                            echo "Error: Unknown option $1"; usage; exit 1;;
+        *)                              break;;
         esac
     done
     dest=${1:-$PWD/spack}
@@ -58,7 +53,7 @@ parse_args() {
     x/*) ;;
     x*)  echo "Error: Destination diretory $dest must be an absolute path"; exit 1;;
     esac
-    if [ -d $dest ]
+    if [ -d "$dest" ]
     then
         echo "FAIL: Destination directory $dest already exists. " >&2
         exit 1
@@ -70,7 +65,7 @@ detail_log() {
     # use fd 3 for messages to user, send stdout and stderr to log
     # redirect stdin from /dev/null, so anything that tries to prompt
     # for input will fail and not hang because no message gets to the user
-    exec 3>&1 > $logfile 2>&1 < /dev/null
+    exec 3>&1 > "$logfile" 2>&1 < /dev/null
     echo "Putting detail log in /tmp/bootstrap$$.log" >&3 
 }
 
@@ -83,7 +78,9 @@ monitor() {
    printf "%3d%%$box\r" 0 >&3
    while :
    do
-       local duf=$(du -b $f)
+       # du -k (kilobytes) is portable; du -b (bytes) is GNU coreutils only and
+       # not available on macOS BSD du.
+       local duf=$(du -k "$f")
        local ds="${duf%$f}"
        dpp1=$(( ds / sd ))
        (( dpp1 > 99 )) && dpp1=99
@@ -93,7 +90,8 @@ monitor() {
    done
 }
 start_monitor() {
-  monitor $* &
+  # "$@" instead of $* to correctly handle arguments containing spaces.
+  monitor "$@" &
   monitor_pid=$!
   trap "stop_monitor" EXIT
 }
@@ -105,8 +103,10 @@ stop_monitor() {
 }
 message() {
     stop_monitor
-    echo $* >&3
-    start_monitor $logfile 360
+    # "$@" instead of $* to correctly handle arguments containing spaces.
+    echo "$@" >&3
+    # 10240 = expected log size in kilobytes (10 MB), used to compute progress %.
+    start_monitor "$logfile" 10240
 }
 
 check_bootstrap() {
@@ -123,23 +123,21 @@ main() {
     parse_args "$@"
 
     detail_log
-    mkdir -p $dest
-    cd $dest
-
-    
+    mkdir -p "$dest"
+    cd "$dest"
 
     message "Cloning FNALssi fermi-spack-tools  repository"
     fst=/tmp/fst$$
-    git clone -b $ver $fermi_spack_tools_repo $fst
+    git clone -b "$ver" "$fermi_spack_tools_repo" "$fst"
 
     PATH=$fst/bin:$PATH
 
     message "Setting up with make_spack"
-    bash -x $fst/bin/make_spack --verbose $query_packages --spack_release $spack_version --spack_repo $spack_repo $with_padding --minimal -u $dest
+    bash -x "$fst/bin/make_spack" --verbose $query_packages --spack_release "$spack_version" --spack_repo "$spack_repo" $with_padding --minimal -u "$dest"
 
     message "Setting up new instance"
 
-    source $dest/setup-env.sh
+    source "$dest/setup-env.sh"
 
     message "Finding compilers"
 
@@ -148,7 +146,7 @@ main() {
     check_bootstrap
  
     # cleanup
-    rm -rf $fst &
+    rm -rf "$fst" &
 }
 
 main "$@"
