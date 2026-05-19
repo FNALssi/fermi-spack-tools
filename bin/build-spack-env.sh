@@ -893,7 +893,7 @@ EOF
            ${__debug_spack_buildcache:+-d} \
            ${__verbose_spack_buildcache:+-v} \
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-           buildcache create --only package \
+           buildcache create --private --only package \
            ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
            ${buildcache_rel_arg} "$cache" \
@@ -1545,7 +1545,7 @@ if (( failed )) && (( want_emergency_buildcache )); then \
         _cmd $ERROR $PIPE spack \
         -e \$env_name \
         \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
-        buildcache create \
+        buildcache create --private \
         \${buildcache_package_opts[*]:+\"\${buildcache_package_opts[@]}\"} \
         \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
         \$buildcache_rel_arg \
