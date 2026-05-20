@@ -60,36 +60,36 @@ clone_extensions() {
         if (( upgrade_repo )); then
           if [ "$current_branch" = "$branch" ]; then
             if $verbose; then
-              echo "$(date --iso-8601=seconds) Updating Git repository at $ddir"
+              echo "$(date +%Y-%m-%dT%H:%M:%S) Updating Git repository at $ddir"
             fi
             if ! git -C "$ddir" pull; then
-              echo "$(date --iso-8601=seconds) Unable to update Git repository at" 1>&2
-              echo "$(date --iso-8601=seconds)   $ddir" 1>&2
-              echo "$(date --iso-8601=seconds) Fix manually" 1>&2
+              echo "$(date +%Y-%m-%dT%H:%M:%S) Unable to update Git repository at" 1>&2
+              echo "$(date +%Y-%m-%dT%H:%M:%S)   $ddir" 1>&2
+              echo "$(date +%Y-%m-%dT%H:%M:%S) Fix manually" 1>&2
             fi
           else
-            echo "$(date --iso-8601=seconds) Refusing to update Git repository from branch $current_branch to $branch at" 1>&2
-            echo "$(date --iso-8601=seconds)   $ddir" 1>&2
-            echo "$(date --iso-8601=seconds) Fix manually" 1>&2
+            echo "$(date +%Y-%m-%dT%H:%M:%S) Refusing to update Git repository from branch $current_branch to $branch at" 1>&2
+            echo "$(date +%Y-%m-%dT%H:%M:%S)   $ddir" 1>&2
+            echo "$(date +%Y-%m-%dT%H:%M:%S) Fix manually" 1>&2
           fi
         else
-          echo "$(date --iso-8601=seconds) Using existing repository on branch $current_branch at "
-          echo "$(date --iso-8601=seconds)   $ddir"
-          echo "$(date --iso-8601=seconds) U${repo_type:+se --upgrade-$repo_type or u}pgrade manually"
+          echo "$(date +%Y-%m-%dT%H:%M:%S) Using existing repository on branch $current_branch at "
+          echo "$(date +%Y-%m-%dT%H:%M:%S)   $ddir"
+          echo "$(date +%Y-%m-%dT%H:%M:%S) U${repo_type:+se --upgrade-$repo_type or u}pgrade manually"
         fi
       else
         if $verbose; then
-          echo "$(date --iso-8601=seconds) Cloning Git repository on branch $clone_branch at"
-          echo "$(date --iso-8601=seconds)   $ddir"
+          echo "$(date +%Y-%m-%dT%H:%M:%S) Cloning Git repository on branch $clone_branch at"
+          echo "$(date +%Y-%m-%dT%H:%M:%S)   $ddir"
         fi
         if ! git clone -b $clone_branch --no-single-branch --depth $depth $repo $ddir; then
-          echo "$(date --iso-8601=seconds) Unable to clone Git repository on branch $clone_branch at" 1>&2
-          echo "$(date --iso-8601=seconds)   $ddir" 1>&2
-          echo "$(date --iso-8601=seconds) Fix manually" 1>&2
+          echo "$(date +%Y-%m-%dT%H:%M:%S) Unable to clone Git repository on branch $clone_branch at" 1>&2
+          echo "$(date +%Y-%m-%dT%H:%M:%S)   $ddir" 1>&2
+          echo "$(date +%Y-%m-%dT%H:%M:%S) Fix manually" 1>&2
           [ -z "$default_branch" ] || {
             git -C $ddir switch $branch >/dev/null 2>&1 &&
               $verbose &&
-              echo "$(date --iso-8601=seconds) switched from $clone_branch to $branch based on selection of Spack branch $spack_release"
+              echo "$(date +%Y-%m-%dT%H:%M:%S) switched from $clone_branch to $branch based on selection of Spack branch $spack_release"
           }
         fi
       fi
@@ -229,35 +229,35 @@ parse_args() {
     no_recipes=false
 
     origargs="$*"
-    if x=$(getopt --longoptions help,depth,with_padding,with-padding,upgrade,upgrade-etc,upgrade-extensions,upgrade-recipes,upgrade-spack,spack_release:,spack-release:,minimal,no-recipe-repos,no_buildcache,no-buildcache,repover,spack_repo:,spack-repo:,query-packages,verbose --options mptuv -- "$@")
-    then
-        eval set : $x
-        shift
-    else
-        usage
-        exit 1
-    fi
-    while echo x$1 | grep x- > /dev/null
+    # Use a manual loop instead of getopt(1). GNU getopt supports --longoptions
+    # but BSD getopt on macOS does not; there is no portable long-option getopt.
+    while [ $# -gt 0 ]
     do
-        case "x$1" in
-        x--depth)               depth=$2; shift;;
-        x--with?padding)        padding=true; shift ;;
-        x--upgrade)             echo "Deprecated option --upgrade ignored: use --upgrade-{etc,extensions,recipes,spack} ";  shift;;
-        x--upgrade-*)           eval upgrade_${1##*-}=1; shift;;
-        x--spack?release)       spack_release=$2; shift; shift ;;
-        x--spack?repo)          spack_repo=$2; shift; shift;;
-        x--minimal)             minimal=true; shift ;;
-        x--query-packages)      query_packages=true; shift ;;
-        x--help)                usage; exit;;
-        x--no?buildcache)       use_buildcache=false; shift;;
-        x--no-recipe-repos)     no_recipes=true; shift;;
-        x--repover)             repovers="$repovers $2"; shift; shift;;
-        x-v|x--verbose)         verbose=true; shift;;
-        x-u)                    echo "Deprecated option -u ignored"; shift;;
-        x-t)                    echo "Deprecated option -t ignored"; shift;;
-        x-p)                    echo "Deprecated option -p ignored (-p is already the default behavior)" ; shift;;
-        x-m)                    echo "Deprecated option -m ignored"; shift;;
-        x--)                    shift; break;;
+        case "$1" in
+        --depth)                depth=$2; shift; shift;;
+        --with_padding|--with-padding) padding=true; shift;;
+        --upgrade)              echo "Deprecated option --upgrade ignored: use --upgrade-{etc,extensions,recipes,spack} "; shift;;
+        --upgrade-etc)          upgrade_etc=1; shift;;
+        --upgrade-extensions)   upgrade_extensions=1; shift;;
+        --upgrade-recipes)      upgrade_recipes=1; shift;;
+        --upgrade-spack)        upgrade_spack=1; shift;;
+        --spack_release|--spack-release) spack_release=$2; shift; shift;;
+        --spack_repo|--spack-repo) spack_repo=$2; shift; shift;;
+        --minimal)              minimal=true; shift;;
+        --query-packages)       query_packages=true; shift;;
+        --help)                 usage; exit;;
+        --no_buildcache|--no-buildcache) use_buildcache=false; shift;;
+        --no-recipe-repos)      no_recipes=true; shift;;
+        --repover)              repovers="$repovers $2"; shift; shift;;
+        -v|--verbose)           verbose=true; shift;;
+        -u)                     echo "Deprecated option -u ignored"; shift;;
+        -t)                     echo "Deprecated option -t ignored"; shift;;
+        -p)                     echo "Deprecated option -p ignored (-p is already the default behavior)"; shift;;
+        -m)                     echo "Deprecated option -m ignored"; shift;;
+        --)                     shift; break;;
+        --*)                    echo "Error: Unknown option $1"; usage; exit 1;;
+        -*)                     echo "Error: Unknown option $1"; usage; exit 1;;
+        *)                      break;;
         esac
     done
 
@@ -269,7 +269,7 @@ parse_args() {
     fi
     if $verbose
     then
-        echo "$(date --iso-8601=seconds) Starting make_spack $origargs"
+        echo "$(date +%Y-%m-%dT%H:%M:%S) Starting make_spack $origargs"
         set -x
     fi
 }

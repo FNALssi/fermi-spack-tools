@@ -60,6 +60,18 @@ parse_args() {
     fi
 }
 
+SCRIPT_PLATFORM=$(uname -s)
+
+if [ "$SCRIPT_PLATFORM" = "Linux" ]; then
+    get_file_size() {
+        stat -c %s "$1"
+    }
+else
+    get_file_size() {
+        stat -f %z "$1"
+    }
+fi
+
 detail_log() {
     logfile=/tmp/bootstrap$$.log 
     # use fd 3 for messages to user, send stdout and stderr to log
@@ -78,11 +90,8 @@ monitor() {
    printf "%3d%%$box\r" 0 >&3
    while :
    do
-       # du -k (kilobytes) is portable; du -b (bytes) is GNU coreutils only and
-       # not available on macOS BSD du.
-       local duf=$(du -k "$f")
-       local ds="${duf%$f}"
-       dpp1=$(( ds / sd ))
+       local duf=$(get_file_size "$f")
+       dpp1=$(( duf * 99 / sd ))
        (( dpp1 > 99 )) && dpp1=99
        dpp2=$(( dpp1 / 2 + 1 ))
        printf "%3d%%${lin:0:$dpp2}\r" $dpp1 >&3
@@ -105,8 +114,8 @@ message() {
     stop_monitor
     # "$@" instead of $* to correctly handle arguments containing spaces.
     echo "$@" >&3
-    # 10240 = expected log size in kilobytes (10 MB), used to compute progress %.
-    start_monitor "$logfile" 10240
+    # 10485760 = expected log size in bytes (10 MB), used to compute progress %.
+    start_monitor "$logfile" 10485760
 }
 
 check_bootstrap() {
