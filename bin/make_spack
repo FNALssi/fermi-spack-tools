@@ -319,6 +319,11 @@ init_scopes() {
     echo "relocating \"site\" scope files to \"site:base\""
     mkdir "$dir/etc/spack/base"
     mv -v "$dir/etc/spack/"*.yaml "$dif/etc/spack/base/"
+
+    osstr=$($dir/bin/spack arch -o)
+    platstr=$($dir/bin/spack arch -p)
+    mkdir -p $dir/etc/spack/$platstr/$osstr
+
     cat > "$dir/etc/spack/include.yaml" <<\EOF
 include:
   # default platform-specific configuration
@@ -332,6 +337,7 @@ include:
 - path: base
 EOF
   fi
+
 }
 
 main() {
