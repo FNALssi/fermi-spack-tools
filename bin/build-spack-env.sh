@@ -943,15 +943,27 @@ _maybe_register_compiler() {
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
                      location --install-dir "${compiler_build_hash}" )" \
       || _die $EXIT_PATH_FAILURE "failed to extract path info for new compiler $compiler_spec"
+    local compiler_version="$(echo $compiler_path | sed -n 's/.*gcc-\([0-9]\+\.[0-9]\+\.[0-9]\+\)-.*/\1/p')"
+    _report $DEBUG_1 "installing gcc-runtime $compiler_version"
+    _cmd $DEBUG_3 $PIPE spack -e $env_name ${common_spack_opts[*]:+"${common_spack_opts[@]}"} install --no-cache gcc-runtime@$compiler_version
     local binutils_path="$(_cmd $DEBUG_2 $PIPE spack \
                     -e $env_name \
                      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
                      location --install-dir binutils 2>/dev/null)"
-    local compiler_version="$(echo $compiler_path | sed -n 's/.*gcc-\([0-9]\+\.[0-9]\+\.[0-9]\+\)-.*/\1/p')"
-    _report $DEBUG_1 "install gcc-runtime@$compiler_version"
-    _maybe_swap_mirror_config && _cmd $DEBUG_1 spack \
-      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-      install gcc-runtime@$compiler_version && _maybe_restore_mirror_config
+#    _report $DEBUG_1 "registering compiler $compiler_spec at $compiler_path with Spack in scope $compilers_scope"
+#    _cmd $DEBUG_1 spack \
+#      ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+#      compiler find --scope "$compilers_scope" "$compiler_path"
+#    if [ -n "$binutils_path" ]; then
+#      # Modify the compiler configuration to prepend binutils to PATH.
+#      local compilers_yaml="$(_cmd $DEBUG_2 $PIPE spack \
+#                     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+#                     config --scope "$compilers_scope" edit --print-file compilers)"
+#      _cmd $DEBUG_2 perl -wapi'' -e 'm&\bcompiler:\s*$&msx and $in_compiler=1; $in_compiler and m&spec:\s*\Q'"$compiler_spec"'\E&msx and $in_wanted_compiler=1; $in_wanted_compiler and s&(^\s*environment:\s*).*$&$1\{ prepend_path: \{ PATH: "'"$binutils_path"'/bin" \} \}\n&msx and undef $in_wanted_compiler and undef $in_compiler' "$compilers_yaml" || _die $EXIT_SPACK_CONFIG_FAILURE "unable to configure compiler binutils path for $compiler_spec"
+#    fi
+#    if [[ "$compiler_spec" == *clang* ]]; then
+#      _cmd $DEBUG_2 perl -wapi'' -e 'm&\bcompiler:\s*$&msx and $in_compiler=1; $in_compiler and m&spec:\s*\Q'"$compiler_spec"'\E&msx and $in_wanted_compiler=1; $in_wanted_compiler and s&(^\s*flags:\s*).*$&$1\{ cxxflags: -stdlib=libc++ \}\n&msx and undef $in_wanted_compiler and undef $in_compiler' "$compilers_yaml" || _die $EXIT_SPACK_CONFIG_FAILURE "unable to configure compiler flags for $compiler_spec"
+#    fi
   fi
 }
 
