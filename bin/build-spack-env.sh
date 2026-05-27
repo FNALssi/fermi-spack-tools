@@ -985,7 +985,7 @@ _maybe_add_gcc_runtime() {
     local compiler_version="$(echo $compiler_path | sed -n 's/.*gcc-\([0-9]\+\.[0-9]\+\.[0-9]\+\)-.*/\1/p')"
     local compiler_target="$(echo $compiler_path | sed -n 's/.*linux-\(x86_64_v[0-9]*\).*/\1/p')"
     _report $DEBUG_1 "installing gcc-runtime@$compiler_version target=$compiler_target"
-    _cmd $DEBUG_3 $PIPE spack -e $env_name ${common_spack_opts[*]:+"${common_spack_opts[@]}"} install gcc-runtime@$compiler_version target=$compiler_target
+    _cmd $DEBUG_3 $PIPE spack ${common_spack_opts[*]:+"${common_spack_opts[@]}"} install gcc-runtime@$compiler_version target=$compiler_target
   fi
 }
 
