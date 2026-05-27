@@ -306,6 +306,11 @@ do_keys() {
 }
 
 install_configs() {
+
+    osstr=$($dir/bin/spack arch -o)
+    platstr=$($dir/bin/spack arch -p)
+    mkdir -p $dir/etc/spack/$platstr/$osstr
+
     mkdir "$dir/etc/spack/base"
     mv -v "$dir/etc/spack/"*.yaml "$dir/etc/spack/base/"
     (cd $spackbindir/../templates/etc_spack && tar cf - .) | 
