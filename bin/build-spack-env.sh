@@ -949,9 +949,9 @@ _maybe_register_compiler() {
                      location --install-dir binutils 2>/dev/null)"
     local compiler_version="$(echo $compiler_path | sed -n 's/.*gcc-\([0-9]\+\.[0-9]\+\.[0-9]\+\)-.*/\1/p')"
     _report $DEBUG_1 "install gcc-runtime@$compiler_version"
-    _cmd $DEBUG_1 spack \
+    _maybe_swap_mirror_config && _cmd $DEBUG_1 spack \
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-      install gcc-runtime@$compiler_version
+      install gcc-runtime@$compiler_version && _maybe_restore_mirror_config
   fi
 }
 
@@ -1097,7 +1097,7 @@ _process_environment() {
   ####################################
   # If we just built a compiler environment, add the
   # compiler to the list of available compilers.
-  _maybe_swap_mirror_config && _maybe_register_compiler && _maybe_restore_mirror_config
+  _maybe_register_compiler
   ####################################
 }
 
