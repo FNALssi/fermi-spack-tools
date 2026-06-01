@@ -1138,7 +1138,12 @@ _process_environment() {
   # compiler to the list of available compilers.
   #_maybe_register_compiler
   ####################################
-  _maybe_add_gcc_runtime
+
+ #####################################
+ # hack to add hwloc and gcc_runtime
+ # after compiler environment is installed.
+ #  _maybe_add_gcc_runtime
+ ####################################
 }
 
 # Properly quote a message for protection from the shell if copy/pasted.
