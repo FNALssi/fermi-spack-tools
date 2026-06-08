@@ -984,9 +984,6 @@ _maybe_add_gcc_runtime() {
       || _die $EXIT_PATH_FAILURE "failed to extract path info for new compiler $compiler_spec"
     local compiler_version="$(echo $compiler_path | sed -n 's/.*gcc-\([0-9]\+\.[0-9]\+\.[0-9]\+\)-.*/\1/p')"
     local compiler_target="$(echo $compiler_path | sed -n 's/.*linux-\(x86_64_v[0-9]*\).*/\1/p')"
-    
-    _report $DEBUG_1 "installing hwloc  c,cxx=gcc@$compiler_version"
-    _maybe_swap_mirror_config && _cmd $DEBUG_3 $PIPE spack ${common_spack_opts[*]:+"${common_spack_opts[@]}"} install "hwloc %c,cxx=gcc@$compiler_version" && _maybe_restore_mirror_config
     _report $DEBUG_1 "installing gcc-runtime@$compiler_version target=$compiler_target"
     _cmd $DEBUG_3 $PIPE spack ${common_spack_opts[*]:+"${common_spack_opts[@]}"} install gcc-runtime@$compiler_version target=$compiler_target
   fi
