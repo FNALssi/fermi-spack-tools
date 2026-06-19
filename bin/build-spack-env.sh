@@ -1137,7 +1137,7 @@ _process_environment() {
   ####################################
 
  #####################################
- # hack to add hwloc and gcc_runtime
+ # hack to add gcc_runtime
  # after compiler environment is installed.
  _maybe_add_gcc_runtime
  ####################################
