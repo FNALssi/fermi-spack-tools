@@ -44,8 +44,8 @@ packages:
         - intel-tbb-oneapi
       unwind::
         - libunwind
-      uuid:
-        - util-linux-uuid
+      uuid::
+        - libuuid
       yacc::
         - bison
   asciidoc:

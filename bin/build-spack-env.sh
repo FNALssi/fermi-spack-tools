@@ -281,7 +281,7 @@ SPACK CONFIGURATION OPTIONS
 
   --with-padding
 
-    Equivalent to --spack-config-cmd='--scope=spack add config:install_tree:padded_length:255'
+    Equivalent to --spack-config-cmd='--scope=spack add config:install_tree:padded_length:128'
 
 
 NON-OPTION ARGUMENTS
@@ -614,12 +614,12 @@ _configure_spack() {
 
   ####################################
   # Make sure we know about compilers.
-  _report $PROGRESS "configuring compilers"
+  _report $PROGRESS "configuring system compilers"
 
   # Find the best scope for compiler info based on configuration and/or
   # Spack version.
   for compilers_scope in \
-    site:$spack_os site:$spack_platform include:$spack_os site/$spack_platform/$spack_os site/$spack_os site
+    spack:$spack_os spack:$spack_platform include:$spack_os spack/$spack_platform/$spack_os spack/$spack_os spack
   do
     spack config --scope=$compilers_scope get compilers >/dev/null 2>&1 &&
       break
@@ -705,7 +705,7 @@ _deactivate_repo() {
     scope="$(_cmd $DEBUG_2 $PIPE spack config blame repos | _cmd $DEBUG_3 $PIPE sed -Ene '\&/'"$path_basename"'$& s&/repos\.yaml:[[:digit:]]+[[:space:]]+.*$&/&p')"
     scope="${scope##*/etc/spack/}"
     scope="${scope%/*}"
-    [[ scope == defaults/* ]] || scope="site${scope:+/$scope}"
+    [[ scope == defaults/* ]] || scope="spack${scope:+/$scope}"
     _report $PROGRESS "deactivating existing repo $rrepo in scope $scope at $path"
     _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo ||
       { scope=spack:$spack_os; _cmd $DEBUG_1 spack repo rm --scope $scope $rrepo; } ||
@@ -753,6 +753,7 @@ _do_build_and_test() {
       "${spack_install_cmd[@]}"
       ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"}
     )
+    spack clean -m
     _cmd $PROGRESS $INFO "${spack_build_env_cmd[@]}"
   fi
 }
@@ -865,13 +866,17 @@ EOF
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
            python "$TMP/location_cmds.py" |
         while read hash prefix; do
-          _report $DEBUG_4 "looking for binary_distribution marker for $hash in $prefix/.spack/"
-          if [  -f "$prefix/.spack/binary_distribution" ]; then
-	          _report_stderr=1 _report $DEBUG_1 "skip package installed from buildcache: $hash"
-	        else
-	          _report_stderr=1 _report $DEBUG_2 "save package in buildcache: $hash"
-            echo "${hash//*\///}"
-          fi
+          if [ "$prefix" != "/usr" ]; then
+              _report $DEBUG_4 "looking for binary_distribution marker for $hash in $prefix/.spack/"
+              if [  -f "$prefix/.spack/binary_distribution" ]; then
+	              _report_stderr=1 _report $DEBUG_1 "skip package installed from buildcache: $hash"
+	            else
+	              _report_stderr=1 _report $DEBUG_2 "save package in buildcache: $hash"
+                echo "${hash//*\///}"
+              fi
+	        else 
+	          _report_stderr=1 _report $DEBUG_1 "skip external package: $hash"
+	        fi
         done
     )
   )
@@ -884,25 +889,26 @@ EOF
       _report $PROGRESS "caching ${#hashes_to_cache[@]}$msg_extra binary packages for environment $env_name to $cache"
       _cmd $DEBUG_1 $PROGRESS \
            spack \
+           -e $env_name \
            ${__debug_spack_buildcache:+-d} \
            ${__verbose_spack_buildcache:+-v} \
            ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-           buildcache create --only package \
+           buildcache create --private --only package \
            ${buildcache_package_opts[*]:+"${buildcache_package_opts[@]}"} \
            ${buildcache_key_opts[*]:+"${buildcache_key_opts[@]}"} \
            ${buildcache_rel_arg} "$cache" \
-           "${hashes_to_cache[@]/#//}" ||
-        _die "failure caching packages to $cache"
-      if [ -d "$cache/build_cache" ] &&
-           (( $({ ls -1 "$cache/build_cache/*.json*" | wc -l; } 2>/dev/null) )); then
+           "${hashes_to_cache[@]/#//}" || \
+        _die "failure caching packages to $cache" 
+    done
+    if [ -d "$cache/blobs" ] &&
+         [ -f "$cache/v3/layout.json*" ]; then
         _report $PROGRESS "updating build cache index at $cache"
         _cmd $DEBUG_1 $PROGRESS \
-             spack \
-             ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-             buildcache update-index -k "$cache" ||
-          _report $ERROR "failure to update build cache index: manual intervention required for $cache"
-      fi
-    done
+        spack \
+        ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+        buildcache update-index -k "$cache" ||
+        _report $ERROR "failure to update build cache index: manual intervention required for $cache"
+    fi
   fi
 }
 
@@ -958,6 +964,33 @@ _maybe_register_compiler() {
   fi
 }
 
+_maybe_add_gcc_runtime() {
+  if (( is_compiler_env )); then
+    local compiler_spec="${env_spec%%-*}"
+    compiler_spec="${compiler_spec/@/@=}"
+    compiler_spec="${compiler_spec/@==/@=}"
+    compiler_build_spec=${compiler_spec/clang/llvm}
+    compiler_build_spec=${compiler_build_spec/oneapi/intel-oneapi-compilers}
+    compiler_build_spec=${compiler_build_spec/dpcpp/intel-oneapi-compilers}
+    local compiler_build_hash="$(_cmd $DEBUG_3 $PIPE spack \
+                 -e $env_name \
+                 ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+                 find -fvLNc gcc | \
+              sed -Ene 's/^\[\+\][[:space:]]+([^[:space:]]+)[[:space:]]+gcc@.*$/\/\1/p')"
+    local compiler_path="$(_cmd $DEBUG_2 $PIPE spack \
+                    -e $env_name \
+                     ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
+                     location --install-dir "${compiler_build_hash}" )" \
+      || _die $EXIT_PATH_FAILURE "failed to extract path info for new compiler $compiler_spec"
+    local compiler_version="$(echo $compiler_path | sed -n 's/.*gcc-\([0-9]\+\.[0-9]\+\.[0-9]\+\)-.*/\1/p')"
+    local compiler_target="$(echo $compiler_path | sed -n 's/.*linux-\(x86_64_v[0-9]*\).*/\1/p')"
+    _report $DEBUG_1 "installing gcc-runtime@$compiler_version target=$compiler_target"
+    _cmd $DEBUG_3 $PIPE spack ${common_spack_opts[*]:+"${common_spack_opts[@]}"} install gcc-runtime@$compiler_version target=$compiler_target
+  fi
+}
+
+
+
 # Restore previously-saved mirrors.yaml (see
 # _maybe_swap_mirror_config()).
 _maybe_restore_mirror_config() {
@@ -1007,11 +1040,13 @@ EOF
   if (( ${#hashes_to_install[@]} )); then
     _report $DEBUG_2 "building ${#hashes_to_install[@]} non-root dependencies in environment $env_name"
     _report $DEBUG_4 "            ${hashes_to_install[@]/%/$'\n'           }"
+    spack clean -m
     _cmd $DEBUG_1 $INFO \
          "${spack_install_cmd[@]}" \
          ${hashes_to_install[*]:+"${hashes_to_install[@]/*\///}"} || return
   fi
   _report $PROGRESS "building${hashes_to_install[*]:+ remaining package(s) in} environment $env_name"
+    spack clean -m
   _cmd $DEBUG_1 $INFO "${spack_install_cmd[@]}" ${extra_cmd_opts[*]:+"${extra_cmd_opts[@]}"}
 }
 
@@ -1076,7 +1111,7 @@ _process_environment() {
          ${__debug_spack_concretize:+-d} \
          ${__verbose_spack_concretize:+-v} \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         concretize ${env_tests_arg:+"$env_tests_arg"}  &&
+         concretize --deprecated ${env_tests_arg:+"$env_tests_arg"}  &&
     _maybe_restore_mirror_config &&
     _classify_concretized_specs &&
     _maybe_cache_sources &&
@@ -1098,8 +1133,14 @@ _process_environment() {
   ####################################
   # If we just built a compiler environment, add the
   # compiler to the list of available compilers.
-  # _maybe_register_compiler
+  #_maybe_register_compiler
   ####################################
+
+ #####################################
+ # hack to add gcc_runtime
+ # after compiler environment is installed.
+ _maybe_add_gcc_runtime
+ ####################################
 }
 
 # Properly quote a message for protection from the shell if copy/pasted.
@@ -1529,18 +1570,24 @@ _copy_back_logs; \
 if (( failed )) && (( want_emergency_buildcache )); then \
   tag_text=ALERT _report $ERROR \"emergency buildcache dump\"; \
   for spec in \$(spack find -L | sed -Ene 's&^([[:alnum:]]+).*\$&/\\1&p');do \
-    if [  -f \"\$(spack location -i \$spec)/.spack/binary_distribution\" ]; then
-      tag_text=ALERT _report $ERROR skipping package installed from buildcache \$spec;\
+    prefix=\$(spack location -i \$spec); \
+    if [ "\$prefix" != "/usr" ]; then \
+      if [  -f "\${prefix}/.spack/binary_distribution" ]; then \
+        tag_text=ALERT _report $ERROR skipping package installed from buildcache \$spec; \
       else \
-      _cmd $ERROR $PIPE spack \
-      \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
-      buildcache create \
-      \${buildcache_package_opts[*]:+\"\${buildcache_package_opts[@]}\"} \
-      \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
-      \$buildcache_rel_arg \
-      \"$working_dir/copyBack/spack-emergency-cache\" \
-     \$spec; \
-     fi \
+        _cmd $ERROR $PIPE spack \
+        -e \$env_name \
+        \${common_spack_opts[*]:+\"\${common_spack_opts[@]}\"} \
+        buildcache create --private \
+        \${buildcache_package_opts[*]:+\"\${buildcache_package_opts[@]}\"} \
+        \${buildcache_key_opts[*]:+\"\${buildcache_key_opts[@]}\"} \
+        \$buildcache_rel_arg \
+        \"$working_dir/copyBack/spack-emergency-cache\" \
+        \$spec; \
+      fi \
+    else \
+          tag_text=ALERT _report $ERROR skipping external package \$spec;\
+    fi \
   done;\
   _cmd $ERROR $PIPE spack \
   buildcache update-index \"$working_dir/copyBack/spack-emergency-cache\"; \
