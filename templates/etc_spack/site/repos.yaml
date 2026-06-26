@@ -1,6 +1,6 @@
 repos:
   uboone-spack:
-    git: https://github.com/gartung/uboone-spack-recipes.git
+    git: https://github.com/uboone/uboone-spack-recipes.git
     destination: $spack/var/spack/repos/uboone-spack-recipes
     branch: main
   nova-spack:
