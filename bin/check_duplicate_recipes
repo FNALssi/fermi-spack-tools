@@ -1,0 +1,29 @@
+#!/bin/bash
+
+workdir=${TMPDIR:-/tmp}/work_$$
+mkdir -p $workdir
+cd $workdir
+
+spack repo list | 
+    while read _ repo ver repodir
+    do
+        (cd $repodir/packages && /bin/ls) > $repo.out
+    done
+
+for i in *.out
+do
+    for j in *.out
+    do
+        unsorted=$(printf "%s\n%s\n" $i $j)
+        sorted=$(printf "%s\n%s\n" $i $j | sort)
+        if [ "$unsorted" != "$sorted" ]
+        then
+            overlap=$(comm -12 $i $j)
+            if [ "x$overlap" != "x" ]
+            then
+                pair=$(echo $i $j | sed -e s/.out//g )
+                echo duplicated in $pair: $overlap
+            fi
+        fi
+    done
+done
