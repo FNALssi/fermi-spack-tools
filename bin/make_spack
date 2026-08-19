@@ -300,9 +300,9 @@ do_keys() {
     # get the keys from our buildcaches
     # this doesn't seem to happen consistently, so trying doing
     # it twice, which shouldn't hurt in any case
-    spack buildcache keys --install --force --trust
+    spack buildcache keys --install --force --trust --yes-to-all
     sleep 1
-    spack buildcache keys --install --force --trust
+    spack buildcache keys --install --force --trust --yes-to-all
 }
 
 install_configs() {
