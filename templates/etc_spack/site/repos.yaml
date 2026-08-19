@@ -46,4 +46,4 @@ repos:
   builtin:
     git: https://github.com/FNALssi/spack-packages.git
     destination: $spack/var/spack/repos/builtin
-    branch: fnal-v2026.03.0
+    branch: fnal-v2026.06.0
