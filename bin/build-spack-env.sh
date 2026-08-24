@@ -766,7 +766,7 @@ _identify_concrete_specs() {
       --color=never \
       find  --no-groups --show-full-compiler -cfNdvL \
       > "$TMP/$env_name-concrete.txt"
-      sed -Ene '/^==> (\[.*\] )?(Concretized roots|[[:digit:]]+ root specs)$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; /^.{4,5}?[^[:space:]]{32,}/ p; }' \
+      sed -Ene '/^==> (\[.*\] )?(Concretized [[:digit:]]+ specs)?(Concretized roots|[[:digit:]]+ root specs)$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; /^.{4,5}?[^[:space:]]{32,}/ p; }' \
           "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt"
   } 2>/dev/null
   local status=$?
