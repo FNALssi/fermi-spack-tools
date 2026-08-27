@@ -411,7 +411,7 @@ _classify_concretized_specs() {
     if (( ${#BASH_REMATCH[1]} == 4 )); then
       new_format=1
       root_hashes+=("$namespace_name/$hash")
-    elif ! { (( new_format )) || (( ${#BASH_REMATCH[3] )); }; then
+    elif ! { (( new_format )) || (( ${#BASH_REMATCH[3]} )); }; then
       root_hashes+=("$namespace_name/$hash")
     else
       non_root_hashes+=("$namespace_name/$hash")
