@@ -415,8 +415,8 @@ _classify_concretized_specs() {
     fi
     hashes+=("$namespace_name/$hash")
   done
-  _report $DEBUG_4 "hashes:\n            $(printf '%s\n' "${hashes[@]}" | sed 's/^/            /')"
-  _report $DEBUG_2 "root hashes:\n            $(printf '%s\n' "${root_hashes[@]}" | sed 's/^/            /')"
+  _report $DEBUG_4 "hashes:\n $(printf '%s\n' "${hashes[@]}" | sed 's/^/            /')"
+  _report $DEBUG_2 "root hashes:\n $(printf '%s\n' "${root_hashes[@]}" | sed 's/^/            /')"
   # Remove namespace.name for future use
   root_hashes=(${root_hashes[@]##*/})
   non_root_hashes=(${non_root_hashes[@]##*/})
