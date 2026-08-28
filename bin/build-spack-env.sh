@@ -408,7 +408,7 @@ _classify_concretized_specs() {
     [[ "${all_concrete_specs[$((specline_idx++))]}" =~ $regex ]] || continue
     local hash="${BASH_REMATCH[2]}"
     local namespace_name="${BASH_REMATCH[4]}"
-    if (( ${#BASH_REMATCH[1]} == 4 )); then
+    if (( ${#BASH_REMATCH[1]} == 4 || ${#BASH_REMATCH[1]} == 3 )); then
       root_hashes+=("$namespace_name/$hash")
     elif (( ${#BASH_REMATCH[1]} == 5 )); then
       non_root_hashes+=("$namespace_name/$hash")
@@ -764,7 +764,7 @@ _identify_concrete_specs() {
       find  --no-groups --show-full-compiler -cfNdvL \
       > "$TMP/$env_name-concrete.txt"
         local status=$?
-# New list has 4 chars before the hash for root specs, 5 chars for non-root specs, and 32+ char hashes
+# New list has 3 or 4 chars before the hash for root spec(s), 5 chars for non-root specs, and 32+ char hashes
 # followed by the full spec name.  
 # The following is an example of the output from spack -e env_name find --no-groups --show-full-compiler -cfNdvL 
 #==> In environment hwloc-x86_64_v2 (1 root spec)
@@ -774,7 +774,7 @@ _identify_concrete_specs() {
 #[+]  xoksebje6tn3jivjojyigi2lmcgdxzum builtin.compiler-wrapper@1.1.0 build_system=generic
 #
 #[e]  g4j5736iopg2je7egxcf32yc5xfxxrb7 builtin.gcc@11.5.0+binutils+bootstrap~graphite+libsanitizer~nvptx~piclibs~profiled~strip build_system=autotools build_type=RelWithDebInfo languages:='c,c++,fortran'  
-      sed -Ene '{ /^(==>.*)?$/ b; /^[[:space:]]*-/ b; /^.{4,4}?[^[:space:]]{32,}/ p; }' \
+      sed -Ene '{ /^(==>.*)?$/ b; /^[[:space:]]*-/ b; /^.{3,4}?[^[:space:]]{32,}/ p; }' \
           "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt" 2>/dev/null
       sed -Ene '{ /^(==>.*)?$/ b; /^[[:space:]]*-/ b; /^.{5,5}?[^[:space:]]{32,}/ p; }' \
           "$TMP/$env_name-concrete.txt" >> "$TMP/$env_name-concrete-filtered.txt" 2>/dev/null
