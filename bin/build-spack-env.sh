@@ -769,10 +769,10 @@ _identify_concrete_specs() {
         local status=$?
       sed -Ene '{ /^(==>.*)?$/ b; /^[[:space:]]*-/ b; /^.{4,5}?[^[:space:]]{32,}/ p; }' \
           "$TMP/$env_name-findconcrete.txt" > "$TMP/$env_name-findconcrete-filtered.txt" 2>/dev/null
-  _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt" | cut -d' ' -f 1) lines"
+  _report $DEBUG_1 "$TMP/$env_name-findconcrete-filtered.txt has $(wc -l "$TMP/$env_name-findconcrete-filtered.txt" | cut -d' ' -f 1) lines"
   while IFS='' read -r line; do
     all_concrete_specs+=("$line")
-  done < "$TMP/$env_name-concrete-filtered.txt"
+  done < "$TMP/$env_name-findconcrete-filtered.txt"
   _report $DEBUG_1 "found ${#all_concrete_specs[@]} concrete specs"
   return $status
 }
@@ -1110,9 +1110,22 @@ _process_environment() {
          ${__debug_spack_concretize:+-d} \
          ${__verbose_spack_concretize:+-v} \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         concretize --deprecated ${env_tests_arg:+"$env_tests_arg"} > $TMP/$env_name-concrete.txt &&
-         sed -Ene '/^==> (\[.*\] )?(Concretized [[:digit:]]+ specs)?(Concretized roots|[[:digit:]]+ root specs)$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; /^.{4,5}?[^[:space:]]{32,}/ p; }' \
-            "$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt" &&
+         concretize --deprecated ${env_tests_arg:+"$env_tests_arg"} > $TMP/$env_name-concrete.txt && cat $TMP/$env_name-concrete.txt &&
+         sed -Ene '/^==> (\[.*\] )?(Concretized 1 spec)?(Concretized [[:digit:]]+ specs)?(Concretized roots|[[:digit:]]+ root specs)$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; /^.{4,5}?[^[:space:]]{32,}/ p; }' \
+            "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt" && cat "$TMP/$env_name-concrete-filtered.txt" &&
+    _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt" | cut -d' ' -f 1) lines" &&
+    while IFS='' read -r line; do
+      hashes+=("$line")
+    done < "$TMP/$env_name-concrete-filtered.txt" &&
+    _report $DEBUG_1 "found ${#hashes[@]} concrete specs" &&
+    for hash in ${hashes[*]:+"${hashes[@]}"}; do
+      (( idx++ ))
+      if (( idx <= ${#hashes[@]} - ${#root_specs[@]} )); then
+        non_root_hashes+=("$hash")
+      else
+        root_hashes+=("$hash")
+      fi
+    done < "$TMP/$env_name-concrete-filtered.txt" &&
     _maybe_restore_mirror_config &&
     _classify_concretized_specs &&
     _maybe_cache_sources &&
