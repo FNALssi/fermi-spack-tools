@@ -1122,10 +1122,7 @@ _process_environment() {
          ${__debug_spack_concretize:+-d} \
          ${__verbose_spack_concretize:+-v} \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         concretize --deprecated ${env_tests_arg:+"$env_tests_arg"} > $TMP/$env_name-concretized.txt && cat $TMP/$env_name-concretized.txt &&
-         sed -Ene '/^==> (\[.*\] )?(Concretized 1 spec)?(Concretized [[:digit:]]+ specs)?(Concretized roots|[[:digit:]]+ root specs)$/,/^==> (\[.*\] )?Installed packages|^[[:space:]]*$|^$/ { /^(==>.*)?$/ b; /^.{4,5}?[^[:space:]]{7,}/ p; }' \
-            "$TMP/$env_name-concretized.txt" > "$TMP/$env_name-concretized-filtered.txt" && cat "$TMP/$env_name-concretized-filtered.txt" &&
-    _report $DEBUG_1 "$TMP/$env_name-concretized-filtered.txt has $(wc -l "$TMP/$env_name-concretized-filtered.txt" | cut -d' ' -f 1) lines" &&
+         concretize --deprecated ${env_tests_arg:+"$env_tests_arg"} &&
     _maybe_restore_mirror_config &&
     _classify_concretized_specs &&
     _maybe_cache_sources &&
