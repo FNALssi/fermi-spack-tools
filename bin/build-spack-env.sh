@@ -409,11 +409,8 @@ _classify_concretized_specs() {
     local hash="${BASH_REMATCH[2]}"
     local namespace_name="${BASH_REMATCH[4]}"
     if (( ${#BASH_REMATCH[1]} == 4 )); then
-      new_format=1
       root_hashes+=("$namespace_name/$hash")
-    elif ! { (( new_format )) || (( ${#BASH_REMATCH[3]} )); }; then
-      root_hashes+=("$namespace_name/$hash")
-    else
+    elif (( ${#BASH_REMATCH[1]} == 5 )); then
       non_root_hashes+=("$namespace_name/$hash")
     fi
     hashes+=("$namespace_name/$hash")
@@ -765,14 +762,27 @@ _identify_concrete_specs() {
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
       --color=never \
       find  --no-groups --show-full-compiler -cfNdvL \
-      > "$TMP/$env_name-findconcrete.txt"
+      > "$TMP/$env_name-concrete.txt"
         local status=$?
-      sed -Ene '{ /^(==>.*)?$/ b; /^[[:space:]]*-/ b; /^.{4,5}?[^[:space:]]{32,}/ p; }' \
-          "$TMP/$env_name-findconcrete.txt" > "$TMP/$env_name-findconcrete-filtered.txt" 2>/dev/null
-  _report $DEBUG_1 "$TMP/$env_name-findconcrete-filtered.txt has $(wc -l "$TMP/$env_name-findconcrete-filtered.txt" | cut -d' ' -f 1) lines"
+# New list has 4 chars before the hash for root specs, 5 chars for non-root specs, and 32+ char hashes
+# followed by the full spec name.  
+# The following is an example of the output from spack -e env_name find --no-groups --show-full-compiler -cfNdvL 
+#==> In environment hwloc-x86_64_v2 (1 root spec)
+#[+] n3epmrln2ccsk5qgflarkiz6vrnnec6k hwloc
+#     -  -------------------------------- gcc#
+#
+#[+]  xoksebje6tn3jivjojyigi2lmcgdxzum builtin.compiler-wrapper@1.1.0 build_system=generic
+#
+#[e]  g4j5736iopg2je7egxcf32yc5xfxxrb7 builtin.gcc@11.5.0+binutils+bootstrap~graphite+libsanitizer~nvptx~piclibs~profiled~strip build_system=autotools build_type=RelWithDebInfo languages:='c,c++,fortran'  
+      sed -Ene '{ /^(==>.*)?$/ b; /^[[:space:]]*-/ b; /^.{4,4}?[^[:space:]]{32,}/ p; }' \
+          "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt" 2>/dev/null
+      sed -Ene '{ /^(==>.*)?$/ b; /^[[:space:]]*-/ b; /^.{5,5}?[^[:space:]]{32,}/ p; }' \
+          "$TMP/$env_name-concrete.txt" >> "$TMP/$env_name-concrete-filtered.txt" 2>/dev/null
+
+  _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt" | cut -d' ' -f 1) lines"
   while IFS='' read -r line; do
     all_concrete_specs+=("$line")
-  done < "$TMP/$env_name-findconcrete-filtered.txt"
+  done < "$TMP/$env_name-concrete-filtered.txt"
   _report $DEBUG_1 "found ${#all_concrete_specs[@]} concrete specs"
   return $status
 }
@@ -821,7 +831,7 @@ _make_concretize_mirrors_yaml() {
 
 _maybe_cache_binaries() {
   [ "${cache_write_binaries:-none}" == "none" ] && return
-  local binary_mirror msg_extra= cache
+  local binary_mirror msg_extra='' cache
   if (( is_compiler_env )); then
     binary_mirror=compiler
   else
@@ -831,7 +841,8 @@ _maybe_cache_binaries() {
   if [ "$cache_write_binaries" = "no_roots" ] && ! (( is_compiler_env )); then
     msg_extra=" $cache_write_binaries"
   else
-    hashes_to_cache_tmp+=("${root_hashes[@]}")
+    msg_extra=" $cache_write_binaries"
+    hashes_to_cache_tmp+=(${root_hashes[*]:+"${root_hashes[@]}"})
   fi
   # We need to ask Spack for the location prefix of possibly many
   # packages in order to avoid writing packages to build cache that were
@@ -1111,21 +1122,9 @@ _process_environment() {
          ${__verbose_spack_concretize:+-v} \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
          concretize --deprecated ${env_tests_arg:+"$env_tests_arg"} > $TMP/$env_name-concrete.txt && cat $TMP/$env_name-concrete.txt &&
-         sed -Ene '/^==> (\[.*\] )?(Concretized 1 spec)?(Concretized [[:digit:]]+ specs)?(Concretized roots|[[:digit:]]+ root specs)$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; /^.{4,5}?[^[:space:]]{32,}/ p; }' \
+         sed -Ene '/^==> (\[.*\] )?(Concretized 1 spec)?(Concretized [[:digit:]]+ specs)?(Concretized roots|[[:digit:]]+ root specs)$/,/^==> (\[.*\] )?Installed packages|^[[:space:]]*$/ { /^(==>.*)?$/ b; /^.{4,5}?[^[:space:]]{32,}/ p; }' \
             "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt" && cat "$TMP/$env_name-concrete-filtered.txt" &&
     _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt" | cut -d' ' -f 1) lines" &&
-    while IFS='' read -r line; do
-      hashes+=("$line")
-    done < "$TMP/$env_name-concrete-filtered.txt" &&
-    _report $DEBUG_1 "found ${#hashes[@]} concrete specs" &&
-    for hash in ${hashes[*]:+"${hashes[@]}"}; do
-      (( idx++ ))
-      if (( idx <= ${#hashes[@]} - ${#root_specs[@]} )); then
-        non_root_hashes+=("$hash")
-      else
-        root_hashes+=("$hash")
-      fi
-    done < "$TMP/$env_name-concrete-filtered.txt" &&
     _maybe_restore_mirror_config &&
     _classify_concretized_specs &&
     _maybe_cache_sources &&
