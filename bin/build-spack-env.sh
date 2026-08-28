@@ -408,15 +408,15 @@ _classify_concretized_specs() {
     [[ "${all_concrete_specs[$((specline_idx++))]}" =~ $regex ]] || continue
     local hash="${BASH_REMATCH[2]}"
     local namespace_name="${BASH_REMATCH[4]}"
-    if (( ${#BASH_REMATCH[1]} == 4 || ${#BASH_REMATCH[1]} == 3 )); then
+    if (( ${#BASH_REMATCH[1]} == 4 )); then
       root_hashes+=("$namespace_name/$hash")
     elif (( ${#BASH_REMATCH[1]} == 5 )); then
       non_root_hashes+=("$namespace_name/$hash")
     fi
     hashes+=("$namespace_name/$hash")
   done
-  _report $DEBUG_4 "hashes:\n            ${hashes[@]/%/$'\n'           }"
-  _report $DEBUG_2 "root hashes:\n            ${root_hashes[@]/%/$'\n'           }"
+  _report $DEBUG_4 "hashes:\n            $(printf '%s\n' "${hashes[@]}" | sed 's/^/            /')"
+  _report $DEBUG_2 "root hashes:\n            $(printf '%s\n' "${root_hashes[@]}" | sed 's/^/            /')"
   # Remove namespace.name for future use
   root_hashes=(${root_hashes[@]##*/})
   non_root_hashes=(${non_root_hashes[@]##*/})
@@ -765,7 +765,8 @@ _identify_concrete_specs() {
       > "$TMP/$env_name-concrete.txt"
         local status=$?
 # New list has 3 or 4 chars before the hash for root spec(s), 5 chars for non-root specs, and 32+ char hashes
-# followed by the full spec name.  
+# followed by the full spec name. Root specs have " - " instead of "[*]" when not installed.
+# compiler specs have " - " followed by 32 dashes and must be filtered out. 
 # The following is an example of the output from spack -e env_name find --no-groups --show-full-compiler -cfNdvL 
 #==> In environment hwloc-x86_64_v2 (1 root spec)
 #[+] n3epmrln2ccsk5qgflarkiz6vrnnec6k hwloc
@@ -774,9 +775,9 @@ _identify_concrete_specs() {
 #[+]  xoksebje6tn3jivjojyigi2lmcgdxzum builtin.compiler-wrapper@1.1.0 build_system=generic
 #
 #[e]  g4j5736iopg2je7egxcf32yc5xfxxrb7 builtin.gcc@11.5.0+binutils+bootstrap~graphite+libsanitizer~nvptx~piclibs~profiled~strip build_system=autotools build_type=RelWithDebInfo languages:='c,c++,fortran'  
-      sed -Ene '{ /^(==>.*)?$/ b; /^[[:space:]]*-/ b; /^.{3,4}?[^[:space:]]{32,}/ p; }' \
+      sed -Ene '{ /^(==>.*)?$/ b; /^[[:space:]]-[[:space:]][-]{32}/ b; /^.{4,4}?[^[:space:]]{32,}/ p; }' \
           "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt" 2>/dev/null
-      sed -Ene '{ /^(==>.*)?$/ b; /^[[:space:]]*-/ b; /^.{5,5}?[^[:space:]]{32,}/ p; }' \
+      sed -Ene '{ /^(==>.*)?$/ b; /^[[:space:]]-[[:space:]][-]{32}/ b; /^.{5,5}?[^[:space:]]{32,}/ p; }' \
           "$TMP/$env_name-concrete.txt" >> "$TMP/$env_name-concrete-filtered.txt" 2>/dev/null
 
   _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt" | cut -d' ' -f 1) lines"
@@ -1049,7 +1050,7 @@ EOF
     _die "unexpected result executing Python script $TMP/dep_hash_cmds.py:\n$(cat "$TMP/dep_hash_cmds.py")"
   if (( ${#hashes_to_install[@]} )); then
     _report $DEBUG_2 "building ${#hashes_to_install[@]} non-root dependencies in environment $env_name"
-    _report $DEBUG_4 "            ${hashes_to_install[@]/%/$'\n'           }"
+    _report $DEBUG_4 "            $(printf '%s\n' "${hashes_to_install[@]}" | sed 's/^/            /')"
     spack clean -m
     _cmd $DEBUG_1 $INFO \
          "${spack_install_cmd[@]}" \
@@ -1097,7 +1098,7 @@ _process_environment() {
   #
   # then note that fact.
   (( ++env_idx ))
-  [[ "$env_spec"  =~ ^$known_compilers_re[@-][0-9] ]] \
+  [[ "$env_spec" =~ ^"${known_compilers_re}"[@-][0-9] ]] \
     && is_compiler_env=1 \
     && (( num_environments > env_idx )) \
     && is_nonterminal_compiler_env=1
@@ -1121,10 +1122,10 @@ _process_environment() {
          ${__debug_spack_concretize:+-d} \
          ${__verbose_spack_concretize:+-v} \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         concretize --deprecated ${env_tests_arg:+"$env_tests_arg"} > $TMP/$env_name-concrete.txt && cat $TMP/$env_name-concrete.txt &&
+         concretize --deprecated ${env_tests_arg:+"$env_tests_arg"} > $TMP/$env_name-concretized.txt && cat $TMP/$env_name-concretized.txt &&
          sed -Ene '/^==> (\[.*\] )?(Concretized 1 spec)?(Concretized [[:digit:]]+ specs)?(Concretized roots|[[:digit:]]+ root specs)$/,/^==> (\[.*\] )?Installed packages|^[[:space:]]*$/ { /^(==>.*)?$/ b; /^.{4,5}?[^[:space:]]{32,}/ p; }' \
-            "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt" && cat "$TMP/$env_name-concrete-filtered.txt" &&
-    _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt" | cut -d' ' -f 1) lines" &&
+            "$TMP/$env_name-concretized.txt" > "$TMP/$env_name-concretized-filtered.txt" && cat "$TMP/$env_name-concretized-filtered.txt" &&
+    _report $DEBUG_1 "$TMP/$env_name-concretized-filtered.txt has $(wc -l "$TMP/$env_name-concretized-filtered.txt" | cut -d' ' -f 1) lines" &&
     _maybe_restore_mirror_config &&
     _classify_concretized_specs &&
     _maybe_cache_sources &&
@@ -1172,14 +1173,14 @@ _remove_hash() {
   local OIFS="$IFS"; IFS=$'\n'; IFS="$OIFS"
   handled_hashes=($(echo "$*" | sort -u))
   IFS="$OIFS"
-  eval local "hashes=(\${$hashes_var[*]:+\"\${$hashes_var[@]}\"})"
-  (( ${#hashes[@]} )) || return
+  local -n _hashes_ref="$hashes_var"
+  (( ${#_hashes_ref[@]} )) || return
   local filtered_hashes=()
-  for hash in ${hashes[*]:+"${hashes[@]}"}; do
+  for hash in "${_hashes_ref[@]}"; do
     _in_sorted_hashlist "$hash" "${handled_hashes[@]}" ||
       filtered_hashes+=("$hash")
   done
-  eval $hashes_var="(\${filtered_hashes[*]:+\"\${filtered_hashes[@]}\"})"
+  _hashes_ref=("${filtered_hashes[@]}")
 }
 
 # Print a message with the specifed numeric first argument or 0 as
@@ -1445,7 +1446,7 @@ case "$ups_opt" in
     -p) :;;
     -[ut]) _report $WARNING "deprecated --ups option \"$ups_opt\" ignored.";;
     -*) _die $EXIT_CONFIG_FAILURE "unrecognized --ups option $ups_opt\n$(usage)";;
-    *) break
+    *) :;;
 esac
 
 
