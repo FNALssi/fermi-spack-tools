@@ -760,16 +760,15 @@ _do_build_and_test() {
 
 _identify_concrete_specs() {
   # Identify all concrete specs
-  { spack \
+  spack \
       -e $env_name \
       ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
       --color=never \
       find  --no-groups --show-full-compiler -cfNdvL \
-      > "$TMP/$env_name-concrete.txt"
+      > "$TMP/$env_name-findconcrete.txt"
+        local status=$?
       sed -Ene '{ /^(==>.*)?$/ b; /^[[:space:]]*-/ b; /^.{4,5}?[^[:space:]]{32,}/ p; }' \
-          "$TMP/$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt"
-  } 2>/dev/null
-  local status=$?
+          "$TMP/$env_name-findconcrete.txt" > "$TMP/$env_name-findconcrete-filtered.txt" 2>/dev/null
   _report $DEBUG_1 "$TMP/$env_name-concrete-filtered.txt has $(wc -l "$TMP/$env_name-concrete-filtered.txt" | cut -d' ' -f 1) lines"
   while IFS='' read -r line; do
     all_concrete_specs+=("$line")
@@ -1106,12 +1105,14 @@ _process_environment() {
   local hashes=() non_root_hashes=() root_hashes=() n_hashes= idx=0
   _maybe_swap_mirror_config &&
     _cmd $DEBUG_1 $PROGRESS \
-         spack \
+      spack \
          -e $env_name \
          ${__debug_spack_concretize:+-d} \
          ${__verbose_spack_concretize:+-v} \
          ${common_spack_opts[*]:+"${common_spack_opts[@]}"} \
-         concretize --deprecated ${env_tests_arg:+"$env_tests_arg"}  &&
+         concretize --deprecated ${env_tests_arg:+"$env_tests_arg"} > $TMP/$env_name-concrete.txt &&
+         sed -Ene '/^==> (\[.*\] )?(Concretized [[:digit:]]+ specs)?(Concretized roots|[[:digit:]]+ root specs)$/,/^==> (\[.*\] )?Installed packages$/ { /^(==>.*)?$/ b; /^.{4,5}?[^[:space:]]{32,}/ p; }' \
+            "$env_name-concrete.txt" > "$TMP/$env_name-concrete-filtered.txt" &&
     _maybe_restore_mirror_config &&
     _classify_concretized_specs &&
     _maybe_cache_sources &&
