@@ -1,4 +1,28 @@
 packages:
+  gcc:
+    externals:
+    - spec: gcc@12.5.0 languages:='c,c++,fortran'
+      prefix: /cvmfs/scisoft.opensciencegrid.org/spack-fnal-v1.1.1/opt/spack/linux-x86_64_v3/gcc-12.5.0-wrkusgqvgojd2ffmdmcpd2o4ftyubyku
+      extra_attributes:
+        compilers:
+          c: /cvmfs/scisoft.opensciencegrid.org/spack-fnal-v1.1.1/opt/spack/linux-x86_64_v3/gcc-12.5.0-wrkusgqvgojd2ffmdmcpd2o4ftyubyku/bin/gcc
+          cxx: /cvmfs/scisoft.opensciencegrid.org/spack-fnal-v1.1.1/opt/spack/linux-x86_64_v3/gcc-12.5.0-wrkusgqvgojd2ffmdmcpd2o4ftyubyku/bin/g++
+          fortran: /cvmfs/scisoft.opensciencegrid.org/spack-fnal-v1.1.1/opt/spack/linux-x86_64_v3/gcc-12.5.0-wrkusgqvgojd2ffmdmcpd2o4ftyubyku/bin/gfortran
+    - spec: gcc@11.5.0 languages:='c,c++,fortran'
+      prefix: /usr
+      extra_attributes:
+        compilers:
+          c: /usr/bin/gcc
+          cxx: /usr/bin/g++
+          fortran: /usr/bin/gfortran
+  llvm:
+    externals:
+    - spec: llvm@21.1.8+clang~flang+lld~lldb
+      prefix: /usr
+      extra_attributes:
+        compilers:
+          c: /usr/bin/clang
+          cxx: /usr/bin/clang++
   all:
     target:
     - x86_64_v2
