@@ -46,7 +46,7 @@ packages:
     require: bison
   asciidoc:
     externals:
-    - spec: asciidoc @=9.1.0 os=almalinux9
+    - spec: "asciidoc @=9.1.0 os=almalinux9 ^python@3.9.18"
       prefix: /usr
   autoconf:
     externals:
@@ -70,7 +70,7 @@ packages:
       prefix: /usr
   cigetcert:
     externals:
-    - spec: cigetcert @=1.21 os=almalinux9
+    - spec: "cigetcert @=1.21 os=almalinux9 ^python@3.9.18"
       prefix: /usr
   cmake:
     externals:
@@ -169,7 +169,7 @@ packages:
       prefix: /usr
   htgettoken:
     externals:
-    - spec: htgettoken @=1.20 os=almalinux9
+    - spec: "htgettoken @=1.20 os=almalinux9 ^python@3.9.18"
       prefix: /usr
   hwloc:
     require:
