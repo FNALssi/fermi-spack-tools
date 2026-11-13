@@ -30,7 +30,7 @@ repos:
   fnal_art:
     git: https://github.com/FNALssi/fnal_art.git
     destination: $spack/var/spack/repos/fnal_art
-    branch: develop
+    branch: canvas-root-io-root-req
   phlex:
     git: https://github.com/Framework-R-D/phlex-spack-recipes.git
     destination: $spack/var/spack/repos/phlex-spack-recipes
