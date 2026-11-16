@@ -1,4 +1,5 @@
 config:
+  installer: old
   extensions:
   - $spack/var/spack/extensions/spack-freeze
   - $spack/var/spack/extensions/spack-installdir
