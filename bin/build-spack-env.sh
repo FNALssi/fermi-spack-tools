@@ -662,6 +662,8 @@ _copy_back_logs() {
        "$spack_source_dir"/*.yaml \
        "$spack_source_dir"/etc \
        "$spack_source_dir"/var/spack/environments \
+       "$spack_source_dir"/var/spack/repos \
+       "$spack_source_dir"/var/spack/extensions \
     | _cmd $DEBUG_3 tar -C "$tar_tmp/spack_env" -x
   _cmd $DEBUG_3 $PIPE tar -C "$(spack location -S)" -c . \
     | _cmd $DEBUG_3 tar -C "$tar_tmp/spack-stage" -x
